@@ -1,0 +1,15 @@
+{
+  "name": "product-tracer",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Cross-platform indie product signal tracker",
+  "scripts": {
+    "dev": "pnpm -r run dev",
+    "build": "pnpm -r run build",
+    "lint": "pnpm -r run lint",
+    "typecheck": "pnpm -r run typecheck"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}
