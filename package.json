@@ -1,0 +1,23 @@
+{
+  "name": "product-tracer",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "web:dev": "pnpm --filter @product-tracer/web dev",
+    "web:build": "pnpm --filter @product-tracer/web build",
+    "web:start": "pnpm --filter @product-tracer/web start",
+    "worker:dev": "pnpm --filter @product-tracer/worker dev",
+    "typecheck": "pnpm -r typecheck",
+    "format": "prettier --write \"**/*.{ts,tsx,js,mjs,json,md,yml,yaml}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,mjs,json,md,yml,yaml}\""
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "prettier": "^3.4.0",
+    "typescript": "^5.7.0"
+  }
+}
