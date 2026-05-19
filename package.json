@@ -11,6 +11,7 @@
     "web:build": "pnpm --filter @product-tracer/web build",
     "web:start": "pnpm --filter @product-tracer/web start",
     "worker:dev": "pnpm --filter @product-tracer/worker dev",
+    "test:db": "pnpm --filter @product-tracer/worker exec tsx src/scripts/test-db.ts",
     "typecheck": "pnpm -r typecheck",
     "format": "prettier --write \"**/*.{ts,tsx,js,mjs,json,md,yml,yaml}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,mjs,json,md,yml,yaml}\""
