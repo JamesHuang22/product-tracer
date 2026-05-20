@@ -1,12 +1,22 @@
 # Data Sources
 
-> Cron 每小时自动发现。最后更新: 2026-05-20 05:01 PDT
+> Cron 每小时自动发现。最后更新: 2026-05-20 06:01 PDT
 
 ## GitHub Repositories
 
 | Repo | Stars |
 |------|-------|
+| [Dujltqzv/Some-Many-Books](https://github.com/Dujltqzv/Some-Many-Books) | 19709 stars |
+| [lTbgykio/Books-Free-Books](https://github.com/lTbgykio/Books-Free-Books) | 17386 stars |
+| [cirosantilli/x86-bare-metal-examples](https://github.com/cirosantilli/x86-bare-metal-examples) | 5287 stars |
+| [cirosantilli/china-dictatorship](https://github.com/cirosantilli/china-dictatorship) | 2992 stars |
+| [apptension/saas-boilerplate](https://github.com/apptension/saas-boilerplate) | 2899 stars |
+| [gege-circle/.github](https://github.com/gege-circle/.github) | 1884 stars |
+| [EinGuterWaran/awesome-opensource-boilerplates](https://github.com/EinGuterWaran/awesome-opensource-boilerplates) | 1861 stars |
+| [revokslab/ShipFree](https://github.com/revokslab/ShipFree) | 1651 stars |
 | [XiaomingX/1000-chinese-independent-developer-plus](https://github.com/XiaomingX/1000-chinese-independent-developer-plus) | 1485 stars |
+| [saasforge/open-source-saas-boilerpate](https://github.com/saasforge/open-source-saas-boilerpate) | 840 stars |
+| [okupter/kitforstartups](https://github.com/okupter/kitforstartups) | 733 stars |
 | [johackim/awesome-indiehackers](https://github.com/johackim/awesome-indiehackers) | 583 stars |
 | [maxprilutskiy/awesome-side-project](https://github.com/maxprilutskiy/awesome-side-project) | 351 stars |
 | [zszszszsz/.config](https://github.com/zszszszsz/.config) | 331 stars |
