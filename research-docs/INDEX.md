@@ -1,6 +1,6 @@
 # Data Sources
 
-> Cron 每小时自动发现。最后更新: 2026-05-20 05:00 PDT
+> Cron 每小时自动发现。最后更新: 2026-05-20 05:01 PDT
 
 ## GitHub Repositories
 
@@ -9,9 +9,18 @@
 | [XiaomingX/1000-chinese-independent-developer-plus](https://github.com/XiaomingX/1000-chinese-independent-developer-plus) | 1485 stars |
 | [johackim/awesome-indiehackers](https://github.com/johackim/awesome-indiehackers) | 583 stars |
 | [maxprilutskiy/awesome-side-project](https://github.com/maxprilutskiy/awesome-side-project) | 351 stars |
+| [zszszszsz/.config](https://github.com/zszszszsz/.config) | 331 stars |
 | [chrisneagu/FTC-Skystone-Dark-Angels-Romania-2020](https://github.com/chrisneagu/FTC-Skystone-Dark-Angels-Romania-2020) | 280 stars |
+| [geopython/pycsw](https://github.com/geopython/pycsw) | 235 stars |
+| [Sfedfcv/redesigned-pancake](https://github.com/Sfedfcv/redesigned-pancake) | 233 stars |
+| [jettbrains/-L-](https://github.com/jettbrains/-L-) | 145 stars |
+| [zkeq/Bing-Wallpaper-Action](https://github.com/zkeq/Bing-Wallpaper-Action) | 108 stars |
 | [Rastaman4e/-1](https://github.com/Rastaman4e/-1) | 69 stars |
+| [Saatvik-GT/xaytheon](https://github.com/Saatvik-GT/xaytheon) | 51 stars |
+| [BabyJ723/blast-ON](https://github.com/BabyJ723/blast-ON) | 43 stars |
+| [Mdshobu/Liberty-House-Club-Whitepaper](https://github.com/Mdshobu/Liberty-House-Club-Whitepaper) | 30 stars |
 | [Saturnremabtc64/supreme-octo-roboticeyx](https://github.com/Saturnremabtc64/supreme-octo-roboticeyx) | 25 stars |
+| [nima0011/nima0011](https://github.com/nima0011/nima0011) | 23 stars |
 | [NestieGuilas/Marketing-Platform-](https://github.com/NestieGuilas/Marketing-Platform-) | 21 stars |
 | [flybunctious/The-Game-of-Hog](https://github.com/flybunctious/The-Game-of-Hog) | 9 stars |
 | [BholaHrishikesh/psychic-rotary-phone](https://github.com/BholaHrishikesh/psychic-rotary-phone) | 4 stars |
