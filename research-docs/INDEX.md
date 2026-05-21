@@ -1,6 +1,6 @@
 # Data Sources
 
-> Cron 每小时自动发现。最后更新: 2026-05-20 06:01 PDT
+> Cron 每小时自动发现。最后更新: 2026-05-21 02:01 PDT
 
 ## GitHub Repositories
 
@@ -38,6 +38,7 @@
 | [ANVEAI/awesome-indie-hacking](https://github.com/ANVEAI/awesome-indie-hacking) | 0 stars |
 | [topfany/indie-projects](https://github.com/topfany/indie-projects) | 0 stars |
 | [devtofunmi/hunt](https://github.com/devtofunmi/hunt) | 0 stars |
+| [ncreighton/42fce643-indie-hacker-saas-directory](https://github.com/ncreighton/42fce643-indie-hacker-saas-directory) | 0 stars |
 
 ---
 *🤖 product-tracer 数据源探索 · 每小时自动发现*
