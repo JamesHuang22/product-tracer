@@ -11,7 +11,8 @@
   "dependencies": {
     "@product-tracer/db": "workspace:*",
     "@product-tracer/types": "workspace:*",
-    "dotenv": "^16.4.0"
+    "dotenv": "^16.4.0",
+    "zod": "^3.24.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

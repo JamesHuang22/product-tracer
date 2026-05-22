@@ -3,23 +3,10 @@
  *
  * Run from repo root: pnpm test:db
  */
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { existsSync } from 'node:fs';
-import dotenv from 'dotenv';
-import { createServiceClient } from '@product-tracer/db';
+import { loadRepoEnv } from '../lib/load-env.js';
+loadRepoEnv(import.meta.url);
 
-// Resolve repo root by walking up to pnpm-workspace.yaml, then load .env from there.
-function findRepoRoot(startDir: string): string {
-  let dir = startDir;
-  while (dir !== path.dirname(dir)) {
-    if (existsSync(path.join(dir, 'pnpm-workspace.yaml'))) return dir;
-    dir = path.dirname(dir);
-  }
-  throw new Error('Could not find repo root (no pnpm-workspace.yaml found)');
-}
-const repoRoot = findRepoRoot(path.dirname(fileURLToPath(import.meta.url)));
-dotenv.config({ path: path.join(repoRoot, '.env') });
+import { createServiceClient } from '@product-tracer/db';
 
 async function main() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
