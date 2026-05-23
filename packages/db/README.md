@@ -2,6 +2,8 @@
 
 Supabase Postgres client + SQL migrations for Product Tracer.
 
+See [`SCHEMA.md`](./SCHEMA.md) for full table-by-table documentation.
+
 ## Layout
 
 ```
