@@ -1,2 +1,2 @@
-export { createServiceClient } from './client.js';
-export { createSqlClient, type SqlClient } from './sql.js';
+export { createServiceClient } from './client';
+export { createSqlClient, type SqlClient } from './sql';
