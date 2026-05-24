@@ -1,0 +1,42 @@
+name: collect-github
+
+# Runs the GitHub collector every 4 hours so velocity (T3) has snapshots
+# accumulating without manual runs. Also exposed as a manual trigger.
+
+on:
+  schedule:
+    - cron: '0 */4 * * *' # 00:00, 04:00, 08:00, 12:00, 16:00, 20:00 UTC
+  workflow_dispatch: {}
+
+concurrency:
+  # Skip overlapping runs — if a slow run is in progress, don't queue a second.
+  group: collect-github
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run GitHub collector
+        run: pnpm collect:github
+        env:
+          # Same connection string the worker uses locally — must be set in
+          # repo Settings → Secrets and variables → Actions.
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          # Actions auto-provides this; gives us 5000 req/h authenticated.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
