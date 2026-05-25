@@ -1,0 +1,39 @@
+name: collect-hackernews
+
+# Runs the Hacker News (Show HN) collector every 4 hours, offset 30 minutes
+# from the GitHub collector so the two don't compete for Actions runners.
+# Show HN posts move fast — every-4h catches velocity changes per project.
+
+on:
+  schedule:
+    - cron: '30 */4 * * *' # 00:30, 04:30, 08:30, 12:30, 16:30, 20:30 UTC
+  workflow_dispatch: {}
+
+concurrency:
+  group: collect-hackernews
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run Hacker News collector
+        run: pnpm collect:hackernews
+        env:
+          # Same secret as the GH workflow.
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
