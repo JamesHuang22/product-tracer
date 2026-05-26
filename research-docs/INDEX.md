@@ -1,6 +1,6 @@
 # Data Sources
 
-> Cron 每小时自动发现。最后更新: 2026-05-26 14:01 PDT
+> Cron 每小时自动发现。最后更新: 2026-05-26 22:01 PDT
 
 ## GitHub Repositories
 
@@ -24,12 +24,14 @@
 | [Praneetbrar/startup-launch-platforms](https://github.com/Praneetbrar/startup-launch-platforms) | 12 stars |
 | [MrMikeAde/Indie-Web-Tools](https://github.com/MrMikeAde/Indie-Web-Tools) | 4 stars |
 | [goofygary/yc-startup-scraper](https://github.com/goofygary/yc-startup-scraper) | 1 stars |
+| [NandaKishore2424/novanest](https://github.com/NandaKishore2424/novanest) | 1 stars |
 | [ANVEAI/awesome-indie-hacking](https://github.com/ANVEAI/awesome-indie-hacking) | 0 stars |
 | [topfany/indie-projects](https://github.com/topfany/indie-projects) | 0 stars |
 | [devtofunmi/hunt](https://github.com/devtofunmi/hunt) | 0 stars |
 | [ncreighton/42fce643-indie-hacker-saas-directory](https://github.com/ncreighton/42fce643-indie-hacker-saas-directory) | 0 stars |
 | [Lacemakingatmometer593/awesome-ai-startups](https://github.com/Lacemakingatmometer593/awesome-ai-startups) | 0 stars |
 | [hidden-developer/open-product-hunt](https://github.com/hidden-developer/open-product-hunt) | 0 stars |
+| [healertrix/new-40-Glock](https://github.com/healertrix/new-40-Glock) | 0 stars |
 
 ---
 *🤖 product-tracer 数据源探索 · 每小时自动发现*
