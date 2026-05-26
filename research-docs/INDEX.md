@@ -1,6 +1,6 @@
 # Data Sources
 
-> Cron 每小时自动发现。最后更新: 2026-05-24 22:01 PDT
+> Cron 每小时自动发现。最后更新: 2026-05-26 14:01 PDT
 
 ## GitHub Repositories
 
@@ -17,15 +17,19 @@
 | [okupter/kitforstartups](https://github.com/okupter/kitforstartups) | 733 stars |
 | [johackim/awesome-indiehackers](https://github.com/johackim/awesome-indiehackers) | 583 stars |
 | [maxprilutskiy/awesome-side-project](https://github.com/maxprilutskiy/awesome-side-project) | 351 stars |
+| [openlaunch-org/Open-Launch](https://github.com/openlaunch-org/Open-Launch) | 300 stars |
 | [marketinguys/awesome-dev-marketing](https://github.com/marketinguys/awesome-dev-marketing) | 50 stars |
+| [iamsahebgiri/betabuzz](https://github.com/iamsahebgiri/betabuzz) | 24 stars |
 | [nowork-studio/awesome-ai-startups](https://github.com/nowork-studio/awesome-ai-startups) | 16 stars |
 | [Praneetbrar/startup-launch-platforms](https://github.com/Praneetbrar/startup-launch-platforms) | 12 stars |
 | [MrMikeAde/Indie-Web-Tools](https://github.com/MrMikeAde/Indie-Web-Tools) | 4 stars |
+| [goofygary/yc-startup-scraper](https://github.com/goofygary/yc-startup-scraper) | 1 stars |
 | [ANVEAI/awesome-indie-hacking](https://github.com/ANVEAI/awesome-indie-hacking) | 0 stars |
 | [topfany/indie-projects](https://github.com/topfany/indie-projects) | 0 stars |
 | [devtofunmi/hunt](https://github.com/devtofunmi/hunt) | 0 stars |
 | [ncreighton/42fce643-indie-hacker-saas-directory](https://github.com/ncreighton/42fce643-indie-hacker-saas-directory) | 0 stars |
 | [Lacemakingatmometer593/awesome-ai-startups](https://github.com/Lacemakingatmometer593/awesome-ai-startups) | 0 stars |
+| [hidden-developer/open-product-hunt](https://github.com/hidden-developer/open-product-hunt) | 0 stars |
 
 ---
 *🤖 product-tracer 数据源探索 · 每小时自动发现*
