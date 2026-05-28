@@ -1,6 +1,6 @@
 # Data Sources
 
-> Cron 每小时自动发现。最后更新: 2026-05-26 22:01 PDT
+> Cron 每小时自动发现。最后更新: 2026-05-28 10:01 PDT
 
 ## GitHub Repositories
 
@@ -16,6 +16,7 @@
 | [saasforge/open-source-saas-boilerpate](https://github.com/saasforge/open-source-saas-boilerpate) | 840 stars |
 | [okupter/kitforstartups](https://github.com/okupter/kitforstartups) | 733 stars |
 | [johackim/awesome-indiehackers](https://github.com/johackim/awesome-indiehackers) | 583 stars |
+| [pdsuwwz/chatgpt-vue3-light-mvp](https://github.com/pdsuwwz/chatgpt-vue3-light-mvp) | 558 stars |
 | [maxprilutskiy/awesome-side-project](https://github.com/maxprilutskiy/awesome-side-project) | 351 stars |
 | [openlaunch-org/Open-Launch](https://github.com/openlaunch-org/Open-Launch) | 300 stars |
 | [marketinguys/awesome-dev-marketing](https://github.com/marketinguys/awesome-dev-marketing) | 50 stars |
