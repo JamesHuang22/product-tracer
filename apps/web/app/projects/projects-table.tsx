@@ -10,7 +10,7 @@ import {
   useReactTable,
   type SortingState,
 } from '@tanstack/react-table';
-import { ArrowDown, ArrowUp, ArrowUpDown, ExternalLink, GitFork, Star } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown, GitFork, Star } from 'lucide-react';
 import type { ProjectListItem } from '@/lib/db';
 import { fmtCount } from '@/lib/format';
 
@@ -26,15 +26,30 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
         header: 'Project',
         cell: (info) => {
           const p = info.row.original;
-          return (
-            <div className="min-w-0">
+          const content = (
+            <>
               <div className="truncate font-medium text-neutral-900 dark:text-neutral-50">
                 {p.name}
               </div>
               {p.one_liner && (
                 <div className="mt-0.5 line-clamp-1 text-sm text-neutral-500">{p.one_liner}</div>
               )}
-            </div>
+            </>
+          );
+          // The link is anchored here but its ::before pseudo-element stretches
+          // across the whole row (the <tr> is position: relative). That makes
+          // the entire row a click target while leaving cell text selectable.
+          return p.primary_url ? (
+            <a
+              href={p.primary_url}
+              target="_blank"
+              rel="noreferrer"
+              className="block min-w-0 before:absolute before:inset-0"
+            >
+              {content}
+            </a>
+          ) : (
+            <div className="min-w-0">{content}</div>
           );
         },
       }),
@@ -65,24 +80,6 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
             {fmtCount(info.getValue())}
           </div>
         ),
-      }),
-      ch.display({
-        id: 'link',
-        header: '',
-        cell: (info) => {
-          const url = info.row.original.primary_url;
-          return url ? (
-            <a
-              href={url}
-              target="_blank"
-              rel="noreferrer"
-              aria-label="Open project on GitHub"
-              className="inline-flex text-neutral-400 transition-colors hover:text-neutral-900 dark:hover:text-neutral-100"
-            >
-              <ExternalLink className="h-3.5 w-3.5" />
-            </a>
-          ) : null;
-        },
       }),
     ],
     [],
@@ -159,7 +156,7 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
             {rows.map((row) => (
               <tr
                 key={row.id}
-                className="transition-colors hover:bg-neutral-50/60 dark:hover:bg-neutral-900/40"
+                className="relative cursor-pointer transition-colors hover:bg-neutral-50/60 dark:hover:bg-neutral-900/40"
               >
                 {row.getVisibleCells().map((cell) => (
                   <td
@@ -175,32 +172,21 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
         </table>
       </div>
 
-      {/* Mobile cards */}
+      {/* Mobile cards — whole card is the link */}
       <div className="space-y-3 md:hidden">
         {rows.map((row) => {
           const p = row.original;
-          return (
-            <div
-              key={row.id}
-              className="rounded-lg border border-neutral-200 p-4 dark:border-neutral-800"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <div className="truncate font-medium">{p.name}</div>
-                  {p.one_liner && (
-                    <div className="mt-1 line-clamp-2 text-sm text-neutral-500">{p.one_liner}</div>
-                  )}
-                </div>
-                {p.primary_url && (
-                  <a
-                    href={p.primary_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    aria-label="Open project on GitHub"
-                    className="text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100"
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                  </a>
+          const cardClass =
+            'block rounded-lg border border-neutral-200 p-4 transition-colors dark:border-neutral-800';
+          const interactiveClass = p.primary_url
+            ? ' hover:border-neutral-400 dark:hover:border-neutral-600'
+            : '';
+          const inner = (
+            <>
+              <div className="min-w-0">
+                <div className="truncate font-medium">{p.name}</div>
+                {p.one_liner && (
+                  <div className="mt-1 line-clamp-2 text-sm text-neutral-500">{p.one_liner}</div>
                 )}
               </div>
               <div className="mt-3 flex items-center gap-4 text-xs">
@@ -216,6 +202,21 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
                   <GitFork className="h-3 w-3" /> {fmtCount(p.github_forks)}
                 </span>
               </div>
+            </>
+          );
+          return p.primary_url ? (
+            <a
+              key={row.id}
+              href={p.primary_url}
+              target="_blank"
+              rel="noreferrer"
+              className={cardClass + interactiveClass}
+            >
+              {inner}
+            </a>
+          ) : (
+            <div key={row.id} className={cardClass}>
+              {inner}
             </div>
           );
         })}
