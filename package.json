@@ -15,6 +15,7 @@
     "collect:github": "pnpm --filter @product-tracer/worker exec tsx src/scripts/collect-github.ts",
     "collect:hackernews": "pnpm --filter @product-tracer/worker exec tsx src/scripts/collect-hackernews.ts",
     "collect:producthunt": "pnpm --filter @product-tracer/worker exec tsx src/scripts/collect-producthunt.ts",
+    "collect:reddit": "pnpm --filter @product-tracer/worker exec tsx src/scripts/collect-reddit.ts",
     "typecheck": "pnpm -r typecheck",
     "format": "prettier --write \"**/*.{ts,tsx,js,mjs,json,md,yml,yaml}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,mjs,json,md,yml,yaml}\""

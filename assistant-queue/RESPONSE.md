@@ -2,59 +2,58 @@
 
 ## 执行摘要
 
-Product Hunt 采集器代码已完成并通过 typecheck，与 GitHub / HN 采集器并列。**有一个 blocker：PH v2 GraphQL API 需要 OAuth token，不是公开访问**（你需求里写错了）。代码已优雅处理，但你需要配 `PRODUCT_HUNT_TOKEN` secret 才能在生产跑通。
+Reddit 采集器代码已完成并通过 typecheck，遍历 r/SideProject、r/indiehackers、r/startups，含 GitHub URL 硬匹配。**有一个 blocker：Reddit 现在对数据中心/云 IP 的匿名 JSON 请求返回 403**（实测无论什么 User-Agent 都被 block），你需求里写的"无需 API key"已不可靠。我加了**可选的 Reddit OAuth fallback**（app-only `client_credentials`），配了 `REDDIT_CLIENT_ID`/`REDDIT_CLIENT_SECRET` 就走 `oauth.reddit.com`，否则退回匿名 JSON。
 
 ## 变更清单
 
 | 文件 | 说明 |
 | --- | --- |
-| `apps/worker/src/collectors/producthunt.ts` | 新增。`fetchFeaturedProducts(count?)` / `isNoiseProduct(p)` / `productSlug(p)` + zod 解析层。 |
-| `apps/worker/src/scripts/collect-producthunt.ts` | 新增。完整流程：`loadRepoEnv` → fetch → noise filter → upsert `app.project` + `app.identity_link` + `raw.snapshot` + `app.project_metric.ph_upvotes` → try/catch（失败写 `raw.collector_error`）→ `sql.end()`。 |
-| `.github/workflows/collect-producthunt.yml` | 新增。cron `0 1-23/4 * * *`（每 4h，错开 GH :00 / HN :30）。 |
-| `package.json`（根目录） | 加 `collect:producthunt` script。 |
+| `apps/worker/src/collectors/reddit.ts` | 新增。`fetchSubredditHot(subreddit, limit?)` / `isNoisePost(p)` / `postSlug(p)` + `DEFAULT_SUBREDDITS` + zod 解析 + 可选 OAuth token 获取。 |
+| `apps/worker/src/scripts/collect-reddit.ts` | 新增。遍历 3 个 subreddit（每轮间隔 2s）→ noise filter → GitHub URL 硬匹配（复用 HN collector 的 `extractGithubRepo`）→ upsert `app.project` + `identity_link` + `raw.snapshot` + `project_metric.reddit_score`。失败写 `raw.collector_error`。 |
+| `packages/db/migrations/0002_reddit_score.sql` | 新增。`alter table app.project_metric add column if not exists reddit_score integer;`（幂等）。 |
+| `.github/workflows/collect-reddit.yml` | 新增。cron `0 2-23/4 * * *`（每 4h，偏移 2h 错开其他 collector）。接好可选 `REDDIT_CLIENT_ID/SECRET` secret。 |
+| `package.json`（根目录） | 加 `collect:reddit` script。 |
 
 ## 遇到的问题 / 与需求的偏差
 
-1. **`ph_upvotes` 列已存在，无需 migration。** `packages/db/migrations/0001_init.sql:80` 的 `app.project_metric` 已有 `ph_upvotes integer`（和 `ph_rank`）。所以**没建 `002_ph_upvotes.sql`**（会是 no-op）。另外 migration 目录是 `packages/db/migrations/`，不是你写的 `packages/db/src/supabase/migrations/`。
+1. **⚠️ Blocker：Reddit 匿名 JSON 被 403 block。** 实测从本机（及云 IP）请求 `www.reddit.com/r/.../hot.json`，无论 `ProductTracer/1.0` 还是浏览器 UA、www/old.reddit，全部 `403 Blocked`（Reddit 反爬页面）。这是 Reddit 这一两年收紧的结果 —— 数据中心 IP 基本被封，GitHub Actions runner（Azure IP）大概率也会被 block。
+   - **应对**：代码加了 OAuth fallback。**你要做的**：到 https://www.reddit.com/prefs/apps 建一个 "script" 类型 app，拿 client id + secret，在 GitHub repo 加两个 secret `REDDIT_CLIENT_ID` / `REDDIT_CLIENT_SECRET`（workflow 已接好）。配上后 collector 走 `oauth.reddit.com`，这是程序化读取的可靠路径。
+   - 没配 secret 时，collector 仍按你的原始需求走匿名 JSON —— 但在 CI 大概率拿到 403 并把错误写进 `raw.collector_error`（不会 crash）。
 
-2. **platform 枚举是 `product_hunt`（带下划线）**，schema check 约束只接受这个，不是 `producthunt`。已按此写。
+2. **列名：用了 `reddit_score`（按你的需求新增）。** 注意 `app.project_metric` 里**已经有** `reddit_mentions` 列（schema 0001），语义不同（mentions=跨平台提及数，score=帖子 upvote）。我没动 `reddit_mentions`，新增了 `reddit_score`。需要先在 Supabase 跑 `0002_reddit_score.sql` 这个 migration，否则 collector 写入会失败。
 
-3. **⚠️ Blocker：PH v2 GraphQL 需要 OAuth token。** 实测无 token 返回 `401 invalid_oauth_token`。代码已处理：设了 `PRODUCT_HUNT_TOKEN` 就带 `Authorization: Bearer`，否则抛清晰错误。**你要做的**：到 https://www.producthunt.com/v2/oauth/applications 建 app 拿 developer token → 在 GitHub repo 加 secret `PRODUCT_HUNT_TOKEN`（workflow 里已接好，可选注入）。
+3. **Platform 枚举已含 `'reddit'`**，types 和 DB check 约束都有，无需改动（已 verify）。
 
-4. **collect 脚本注册在根 `package.json`**，不是 `apps/worker/package.json`（需求文档写错位置）。已按现有 github/hn 约定放根目录。
+4. **collect 脚本注册在根 `package.json`**，不是 `apps/worker/package.json`（需求文档写错位置，沿用现有 github/hn/ph 约定）。
 
-5. 小修：`PHProduct` 从 `interface` 改成 `type`，否则不满足 db 层 `sql.json()` 的 `JSONValue` index-signature 约束（与 github/hn collector 用 zod-inferred type 同理）。
+5. 小修：`RedditPost` 用 `type` 而非 `interface`（否则不满足 `sql.json()` 的 `JSONValue` index-signature，与 PH collector 同理）。
+
+## ⚠️ 需你手动提交 workflow 文件
+
+`.github/workflows/collect-reddit.yml` **已写好但我无法推送** —— 本机 OAuth token 没有 `workflow` scope（和上次 PH 一样）。文件在本地磁盘（untracked）。请用有 `workflow` 权限的凭证提交，或像上次 PH 那样你这边补提交：
+
+```bash
+git add .github/workflows/collect-reddit.yml
+git commit -m "ci: add reddit collector workflow"
+git push
+```
+
+其余文件（collector、脚本、migration、package.json、RESPONSE）已正常推送。
 
 ## 测试
 
 - `pnpm --filter @product-tracer/worker typecheck` → ✅ 通过
-- prettier 格式化新文件 → ✅
-- 对线上 PH API 实跑 `fetchFeaturedProducts` → 请求/解析逻辑正确，唯一失败点是 401 认证（无 token）
-- 端到端 DB 写入**未验证**：本地无 `DATABASE_URL` 也无 `PRODUCT_HUNT_TOKEN`。配好 token 后用 `workflow_dispatch` 手动触发一次即可验证落库。
-
-## ⚠️ 需你手动提交 workflow 文件
-
-`.github/workflows/collect-producthunt.yml` **已写好但未推送** —— 当前这台机器的 OAuth token 没有 `workflow` scope，GitHub 拒绝推送任何 `.github/workflows/` 改动（`refusing to allow an OAuth App ... without workflow scope`）。文件已在本地磁盘（untracked），你需要用有 `workflow` 权限的凭证提交它，二选一：
-
-```bash
-# 方式 A：本地有 workflow scope 的话
-git add .github/workflows/collect-producthunt.yml
-git commit -m "ci: add product hunt collector workflow"
-git push
-
-# 方式 B：刷新 gh token 拿 workflow scope
-gh auth refresh -h github.com -s workflow
-```
-
-其余文件（采集器、脚本、package.json、RESPONSE）已正常推送。
+- prettier 格式化新 ts/yml/json → ✅（`.sql` 不在 prettier glob 内，正常）
+- 对线上 Reddit API 实跑 `fetchSubredditHot` → **403 Blocked（IP 级封锁）**，解析逻辑本身正确，被 Reddit 反爬拦截
+- 端到端 DB 写入**未验证**：本地无 `DATABASE_URL`，也无 Reddit OAuth creds。配好 creds + 跑 migration 后用 `workflow_dispatch` 手动触发验证。
 
 ## 下一步建议
 
-1. 提交上面的 workflow 文件（需要 `workflow` scope）。
-2. 配 `PRODUCT_HUNT_TOKEN` secret，手动触发 workflow 验证落库。
-2. （可选）PH 数据已有 `ph_rank` 列但当前没采集 rank —— 如需要可在 query 里加 `featuredAt` 或用 edge 顺序回填 `ph_rank`。
-3. （可选）在 web 端加 Product Hunt section（目前是 placeholder）。
+1. 跑 `0002_reddit_score.sql` migration（Supabase SQL Editor）。
+2. 建 Reddit script app，配 `REDDIT_CLIENT_ID` / `REDDIT_CLIENT_SECRET` secret。
+3. 提交 `collect-reddit.yml`（需 `workflow` scope），手动触发验证落库。
+4. （可选）r/startups 噪音较多，可考虑收紧 noise filter 或只保留 SideProject + indiehackers。
 
 ---
 
-**状态:** ✅ 已完成（代码）/ 🔴 需你配 PH token 才能生产跑通
+**状态:** ✅ 已完成（代码）/ 🔴 需你配 Reddit OAuth creds + 跑 migration + 提交 workflow 才能生产跑通
