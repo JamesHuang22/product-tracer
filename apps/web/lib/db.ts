@@ -49,7 +49,7 @@ export async function getTopProjects(limit: number): Promise<ProjectListItem[]> 
 // Platform-segmented queries (home page sections)
 // ---------------------------------------------------------------------------
 
-export type LivePlatform = 'github' | 'hacker_news';
+export type LivePlatform = 'github' | 'hacker_news' | 'product_hunt';
 
 export interface PlatformTopItem {
   id: string;
@@ -57,10 +57,10 @@ export interface PlatformTopItem {
   name: string;
   one_liner: string | null;
   primary_url: string | null;
-  /** Stars for GitHub, score for HN. Null if no snapshot recorded yet. */
+  /** Stars for GitHub, score for HN, upvotes for Product Hunt. Null if no snapshot recorded yet. */
   metric: number | null;
   /** Human label for the metric. */
-  metric_label: 'stars' | 'score';
+  metric_label: 'stars' | 'score' | 'upvotes';
 }
 
 /**
@@ -85,6 +85,23 @@ export async function getPlatformTop(
         order by s.timestamp desc limit 1
       ) latest on true
       order by latest.stars desc nulls last, p.created_at desc
+      limit ${limit}
+    `;
+  }
+  if (platform === 'product_hunt') {
+    return await sql<PlatformTopItem[]>`
+      select
+        p.id, p.slug, p.name, p.one_liner, p.primary_url,
+        latest.ph_upvotes as metric,
+        'upvotes'::text as metric_label
+      from app.project p
+      join app.identity_link il on il.project_id = p.id and il.platform = 'product_hunt'
+      left join lateral (
+        select pm.ph_upvotes from app.project_metric pm
+        where pm.project_id = p.id
+        order by pm.date desc limit 1
+      ) latest on true
+      order by latest.ph_upvotes desc nulls last, p.created_at desc
       limit ${limit}
     `;
   }

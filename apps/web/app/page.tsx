@@ -11,14 +11,16 @@ export const dynamic = 'force-dynamic';
 
 export default async function HomePage() {
   // Fetch all live platforms in parallel.
-  const [ghTop, hnTop, ghCount, hnCount] = await Promise.all([
+  const [ghTop, hnTop, phTop, ghCount, hnCount, phCount] = await Promise.all([
     getPlatformTop('github', 5),
     getPlatformTop('hacker_news', 5),
+    getPlatformTop('product_hunt', 5),
     getPlatformProjectCount('github'),
     getPlatformProjectCount('hacker_news'),
+    getPlatformProjectCount('product_hunt'),
   ]);
 
-  const totalLive = ghCount + hnCount;
+  const totalLive = ghCount + hnCount + phCount;
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-12 sm:py-16">
@@ -26,7 +28,7 @@ export default async function HomePage() {
       <section className="max-w-2xl">
         <span className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1 text-xs font-medium text-neutral-600 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400">
           <span className="inline-block size-1.5 rounded-full bg-emerald-500" />
-          {totalLive.toLocaleString()} projects tracked across 2 platforms
+          {totalLive.toLocaleString()} projects tracked across 3 platforms
         </span>
         <h1 className="mt-5 text-4xl font-semibold leading-[1.1] tracking-tight sm:text-5xl">
           Cross-platform signals
@@ -56,7 +58,7 @@ export default async function HomePage() {
         <div className="mb-6 flex items-baseline justify-between">
           <h2 className="text-xl font-semibold tracking-tight">By platform</h2>
           <span className="text-xs tabular-nums text-neutral-500">
-            2 live &middot; 3 coming soon
+            3 live &middot; 2 coming soon
           </span>
         </div>
 
@@ -69,9 +71,10 @@ export default async function HomePage() {
             items={hnTop}
           />
 
-          <ComingSoonSection
+          <LivePlatformSection
             visual={PLATFORM_VISUALS.product_hunt}
-            description="Daily launches with upvote velocity. Highest indie signal but requires commercial-use approval before public launch."
+            count={phCount}
+            items={phTop}
           />
 
           <ComingSoonSection
