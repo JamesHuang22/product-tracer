@@ -138,7 +138,7 @@ export async function getProjectBySlug(slug: string): Promise<ProjectDetail | nu
 ### 核心思路
 **不用 X API，用 X/Twitter 账号（可新注册，品牌名如 Alex Chen）直接抓取公开数据。** 不需要付费 API 套餐，只获取公开推文。
 
-**注意**：这里需要的不是一个强大的 X API key，而是一个正常的 X/Twitter 用户账号（浏览器能登录即可）。如果还没有这样的账号，方案应该涵盖如何注册和准备一个用于 scraping 的账号。
+**已有账号**：X 账号 `@chen_og0023`（alexchenog23@gmail.com 注册），有 consumer key/secret + access token/secret。之前 Bearer token 一直返回 401 被搁置。研究要涵盖如何利用这个已有的账号和 token 来获取公开数据。
 
 ### 需要研究的内容
 
