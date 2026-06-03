@@ -1,0 +1,314 @@
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
+import { ArrowLeft, ArrowUpRight } from 'lucide-react';
+import {
+  getProjectBySlug,
+  type ProjectDetail,
+  type ProjectMetricPoint,
+  type ProjectPlatformSnapshot,
+} from '@/lib/db';
+import { fmtCount } from '@/lib/format';
+
+// Live data — reflect the latest collector run on every request.
+export const dynamic = 'force-dynamic';
+
+// ---------------------------------------------------------------------------
+// Per-platform display metadata
+// ---------------------------------------------------------------------------
+
+interface PlatformMeta {
+  name: string;
+  monogram: string;
+  monogramBg: string;
+  monogramFg: string;
+  /** Which daily metric column drives this platform's trend sparkline. */
+  metricKey: keyof Pick<
+    ProjectMetricPoint,
+    'github_stars' | 'ph_upvotes' | 'hn_score' | 'reddit_score'
+  > | null;
+}
+
+const PLATFORM_META: Record<string, PlatformMeta> = {
+  github: {
+    name: 'GitHub',
+    monogram: 'GH',
+    monogramBg: 'bg-neutral-900 dark:bg-neutral-100',
+    monogramFg: 'text-white dark:text-neutral-900',
+    metricKey: 'github_stars',
+  },
+  hacker_news: {
+    name: 'Hacker News',
+    monogram: 'Y',
+    monogramBg: 'bg-orange-500',
+    monogramFg: 'text-white',
+    metricKey: 'hn_score',
+  },
+  product_hunt: {
+    name: 'Product Hunt',
+    monogram: 'PH',
+    monogramBg: 'bg-red-500',
+    monogramFg: 'text-white',
+    metricKey: 'ph_upvotes',
+  },
+  reddit: {
+    name: 'Reddit',
+    monogram: 'R',
+    monogramBg: 'bg-orange-600',
+    monogramFg: 'text-white',
+    metricKey: 'reddit_score',
+  },
+  x: {
+    name: 'X',
+    monogram: 'X',
+    monogramBg: 'bg-black dark:bg-white',
+    monogramFg: 'text-white dark:text-black',
+    metricKey: null,
+  },
+};
+
+function metaFor(platform: string): PlatformMeta {
+  return (
+    PLATFORM_META[platform] ?? {
+      name: platform,
+      monogram: platform.slice(0, 2).toUpperCase(),
+      monogramBg: 'bg-neutral-400',
+      monogramFg: 'text-white',
+      metricKey: null,
+    }
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Tiny dependency-free SVG sparkline
+// ---------------------------------------------------------------------------
+
+function Sparkline({ values, className }: { values: number[]; className?: string }) {
+  const pts = values.filter((v) => Number.isFinite(v));
+  if (pts.length < 2) return null;
+
+  const w = 240;
+  const h = 48;
+  const pad = 3;
+  const min = Math.min(...pts);
+  const max = Math.max(...pts);
+  const span = max - min || 1;
+  const stepX = (w - pad * 2) / (pts.length - 1);
+
+  const coords = pts.map((v, i) => {
+    const x = pad + i * stepX;
+    const y = pad + (h - pad * 2) * (1 - (v - min) / span);
+    return [x, y] as const;
+  });
+  const line = coords.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
+  const area = `${line} L${coords[coords.length - 1]![0].toFixed(1)},${h - pad} L${coords[0]![0].toFixed(1)},${h - pad} Z`;
+
+  return (
+    <svg
+      viewBox={`0 0 ${w} ${h}`}
+      preserveAspectRatio="none"
+      className={`h-12 w-full ${className ?? ''}`}
+      aria-hidden
+    >
+      <path d={area} className="fill-emerald-500/10" />
+      <path d={line} fill="none" className="stroke-emerald-500" strokeWidth={1.5} />
+    </svg>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Per-platform stat cards
+// ---------------------------------------------------------------------------
+
+function Stat({ label, value }: { label: string; value: number | null }) {
+  return (
+    <div>
+      <div className="text-lg font-semibold tabular-nums">{fmtCount(value)}</div>
+      <div className="text-xs text-neutral-500">{label}</div>
+    </div>
+  );
+}
+
+/** Platform-specific external link, when we can construct a reliable one. */
+function platformLink(snap: ProjectPlatformSnapshot, primaryUrl: string | null): string | null {
+  switch (snap.platform) {
+    case 'hacker_news':
+      return `https://news.ycombinator.com/item?id=${snap.external_id}`;
+    case 'github':
+      return primaryUrl;
+    default:
+      return null;
+  }
+}
+
+function PlatformCard({
+  snap,
+  metrics,
+  primaryUrl,
+}: {
+  snap: ProjectPlatformSnapshot;
+  metrics: ProjectMetricPoint[];
+  primaryUrl: string | null;
+}) {
+  const meta = metaFor(snap.platform);
+  const series =
+    meta.metricKey === null
+      ? []
+      : metrics
+          .map((m) => m[meta.metricKey!])
+          .filter((v): v is number => typeof v === 'number');
+
+  const link = platformLink(snap, primaryUrl);
+
+  return (
+    <section className="flex h-full flex-col rounded-xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-950">
+      <header className="mb-4 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <span
+            className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[10px] font-bold tracking-tight ${meta.monogramBg} ${meta.monogramFg}`}
+          >
+            {meta.monogram}
+          </span>
+          <div className="font-semibold tracking-tight">{meta.name}</div>
+        </div>
+        {link && (
+          <a
+            href={link}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-0.5 text-xs font-medium text-neutral-500 transition-colors hover:text-neutral-900 dark:hover:text-neutral-100"
+          >
+            View
+            <ArrowUpRight className="h-3 w-3" />
+          </a>
+        )}
+      </header>
+
+      <div className="flex flex-wrap gap-x-8 gap-y-3">
+        {snap.platform === 'github' && (
+          <>
+            <Stat label="Stars" value={snap.stars} />
+            <Stat label="Forks" value={snap.forks} />
+          </>
+        )}
+        {snap.platform === 'hacker_news' && (
+          <>
+            <Stat label="Points" value={snap.upvotes} />
+            <Stat label="Comments" value={snap.comments} />
+          </>
+        )}
+        {snap.platform === 'product_hunt' && <Stat label="Upvotes" value={snap.upvotes} />}
+        {snap.platform === 'reddit' && (
+          <>
+            <Stat label="Upvotes" value={snap.upvotes} />
+            <Stat label="Comments" value={snap.comments} />
+          </>
+        )}
+        {snap.platform === 'x' && <Stat label="Mentions" value={snap.upvotes} />}
+      </div>
+
+      <div className="mt-auto pt-4">
+        {series.length >= 2 ? (
+          <Sparkline values={series} />
+        ) : (
+          <div className="text-xs text-neutral-400">Not enough history for a trend yet.</div>
+        )}
+        {snap.updated_at && (
+          <div className="mt-1 text-[11px] text-neutral-400">Updated {snap.updated_at}</div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Page
+// ---------------------------------------------------------------------------
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const project = await getProjectBySlug(slug);
+  if (!project) return { title: 'Project not found — Product Tracer' };
+  return {
+    title: `${project.name} — Product Tracer`,
+    description: project.one_liner ?? undefined,
+  };
+}
+
+export default async function ProjectDetailPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  const project: ProjectDetail | null = await getProjectBySlug(slug);
+  if (!project) notFound();
+
+  return (
+    <main className="mx-auto max-w-4xl px-6 py-12">
+      <Link
+        href="/projects"
+        className="inline-flex items-center gap-1.5 text-sm text-neutral-500 transition-colors hover:text-neutral-900 dark:hover:text-neutral-100"
+      >
+        <ArrowLeft className="h-3.5 w-3.5" />
+        All projects
+      </Link>
+
+      <header className="mt-6">
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="text-3xl font-semibold tracking-tight">{project.name}</h1>
+          {project.category && (
+            <span className="inline-flex items-center rounded-md bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
+              {project.category}
+            </span>
+          )}
+        </div>
+        {project.one_liner && (
+          <p className="mt-3 max-w-2xl text-lg leading-relaxed text-neutral-600 dark:text-neutral-400">
+            {project.one_liner}
+          </p>
+        )}
+        <div className="mt-5 flex flex-wrap items-center gap-3 text-sm">
+          {project.primary_url && (
+            <a
+              href={project.primary_url}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 rounded-md bg-neutral-900 px-4 py-2 font-medium text-white transition-colors hover:bg-neutral-800 dark:bg-neutral-50 dark:text-neutral-900 dark:hover:bg-neutral-200"
+            >
+              Visit site
+              <ArrowUpRight className="h-3.5 w-3.5" />
+            </a>
+          )}
+          <span className="text-neutral-400">Tracked since {project.created_at}</span>
+        </div>
+      </header>
+
+      <section className="mt-10">
+        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-neutral-500">
+          Cross-platform signals
+        </h2>
+        {project.platforms.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-neutral-300 p-8 text-center text-sm text-neutral-500 dark:border-neutral-700">
+            No platform data recorded yet.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {project.platforms.map((snap) => (
+              <PlatformCard
+                key={snap.platform}
+                snap={snap}
+                metrics={project.metrics}
+                primaryUrl={project.primary_url}
+              />
+            ))}
+          </div>
+        )}
+      </section>
+    </main>
+  );
+}

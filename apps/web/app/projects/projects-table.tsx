@@ -1,6 +1,8 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import Link from 'next/link';
+import type { Route } from 'next';
 import {
   createColumnHelper,
   flexRender,
@@ -15,6 +17,47 @@ import type { ProjectListItem } from '@/lib/db';
 import { fmtCount } from '@/lib/format';
 
 const ch = createColumnHelper<ProjectListItem>();
+
+// Short, colour-coded source chips for the platforms a project lives on.
+const PLATFORM_BADGE: Record<string, { label: string; cls: string }> = {
+  github: { label: 'GH', cls: 'bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900' },
+  hacker_news: { label: 'HN', cls: 'bg-orange-500 text-white' },
+  product_hunt: { label: 'PH', cls: 'bg-red-500 text-white' },
+  reddit: { label: 'R', cls: 'bg-orange-600 text-white' },
+  x: { label: 'X', cls: 'bg-black text-white dark:bg-white dark:text-black' },
+};
+
+function PlatformBadges({ platforms }: { platforms: string[] }) {
+  if (!platforms || platforms.length === 0) return <span className="text-neutral-400">—</span>;
+  return (
+    <span className="inline-flex gap-1">
+      {platforms.map((p) => {
+        const b =
+          PLATFORM_BADGE[p] ?? { label: p.slice(0, 2).toUpperCase(), cls: 'bg-neutral-400 text-white' };
+        return (
+          <span
+            key={p}
+            className={`inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded px-1 text-[10px] font-bold ${b.cls}`}
+            title={p}
+          >
+            {b.label}
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
+/**
+ * Where a row click goes. GitHub projects keep the original behaviour (open
+ * their external URL in a new tab); everything else (HN / PH / Reddit) links
+ * to its internal cross-platform detail page.
+ */
+function projectHref(p: ProjectListItem): { href: string; external: boolean } {
+  const hasGithub = p.platforms?.includes('github');
+  if (hasGithub && p.primary_url) return { href: p.primary_url, external: true };
+  return { href: `/projects/${p.slug}`, external: false };
+}
 
 export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
   const [sorting, setSorting] = useState<SortingState>([{ id: 'github_stars', desc: true }]);
@@ -39,9 +82,10 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
           // The link is anchored here but its ::before pseudo-element stretches
           // across the whole row (the <tr> is position: relative). That makes
           // the entire row a click target while leaving cell text selectable.
-          return p.primary_url ? (
+          const { href, external } = projectHref(p);
+          return external ? (
             <a
-              href={p.primary_url}
+              href={href}
               target="_blank"
               rel="noreferrer"
               className="block min-w-0 before:absolute before:inset-0"
@@ -49,7 +93,9 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
               {content}
             </a>
           ) : (
-            <div className="min-w-0">{content}</div>
+            <Link href={href as Route} className="block min-w-0 before:absolute before:inset-0">
+              {content}
+            </Link>
           );
         },
       }),
@@ -65,6 +111,11 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
             <span className="text-neutral-400">—</span>
           );
         },
+      }),
+      ch.display({
+        id: 'source',
+        header: 'Source',
+        cell: (info) => <PlatformBadges platforms={info.row.original.platforms ?? []} />,
       }),
       ch.accessor('github_stars', {
         header: 'Stars',
@@ -177,14 +228,15 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
         {rows.map((row) => {
           const p = row.original;
           const cardClass =
-            'block rounded-lg border border-neutral-200 p-4 transition-colors dark:border-neutral-800';
-          const interactiveClass = p.primary_url
-            ? ' hover:border-neutral-400 dark:hover:border-neutral-600'
-            : '';
+            'block rounded-lg border border-neutral-200 p-4 transition-colors hover:border-neutral-400 dark:border-neutral-800 dark:hover:border-neutral-600';
+          const { href, external } = projectHref(p);
           const inner = (
             <>
               <div className="min-w-0">
-                <div className="truncate font-medium">{p.name}</div>
+                <div className="flex items-center gap-2">
+                  <span className="truncate font-medium">{p.name}</span>
+                  <PlatformBadges platforms={p.platforms ?? []} />
+                </div>
                 {p.one_liner && (
                   <div className="mt-1 line-clamp-2 text-sm text-neutral-500">{p.one_liner}</div>
                 )}
@@ -204,20 +256,14 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
               </div>
             </>
           );
-          return p.primary_url ? (
-            <a
-              key={row.id}
-              href={p.primary_url}
-              target="_blank"
-              rel="noreferrer"
-              className={cardClass + interactiveClass}
-            >
+          return external ? (
+            <a key={row.id} href={href} target="_blank" rel="noreferrer" className={cardClass}>
               {inner}
             </a>
           ) : (
-            <div key={row.id} className={cardClass}>
+            <Link key={row.id} href={href as Route} className={cardClass}>
               {inner}
-            </div>
+            </Link>
           );
         })}
       </div>

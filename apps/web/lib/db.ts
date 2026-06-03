@@ -14,6 +14,8 @@ export interface ProjectListItem {
   github_stars: number | null;
   github_forks: number | null;
   created_at: string;
+  /** Distinct platforms this project has an identity_link on (github, hacker_news, …). */
+  platforms: string[];
 }
 
 export async function getAllProjects(): Promise<ProjectListItem[]> {
@@ -27,7 +29,12 @@ export async function getAllProjects(): Promise<ProjectListItem[]> {
       p.primary_url,
       latest.stars as github_stars,
       latest.forks as github_forks,
-      p.created_at
+      p.created_at,
+      coalesce(
+        (select array_agg(distinct il.platform)
+         from app.identity_link il where il.project_id = p.id),
+        '{}'
+      ) as platforms
     from app.project p
     left join lateral (
       select s.stars, s.forks
@@ -130,4 +137,109 @@ export async function getPlatformProjectCount(platform: LivePlatform): Promise<n
     where platform = ${platform}
   `;
   return row?.n ?? 0;
+}
+
+// ---------------------------------------------------------------------------
+// Project detail page (/projects/[slug])
+// ---------------------------------------------------------------------------
+
+/** Latest snapshot for one platform a project lives on. */
+export interface ProjectPlatformSnapshot {
+  platform: string; // github | hacker_news | product_hunt | reddit | x
+  external_id: string;
+  stars: number | null;
+  forks: number | null;
+  upvotes: number | null; // PH upvotes / HN points / Reddit score
+  comments: number | null;
+  rank: number | null;
+  updated_at: string | null; // latest snapshot timestamp (YYYY-MM-DD)
+}
+
+/**
+ * One day of aggregated metrics. Mirrors the columns that exist on
+ * app.project_metric — note there is no github_forks / hn_comments column
+ * there, so per-platform forks/comments come from ProjectPlatformSnapshot.
+ */
+export interface ProjectMetricPoint {
+  date: string; // YYYY-MM-DD
+  github_stars: number | null;
+  ph_upvotes: number | null;
+  hn_score: number | null;
+  reddit_score: number | null;
+}
+
+export interface ProjectDetail {
+  id: string;
+  slug: string;
+  name: string;
+  one_liner: string | null;
+  category: string | null;
+  primary_url: string | null;
+  created_at: string; // YYYY-MM-DD
+  platforms: ProjectPlatformSnapshot[];
+  metrics: ProjectMetricPoint[]; // ascending by date
+}
+
+/**
+ * Full cross-platform detail for one project. Joins app.project with its
+ * identity_links (one row per platform, enriched with the latest raw.snapshot)
+ * and its daily app.project_metric series. Returns null when the slug is
+ * unknown.
+ */
+export async function getProjectBySlug(slug: string): Promise<ProjectDetail | null> {
+  const [project] = await sql<
+    {
+      id: string;
+      slug: string;
+      name: string;
+      one_liner: string | null;
+      category: string | null;
+      primary_url: string | null;
+      created_at: string;
+    }[]
+  >`
+    select
+      p.id, p.slug, p.name, p.one_liner, p.category, p.primary_url,
+      to_char(p.created_at, 'YYYY-MM-DD') as created_at
+    from app.project p
+    where p.slug = ${slug}
+    limit 1
+  `;
+  if (!project) return null;
+
+  const platforms = await sql<ProjectPlatformSnapshot[]>`
+    select
+      il.platform,
+      il.external_id,
+      latest.stars,
+      latest.forks,
+      latest.upvotes,
+      latest.comments,
+      latest.rank,
+      to_char(latest.timestamp, 'YYYY-MM-DD') as updated_at
+    from app.identity_link il
+    left join lateral (
+      select s.stars, s.forks, s.upvotes, s.comments, s.rank, s.timestamp
+      from raw.snapshot s
+      where s.project_id = il.project_id and s.platform = il.platform
+      order by s.timestamp desc
+      limit 1
+    ) latest on true
+    where il.project_id = ${project.id}
+    order by il.platform
+  `;
+
+  const metrics = await sql<ProjectMetricPoint[]>`
+    select
+      to_char(pm.date, 'YYYY-MM-DD') as date,
+      pm.github_stars,
+      pm.ph_upvotes,
+      pm.hn_score,
+      pm.reddit_score
+    from app.project_metric pm
+    where pm.project_id = ${project.id}
+    order by pm.date asc
+  `;
+
+  return { ...project, platforms, metrics };
 }

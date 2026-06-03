@@ -18,7 +18,8 @@ export default async function ProjectsPage() {
       <header className="mb-8">
         <h1 className="text-3xl font-semibold tracking-tight">Projects</h1>
         <p className="mt-2 text-sm text-neutral-500">
-          {projects.length} tracked indie products. Sorted by GitHub stars.
+          {projects.length} tracked indie products across GitHub, Hacker News &amp; Product Hunt.
+          Sorted by GitHub stars — open a non-GitHub project for its cross-platform detail.
         </p>
       </header>
       <ProjectsTable projects={projects} />

@@ -28,3 +28,6 @@ pnpm-debug.log*
 .turbo/
 .vercel/
 *.tsbuildinfo
+
+# Claude Code transient scheduler lock
+.claude/scheduled_tasks.lock
