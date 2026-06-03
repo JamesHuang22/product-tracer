@@ -136,7 +136,9 @@ export async function getProjectBySlug(slug: string): Promise<ProjectDetail | nu
 之前尝试用 X API v2 Bearer Token 一直返回 401。开发者账号申请门槛高（需要 $100/mo 的 Basic 套餐才有搜索能力）。
 
 ### 核心思路
-**不用 X API，用个人 X/Twitter 账号直接抓取公开数据。** 像用户账号有自己的 X 账号，可以用于登录后获取公开数据。
+**不用 X API，用 X/Twitter 账号（可新注册，品牌名如 Alex Chen）直接抓取公开数据。** 不需要付费 API 套餐，只获取公开推文。
+
+**注意**：这里需要的不是一个强大的 X API key，而是一个正常的 X/Twitter 用户账号（浏览器能登录即可）。如果还没有这样的账号，方案应该涵盖如何注册和准备一个用于 scraping 的账号。
 
 ### 需要研究的内容
 
