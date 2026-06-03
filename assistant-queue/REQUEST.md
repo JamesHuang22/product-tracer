@@ -127,3 +127,64 @@ export async function getProjectBySlug(slug: string): Promise<ProjectDetail | nu
 ---
 
 两个任务独立，可以先做任务一（前端UI）再做任务二（research 文档）。完成后写 RESPONSE.md。
+
+---
+
+## 任务三: X/Twitter 数据采集方案 Research（仅文档）
+
+### 问题
+之前尝试用 X API v2 Bearer Token 一直返回 401。开发者账号申请门槛高（需要 $100/mo 的 Basic 套餐才有搜索能力）。
+
+### 核心思路
+**不用 X API，用个人 X/Twitter 账号直接抓取公开数据。** 像用户账号有自己的 X 账号，可以用于登录后获取公开数据。
+
+### 需要研究的内容
+
+**1. 可行方案对比（不需要实现，只分析）**
+
+**方案 A: 用 github.com/medialab/xnet（现名 Twitter Intelligence Tool）或类似开源项目**
+- 不依赖官方 API，模拟浏览器行为
+- 需要 cookies/session token
+- 风险：IP 封禁、账号限制
+- 维护成本
+
+**方案 B: Nitter 实例**
+- Nitter 是 Twitter 的前端替代，公开 API
+- 不需要认证
+- 目前大部分公开实例已被封
+- 可以自建实例，但仍然有被 Twitter 封的风险
+
+**方案 C: 使用 user cookie 进行 browser-level scraping**
+- 用 playwright/puppeteer 登录一次后复用 cookie
+- 抓取特定用户的推文（创始人列表）
+- 不搜索，只获取 timeline/user tweets
+
+**方案 D: Syndication API（Twitter 仍然保留的非官方 JSON API）**
+- `https://cdn.syndication.twimg.com/tweet-result?id=TWEET_ID`
+- 不需要认证
+- 只能按 tweet ID 获取，不能搜索
+- 如果 hand-curated 一个 founder list，可以定期检查他们的新推文
+
+**2. 推荐的架构（纸上方案，不实现）**
+- 在 `apps/worker/src/collectors/x.ts` 里设计一个 collector
+- 输入：从 JSON 配置文件读取的 curated founder list（~50 人）
+- 对于 founder list 中的每个用户：
+  - 方法1：通过 Nitter 获取用户最新推文
+  - 方法2：通过 browser cookie + timeline API
+- 过滤出提及自己项目的推文（匹配外部 URL 或关键词）
+- 输出：写入 raw.snapshot 或 app.project_metric（增加 x_posts, x_likes, x_retweets 等字段）
+
+**3. 额外研究点**
+- 如何获取 curated founder list（Product Hunt 上活跃的 maker、HN 的 Show HN 作者、GitHub trending 作者）
+- 频率限制：每个用户每天最多抓几次？
+- IP 轮换策略
+- 与现有 identity_link 系统的集成（如何在 X 用户名和已知项目之间建立关联）
+
+**4. 道德和安全考量**
+- 仅抓取公开数据
+- 速率控制，不给 X 服务器造成负担
+- 账号安全：如果使用 cookie 方案，如何安全存储
+- 如果使用 GH Actions runner IP，是否会被封？
+
+### 输出
+在项目根目录创建 `research/x-twitter-collector.md`，包含以上全部研究内容。**不要实现任何代码**，只写文档。
