@@ -48,6 +48,34 @@ function daysAgo(n: number): string {
   return new Date(Date.now() - n * 86_400_000).toISOString().slice(0, 10);
 }
 
+const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Cap how long we'll wait out a rate-limit window before giving up on a repo
+// (we'd rather skip it this run than hang the whole CI job).
+const RATE_LIMIT_MAX_WAIT_MS = 60_000;
+
+/** GitHub signals rate limiting with 429, or 403 + x-ratelimit-remaining: 0. */
+function isRateLimited(res: Response): boolean {
+  return (
+    res.status === 429 ||
+    (res.status === 403 && res.headers.get('x-ratelimit-remaining') === '0')
+  );
+}
+
+function rateLimitWaitMs(res: Response): number {
+  const retryAfter = res.headers.get('retry-after');
+  if (retryAfter) {
+    const secs = Number(retryAfter);
+    if (Number.isFinite(secs)) return Math.min(secs * 1000, RATE_LIMIT_MAX_WAIT_MS);
+  }
+  const reset = res.headers.get('x-ratelimit-reset');
+  if (reset) {
+    const resetMs = Number(reset) * 1000 - Date.now();
+    if (Number.isFinite(resetMs) && resetMs > 0) return Math.min(resetMs, RATE_LIMIT_MAX_WAIT_MS);
+  }
+  return 1000; // small default backoff
+}
+
 // ---------------------------------------------------------------------------
 // Discovery — multi-query coverage instead of one loose search
 // ---------------------------------------------------------------------------
@@ -119,19 +147,43 @@ export async function discoverRepos(
 
 /**
  * Fetch the current state of repos we already know about, by their GitHub
- * numeric ID. Returns repos that still exist, plus ids that 404'd (deleted /
- * made private). Sequential rather than parallel — well within rate limits
- * for the project sizes we care about.
+ * numeric ID. Sequential rather than parallel — well within rate limits for
+ * the project sizes we care about.
+ *
+ * Single-repo failures are isolated so one bad repo never aborts the whole run:
+ *   - 404            → `missing`  (deleted / made private)
+ *   - 403 / 451      → `blocked`  (TOS-blocked / DMCA / legally unavailable)
+ *   - 429 / 403-RL   → one wait-and-retry; if it still fails, `blocked`
+ * Genuine unexpected errors (auth 401, 5xx, network throws) still bubble up.
  */
 export async function fetchKnownReposByIds(
   ids: number[],
-): Promise<{ repos: GithubRepo[]; missing: number[] }> {
+): Promise<{ repos: GithubRepo[]; missing: number[]; blocked: number[] }> {
   const repos: GithubRepo[] = [];
   const missing: number[] = [];
+  const blocked: number[] = [];
+
   for (const id of ids) {
-    const res = await ghFetch(`/repositories/${id}`);
+    let res = await ghFetch(`/repositories/${id}`);
+
+    // Rate limited — wait out the window once, then retry this id.
+    if (isRateLimited(res)) {
+      await sleep(rateLimitWaitMs(res));
+      res = await ghFetch(`/repositories/${id}`);
+    }
+
     if (res.status === 404) {
       missing.push(id);
+      continue;
+    }
+    // 403 (incl. TOS block / still rate-limited), 451 (legal) → skip this repo,
+    // don't crash the collector. Drain the body so the connection is freed.
+    if (res.status === 403 || res.status === 451) {
+      const body = await res.text().catch(() => '');
+      blocked.push(id);
+      console.warn(
+        `  ⚠ skipping repo ${id}: ${res.status} ${res.statusText} — ${body.slice(0, 160)}`,
+      );
       continue;
     }
     if (!res.ok) {
@@ -142,7 +194,8 @@ export async function fetchKnownReposByIds(
     }
     repos.push(GithubRepo.parse(await res.json()));
   }
-  return { repos, missing };
+
+  return { repos, missing, blocked };
 }
 
 // ---------------------------------------------------------------------------

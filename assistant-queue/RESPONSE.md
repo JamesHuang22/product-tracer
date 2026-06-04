@@ -1,63 +1,42 @@
 # Assistant Queue — Claude Code → Alex
 
-> 状态: ✅ **两个 Bug 全部修复**
+> 状态: ✅ **Bug 已修复**
 
 ---
 
-## Bug 1: /projects 副标题 i18n 不生效 ✅
+## Bug: GitHub collector 因单个被封 repo（403）整体失败 ✅
 
-### 真正的根因（之前的修复漏了一半）
-`projects/page.tsx` 确实已经用 `cookies()` 读 locale + `translate()` 渲染副标题（上一轮已加），key 也都在。但**切换语言后副标题不变**的真正原因是：
-- 语言切换按钮 `setLocale()` 只更新了**客户端 React state + 写 cookie**，**没有触发 Server Component 重新渲染**。
-- `/projects` 的副标题是 **Server Component** 渲染的，它只在「服务端重新跑一次」时才会读新 cookie。客户端 toggle 不会重跑服务端 → 副标题停留在旧语言（除非手动硬刷新）。
+### 根因
+`apps/worker/src/collectors/github.ts` 的 `fetchKnownReposByIds()` 在重新抓取已知 repo 时，只对 **404** 做了 graceful 处理（归入 `missing`），其余任何非 2xx 一律 **`throw`**。当某个 repo 被 GitHub 因 TOS 封禁（返回 `403 Repository access blocked`，如 id `1222653845`），异常冒泡到 `main()`，整个 collector run 退出失败。
 
 ### 修复
-在 `apps/web/lib/i18n-context.tsx` 的 `setLocale()` 里，写完 cookie 后调用 **`router.refresh()`**（`next/navigation`）。这样切换语言时所有 Server Component（含 /projects 副标题、/platform 页、/projects/[slug] 详情页里读 cookie 的部分）都会立即用新 locale 重渲染，**无需手动刷新**。客户端组件（header 等）仍然靠 state 即时更新，两者现在一致。
+让**单个 repo 级别的失败被隔离**，绝不中断整轮采集：
 
-| 文件 | 改动 |
+| 状态码 | 处理 |
 |---|---|
-| `apps/web/lib/i18n-context.tsx` | `setLocale` 增加 `router.refresh()`（+ `useRouter` import），使服务端渲染的翻译随 toggle 即时更新 |
+| **404** Not Found | 归入 `missing`（已删除/转私有）——原有行为 |
+| **403 / 451** | 归入新增的 `blocked`（TOS 封禁 / 法律下架），**记录 warning 并跳过**，继续下一个 |
+| **429 / 403 + `x-ratelimit-remaining: 0`** | 视为限流：按 `Retry-After` / `x-ratelimit-reset` **等待一次（上限 60s）后重试该 id**；仍失败则归入 `blocked` 跳过 |
+| 其他非 2xx（401、5xx 等）/ 网络异常 | **仍然 throw**——这些是真正的故障，不应被吞掉 |
 
-> 注：`projects/page.tsx` 的 cookie+translate 逻辑保持不变（已正确），本次只补了「让服务端重渲染」这一环。
+### 改动文件
+| 文件 | 说明 |
+|---|---|
+| `apps/worker/src/collectors/github.ts` | `fetchKnownReposByIds` 返回值新增 `blocked: number[]`；新增 `isRateLimited()` / `rateLimitWaitMs()` / `sleep()` 辅助；403/451 跳过、429 等待重试一次 |
+| `apps/worker/src/scripts/collect-github.ts` | 解构出 `blocked` 并打印计数；把被封 ids 记到 `raw.collector_error`（`error_type='repos_blocked'`）便于观测 |
 
----
+### 关键点：只吞 repo 级 403/404，不吞真正的错误
+- 只对 `404 / 403 / 451 / 429` 这几个**单 repo HTTP 状态**做跳过/重试。
+- `DATABASE_URL` 缺失、连接失败、`fetch` 抛网络异常、401 鉴权失败、5xx 等**照常向上抛出**，run 仍会失败——符合「不捕获真正的错误」的要求。
+- discovery 阶段（`discoverRepos` / `fetchTrendingRepos`）的 search 失败逻辑未改（那是整批查询失败，应当报错）。
 
-## Bug 2: HN / PH 卡片 "View all" 链接应跳到各自平台页 ✅
+### 验证
+- `pnpm --filter @product-tracer/worker typecheck` ✅
+- **单元级 stub fetch 测试**（mock 全局 fetch）：输入 ids `[1(200), 2(403-TOS), 3(404), 4(200)]`
+  - 结果：`repos=[1,4]`、`missing=[3]`、`blocked=[2]`，repo 2 打印 `⚠ skipping repo 2: 403 Forbidden …`，**无异常抛出** → `PASS ✓`
+- 这正是出错 run 的场景：被封 repo 被跳过，其余 repo 正常处理，collector 不再整体失败。
 
-### 需要做的，已全部完成
+### 小结
+单个 blocked/deleted/rate-limited repo 不再拖垮整个 collect-github run；被封 repo 会被记录到 `raw.collector_error` 方便后续清理（例如从 `identity_link` 移除长期 blocked 的 id）。真正的基础设施错误仍然会让 run 失败，不被掩盖。
 
-**1. 新增 DB 查询 `getPlatformProjects(platform)`** — `apps/web/lib/db.ts`
-- `app.project JOIN app.identity_link WHERE il.platform = $platform`，返回与 `/projects` 相同的 `ProjectListItem[]`（含 `platforms[]`），所以能直接喂给现有 `ProjectsTable`。
-- 排序按各平台主指标：github→stars、product_hunt→`project_metric.ph_upvotes`、其余（hn/reddit/x）→最新 snapshot `upvotes`，再按 `created_at`。
-
-**2. 新增平台页路由** — `apps/web/app/platform/[platform]/page.tsx`（Server Component, force-dynamic）
-- 校验 platform ∈ {github, hacker_news, product_hunt, reddit, x}，否则 `notFound()`。
-- 从 cookie 读 locale，header 显示**翻译后的平台名 + 项目数**（中文模式显示中文平台名/文案）。
-- 复用现有 `ProjectsTable` 展示列表，布局风格与 `/projects` 一致。
-- 含 `generateMetadata`。
-
-**3. 修改首页平台卡片链接** — `apps/web/components/platform-section.tsx` + `home-content.tsx`
-- `LivePlatformSection` 新增可选 prop `viewAllHref?: Route`（默认 `/projects`）。
-- 首页：`github` 保持 `/projects`；`hacker_news` → `/platform/hacker_news`；`product_hunt` → `/platform/product_hunt`。
-- "View all {platform} projects" 文案继续走 `platform.viewAll` i18n key（中文「查看全部 … 项目」）；URL 不翻译、中英文一致。
-
-**4. 新增 i18n key** — `apps/web/lib/i18n.ts`（en + zh）
-- `platform.name.{github,hacker_news,product_hunt,reddit,x}`（平台显示名，供平台页标题）
-- `platform.page.subtitle` / `platform.page.oneProject`（平台页副标题，带 {count}/{platform} 占位符）
-
-### 完成标准核对
-- ✅ 点 "View all HN projects" → `/platform/hacker_news`，只显示 HN 项目
-- ✅ 点 "View all PH projects" → `/platform/product_hunt`，只显示 PH 项目
-- ✅ 平台页标题显示平台名（中文模式中文名）
-- ✅ GitHub 卡片仍跳 `/projects`（保持原行为）
-
----
-
-## 验证
-- `pnpm --filter @product-tracer/web typecheck` ✅
-- `next build`：**编译 + 类型检查通过**（`✓ Compiled successfully`，新动态路由 `/platform/[platform]` 与 `viewAllHref` 的 typedRoutes 字面量校验均通过）。最后收集数据步骤因本地无 `DATABASE_URL` 报错 —— 环境问题、改动前即如此（页面 force-dynamic 直连库），线上配 secret 即可。
-
-## 小结
-- Bug 1 是「服务端渲染没跟随 toggle 重渲染」，靠 `router.refresh()` 收尾。
-- Bug 2 新增了 `/platform/[platform]` 平台专属列表页（含 DB 查询、i18n、复用 ProjectsTable）并改了首页 HN/PH 链接。
-- 全程自主完成，未提任何 yes/no 问题。
+**自主完成，未提任何问题。**

@@ -89,9 +89,16 @@ async function main(): Promise<void> {
     `  ${knownIds.length} known, ${idsToRefresh.length} need refresh (${knownIds.length - idsToRefresh.length} already in discovery)`,
   );
 
-  const { repos: refreshed, missing } = await fetchKnownReposByIds(idsToRefresh);
+  const { repos: refreshed, missing, blocked } = await fetchKnownReposByIds(idsToRefresh);
   if (missing.length > 0) {
     console.log(`  ${missing.length} known repos no longer accessible (deleted/private)`);
+  }
+  if (blocked.length > 0) {
+    console.log(`  ${blocked.length} known repos blocked/forbidden (TOS/legal) — skipped`);
+    await sql`
+      insert into raw.collector_error (platform, error_type, payload)
+      values ('github', 'repos_blocked', ${sql.json({ ids: blocked })})
+    `;
   }
 
   // 4. Store everything
