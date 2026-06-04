@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   DEFAULT_LOCALE,
   LOCALE_COOKIE,
@@ -30,19 +31,28 @@ export function I18nProvider({
   children: React.ReactNode;
 }) {
   const [locale, setLocaleState] = useState<Locale>(initialLocale);
+  const router = useRouter();
 
-  const setLocale = useCallback((next: Locale) => {
-    setLocaleState(next);
-    if (typeof document !== 'undefined') {
-      // Persist for future requests — 1 year, site-wide.
-      document.cookie = `${LOCALE_COOKIE}=${next}; path=/; max-age=31536000; samesite=lax`;
-      try {
-        window.localStorage.setItem(LOCALE_COOKIE, next);
-      } catch {
-        // localStorage may be unavailable (private mode) — cookie is enough.
+  const setLocale = useCallback(
+    (next: Locale) => {
+      setLocaleState(next);
+      if (typeof document !== 'undefined') {
+        // Persist for future requests — 1 year, site-wide.
+        document.cookie = `${LOCALE_COOKIE}=${next}; path=/; max-age=31536000; samesite=lax`;
+        try {
+          window.localStorage.setItem(LOCALE_COOKIE, next);
+        } catch {
+          // localStorage may be unavailable (private mode) — cookie is enough.
+        }
       }
-    }
-  }, []);
+      // Client consumers re-render from the new `locale` state immediately, but
+      // server-rendered strings (e.g. the /projects subtitle, which reads the
+      // cookie in a Server Component) only update when the server re-runs.
+      // Refresh so those update on toggle without a manual reload.
+      router.refresh();
+    },
+    [router],
+  );
 
   const value = useMemo<I18nContextValue>(
     () => ({

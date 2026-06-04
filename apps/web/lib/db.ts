@@ -139,6 +139,56 @@ export async function getPlatformProjectCount(platform: LivePlatform): Promise<n
   return row?.n ?? 0;
 }
 
+/**
+ * All projects with an identity_link on `platform`, in the same shape as the
+ * /projects list so they render in the shared <ProjectsTable>. Ordered by that
+ * platform's primary engagement metric (GitHub stars / latest snapshot upvotes /
+ * Product Hunt upvotes), then recency.
+ */
+export async function getPlatformProjects(platform: string): Promise<ProjectListItem[]> {
+  return await sql<ProjectListItem[]>`
+    select
+      p.id,
+      p.slug,
+      p.name,
+      p.one_liner,
+      p.category,
+      p.primary_url,
+      gh.stars as github_stars,
+      gh.forks as github_forks,
+      p.created_at,
+      coalesce(
+        (select array_agg(distinct il2.platform)
+         from app.identity_link il2 where il2.project_id = p.id),
+        '{}'
+      ) as platforms
+    from app.project p
+    join app.identity_link il on il.project_id = p.id and il.platform = ${platform}
+    left join lateral (
+      select s.stars, s.forks
+      from raw.snapshot s
+      where s.project_id = p.id and s.platform = 'github'
+      order by s.timestamp desc limit 1
+    ) gh on true
+    left join lateral (
+      select
+        case
+          when ${platform} = 'github' then gh.stars
+          when ${platform} = 'product_hunt' then (
+            select pm.ph_upvotes from app.project_metric pm
+            where pm.project_id = p.id order by pm.date desc limit 1
+          )
+          else (
+            select s.upvotes from raw.snapshot s
+            where s.project_id = p.id and s.platform = ${platform}
+            order by s.timestamp desc limit 1
+          )
+        end as sort_metric
+    ) ord on true
+    order by ord.sort_metric desc nulls last, p.created_at desc
+  `;
+}
+
 // ---------------------------------------------------------------------------
 // Project detail page (/projects/[slug])
 // ---------------------------------------------------------------------------

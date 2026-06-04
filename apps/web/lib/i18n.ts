@@ -72,6 +72,14 @@ const en: Messages = {
   'projects.trackedSince': 'Tracked since {date}',
   'detail.notEnoughHistory': 'Not enough history yet',
   'detail.noMetrics': 'No metrics recorded yet',
+
+  'platform.name.github': 'GitHub',
+  'platform.name.hacker_news': 'Hacker News',
+  'platform.name.product_hunt': 'Product Hunt',
+  'platform.name.reddit': 'Reddit',
+  'platform.name.x': 'X',
+  'platform.page.subtitle': '{count} projects tracked on {platform}.',
+  'platform.page.oneProject': '1 project tracked on {platform}.',
 };
 
 const zh: Messages = {
@@ -125,6 +133,14 @@ const zh: Messages = {
   'projects.trackedSince': '自 {date} 开始追踪',
   'detail.notEnoughHistory': '历史数据不足',
   'detail.noMetrics': '暂无指标数据',
+
+  'platform.name.github': 'GitHub',
+  'platform.name.hacker_news': 'Hacker News',
+  'platform.name.product_hunt': 'Product Hunt',
+  'platform.name.reddit': 'Reddit',
+  'platform.name.x': 'X',
+  'platform.page.subtitle': '在 {platform} 上追踪了 {count} 个项目。',
+  'platform.page.oneProject': '在 {platform} 上追踪了 1 个项目。',
 };
 
 const MESSAGES: Record<Locale, Messages> = { en, zh };

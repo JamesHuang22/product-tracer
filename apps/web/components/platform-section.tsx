@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import type { Route } from 'next';
 import { ArrowRight } from 'lucide-react';
 import type { PlatformTopItem } from '@/lib/db';
 import { fmtCount } from '@/lib/format';
@@ -88,10 +89,13 @@ export function LivePlatformSection({
   visual,
   count,
   items,
+  viewAllHref = '/projects',
 }: {
   visual: PlatformVisual;
   count: number;
   items: PlatformTopItem[];
+  /** Where "View all …" links. Defaults to the combined /projects list. */
+  viewAllHref?: Route;
 }) {
   const { t } = useI18n();
   return (
@@ -134,7 +138,7 @@ export function LivePlatformSection({
 
       <footer className="mt-4 border-t border-neutral-200 pt-3 dark:border-neutral-800">
         <Link
-          href="/projects"
+          href={viewAllHref}
           className="inline-flex items-center gap-1 text-xs font-medium text-neutral-600 transition-colors hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-50"
         >
           {t('platform.viewAll', { platform: visual.name })}

@@ -82,12 +82,14 @@ export function HomeContent({ data }: { data: HomeData }) {
             visual={PLATFORM_VISUALS.hacker_news}
             count={data.hackerNews.count}
             items={data.hackerNews.items}
+            viewAllHref="/platform/hacker_news"
           />
 
           <LivePlatformSection
             visual={PLATFORM_VISUALS.product_hunt}
             count={data.productHunt.count}
             items={data.productHunt.items}
+            viewAllHref="/platform/product_hunt"
           />
 
           <ComingSoonSection
