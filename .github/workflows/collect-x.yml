@@ -1,0 +1,33 @@
+name: Collect X
+
+on:
+  schedule:
+    - cron: '15 */6 * * *' # every 6h at :15 — low frequency, polite to X
+  workflow_dispatch:
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @product-tracer/worker exec tsx src/scripts/collect-x.ts
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          # Auth — cookie-based session preferred (most reliable). Provide either
+          # X_COOKIES, or X_USERNAME + X_PASSWORD (+ optional fields). The script
+          # exits cleanly (no failure) when none are set.
+          X_COOKIES: ${{ secrets.X_COOKIES }}
+          X_USERNAME: ${{ secrets.X_USERNAME }}
+          X_PASSWORD: ${{ secrets.X_PASSWORD }}
+          X_EMAIL: ${{ secrets.X_EMAIL }}
+          X_2FA_SECRET: ${{ secrets.X_2FA_SECRET }}
+          X_API_KEY: ${{ secrets.X_API_KEY }}
+          X_API_SECRET: ${{ secrets.X_API_SECRET }}
+          X_ACCESS_TOKEN: ${{ secrets.X_ACCESS_TOKEN }}
+          X_ACCESS_TOKEN_SECRET: ${{ secrets.X_ACCESS_TOKEN_SECRET }}
