@@ -1,49 +1,54 @@
 # Assistant Queue — Frontend Agent ← Alex
 
-> 当前状态: 🟢 **等待任务**
-
-*此文件仅供前端专属 agent 读取。后端 agent 请读 partner REQUEST.md。*
+> 当前状态: 🟢 **Bug 修复**
 
 ---
 
-## 前端任务池
+## Bug: 详情页 one_liner 显示原始 HTML + 过长文本
 
-### ✅ Bug 修复记录
-- i18n 切换 + 平台详情页 — 已完成
+### 问题
+在 `/projects/[slug]` 详情页，HN/PH 项目的 `one_liner` 字段包含了原始文本（含 HTML 实体如 `&#x2F;`、`&quot;`），而且文本过长（有时是整个 HN 帖子的正文）。
 
-### 🎯 当前待做
+例如：
+> "I kept seeing every npm&#x2F;pnpm&#x2F;yarn&#x2F;bun&#x2F;uv supply chain post end with the same advice..."
 
-（暂无任务 — 等 James 安排）
+### 修复方案
+
+**在 `apps/web/app/projects/[slug]/page.tsx` 中修改 one_liner 的展示：**
+- 用一个 helper function 处理 one_liner 文本
+- 解码 HTML 实体：`&#x2F;` → `/`，`&quot;` → `"`，`&amp;` → `&`，`&lt;` → `<`，`&gt;` → `>` 等
+- 截断到最多 120 个字符，如果超出则在末尾加 `...`
+- 这个 helper 可以放在 `apps/web/lib/format.ts` 里
+
+```typescript
+// apps/web/lib/format.ts
+export function cleanOneLiner(text: string | null): string | null {
+  if (!text) return null;
+  // Decode common HTML entities
+  const decoded = text
+    .replace(/&#x2F;/g, '/')
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&#39;/g, "'");
+  // Truncate
+  if (decoded.length > 120) return decoded.slice(0, 120) + '...';
+  return decoded;
+}
+```
+
+**修改 `[slug]/page.tsx`：**
+在显示 `project.one_liner` 的地方调用 `cleanOneLiner(project.one_liner)`。
+
+**同样检查 home page 和 projects 页面：**
+如果这些页面也直接显示 one_liner，同样应用这个清理。
+
+### 完成标准
+- 详情页的 one_liner 干净显示（无 HTML 实体，不超过 120 字符）
+- `/projects` 表格里的 one_liner 同样处理
+- 首页的 one_liner 同样处理
 
 ---
 
-## 工作指南
-
-**前端 agent 职责范围（只改这些）：**
-- `.tsx` / `.css` / `.jsx` 文件
-- `apps/web/` 下的所有组件、页面、布局
-- `apps/web/lib/` 下的工具函数（不含 DB 查询）
-- `apps/web/components/` 下的所有组件
-- 翻译文件 `apps/web/lib/i18n.ts`
-- i18n 上下文 `apps/web/lib/i18n-context.tsx`
-
-**绝不碰（留给后端 agent 或主 agent）：**
-- DB 查询（`apps/web/lib/db.ts` 里的 SQL）
-- Worker/collector 代码（`apps/worker/` 下的所有文件）
-- Migration SQL
-- GitHub workflow yml
-- `packages/` 下的 schema 或类型定义
-- `research/` 文档除非有相关新增
-
-**工作流：**
-1. git pull
-2. 读本文件（FRONTEND_REQUEST.md）
-3. 执行所有任务
-4. 写 FRONTEND_RESPONSE.md
-5. git add / commit / push
-6. 删除本文件
-7. 等 30 分钟后重新 pull
-
----
-
-*本文件每次创建时覆盖。*
+**本 agent 负责范围：`apps/web/` 下的 .tsx / .css / .ts 文件。完成写 FRONTEND_RESPONSE.md。**
