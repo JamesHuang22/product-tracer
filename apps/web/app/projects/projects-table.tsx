@@ -14,7 +14,7 @@ import {
 } from '@tanstack/react-table';
 import { ArrowDown, ArrowUp, ArrowUpDown, GitFork, Star } from 'lucide-react';
 import type { ProjectListItem } from '@/lib/db';
-import { fmtCount } from '@/lib/format';
+import { fmtCount, cleanOneLiner } from '@/lib/format';
 import { useI18n } from '@/lib/i18n-context';
 
 const ch = createColumnHelper<ProjectListItem>();
@@ -76,8 +76,8 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
               <div className="truncate font-medium text-neutral-900 dark:text-neutral-50">
                 {p.name}
               </div>
-              {p.one_liner && (
-                <div className="mt-0.5 line-clamp-1 text-sm text-neutral-500">{p.one_liner}</div>
+              {cleanOneLiner(p.one_liner) && (
+                <div className="mt-0.5 line-clamp-1 text-sm text-neutral-500">{cleanOneLiner(p.one_liner)}</div>
               )}
             </>
           );
@@ -239,8 +239,8 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
                   <span className="truncate font-medium">{p.name}</span>
                   <PlatformBadges platforms={p.platforms ?? []} />
                 </div>
-                {p.one_liner && (
-                  <div className="mt-1 line-clamp-2 text-sm text-neutral-500">{p.one_liner}</div>
+                {cleanOneLiner(p.one_liner) && (
+                  <div className="mt-1 line-clamp-2 text-sm text-neutral-500">{cleanOneLiner(p.one_liner)}</div>
                 )}
               </div>
               <div className="mt-3 flex items-center gap-4 text-xs">

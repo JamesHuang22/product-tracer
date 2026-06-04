@@ -9,7 +9,7 @@ import {
   type ProjectMetricPoint,
   type ProjectPlatformSnapshot,
 } from '@/lib/db';
-import { fmtCount } from '@/lib/format';
+import { fmtCount, cleanOneLiner } from '@/lib/format';
 import { translate, DEFAULT_LOCALE, isLocale, LOCALE_COOKIE } from '@/lib/i18n';
 
 // Live data — reflect the latest collector run on every request.
@@ -239,7 +239,7 @@ export async function generateMetadata({
   if (!project) return { title: 'Project not found — Product Tracer' };
   return {
     title: `${project.name} — Product Tracer`,
-    description: project.one_liner ?? undefined,
+    description: cleanOneLiner(project.one_liner) ?? undefined,
   };
 }
 
@@ -275,9 +275,9 @@ export default async function ProjectDetailPage({
             </span>
           )}
         </div>
-        {project.one_liner && (
+        {cleanOneLiner(project.one_liner) && (
           <p className="mt-3 max-w-2xl text-lg leading-relaxed text-neutral-600 dark:text-neutral-400">
-            {project.one_liner}
+            {cleanOneLiner(project.one_liner)}
           </p>
         )}
         <div className="mt-5 flex flex-wrap items-center gap-3 text-sm">
