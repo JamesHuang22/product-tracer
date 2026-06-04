@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { cookies } from 'next/headers';
 import { ArrowLeft, ArrowUpRight } from 'lucide-react';
 import {
   getProjectBySlug,
@@ -9,6 +10,7 @@ import {
   type ProjectPlatformSnapshot,
 } from '@/lib/db';
 import { fmtCount } from '@/lib/format';
+import { translate, DEFAULT_LOCALE, isLocale, LOCALE_COOKIE } from '@/lib/i18n';
 
 // Live data — reflect the latest collector run on every request.
 export const dynamic = 'force-dynamic';
@@ -145,10 +147,12 @@ function PlatformCard({
   snap,
   metrics,
   primaryUrl,
+  locale,
 }: {
   snap: ProjectPlatformSnapshot;
   metrics: ProjectMetricPoint[];
   primaryUrl: string | null;
+  locale: 'en' | 'zh';
 }) {
   const meta = metaFor(snap.platform);
   const series =
@@ -187,34 +191,34 @@ function PlatformCard({
       <div className="flex flex-wrap gap-x-8 gap-y-3">
         {snap.platform === 'github' && (
           <>
-            <Stat label="Stars" value={snap.stars} />
-            <Stat label="Forks" value={snap.forks} />
+            <Stat label={translate(locale, 'detail.stars')} value={snap.stars} />
+            <Stat label={translate(locale, 'detail.forks')} value={snap.forks} />
           </>
         )}
         {snap.platform === 'hacker_news' && (
           <>
-            <Stat label="Points" value={snap.upvotes} />
-            <Stat label="Comments" value={snap.comments} />
+            <Stat label={translate(locale, 'detail.points')} value={snap.upvotes} />
+            <Stat label={translate(locale, 'detail.comments')} value={snap.comments} />
           </>
         )}
-        {snap.platform === 'product_hunt' && <Stat label="Upvotes" value={snap.upvotes} />}
+        {snap.platform === 'product_hunt' && <Stat label={translate(locale, 'detail.upvotes')} value={snap.upvotes} />}
         {snap.platform === 'reddit' && (
           <>
-            <Stat label="Upvotes" value={snap.upvotes} />
-            <Stat label="Comments" value={snap.comments} />
+            <Stat label={translate(locale, 'detail.upvotes')} value={snap.upvotes} />
+            <Stat label={translate(locale, 'detail.comments')} value={snap.comments} />
           </>
         )}
-        {snap.platform === 'x' && <Stat label="Mentions" value={snap.upvotes} />}
+        {snap.platform === 'x' && <Stat label={translate(locale, 'detail.mentions')} value={snap.upvotes} />}
       </div>
 
       <div className="mt-auto pt-4">
         {series.length >= 2 ? (
           <Sparkline values={series} />
         ) : (
-          <div className="text-xs text-neutral-400">Not enough history for a trend yet.</div>
+          <div className="text-xs text-neutral-400">{translate(locale, 'detail.notEnoughHistory')}</div>
         )}
         {snap.updated_at && (
-          <div className="mt-1 text-[11px] text-neutral-400">Updated {snap.updated_at}</div>
+          <div className="mt-1 text-[11px] text-neutral-400">{translate(locale, 'detail.updated', { date: snap.updated_at })}</div>
         )}
       </div>
     </section>
@@ -248,6 +252,10 @@ export default async function ProjectDetailPage({
   const project: ProjectDetail | null = await getProjectBySlug(slug);
   if (!project) notFound();
 
+  const cookieStore = await cookies();
+  const raw = cookieStore.get(LOCALE_COOKIE)?.value;
+  const locale = isLocale(raw) ? (raw as 'en' | 'zh') : DEFAULT_LOCALE;
+
   return (
     <main className="mx-auto max-w-4xl px-6 py-12">
       <Link
@@ -255,7 +263,7 @@ export default async function ProjectDetailPage({
         className="inline-flex items-center gap-1.5 text-sm text-neutral-500 transition-colors hover:text-neutral-900 dark:hover:text-neutral-100"
       >
         <ArrowLeft className="h-3.5 w-3.5" />
-        All projects
+        {translate(locale, 'nav.projects')}
       </Link>
 
       <header className="mt-6">
@@ -280,21 +288,21 @@ export default async function ProjectDetailPage({
               rel="noreferrer"
               className="inline-flex items-center gap-2 rounded-md bg-neutral-900 px-4 py-2 font-medium text-white transition-colors hover:bg-neutral-800 dark:bg-neutral-50 dark:text-neutral-900 dark:hover:bg-neutral-200"
             >
-              Visit site
+              {translate(locale, 'detail.visitSite')}
               <ArrowUpRight className="h-3.5 w-3.5" />
             </a>
           )}
-          <span className="text-neutral-400">Tracked since {project.created_at}</span>
+          <span className="text-neutral-400">{translate(locale, 'projects.trackedSince', { date: project.created_at })}</span>
         </div>
       </header>
 
       <section className="mt-10">
         <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-neutral-500">
-          Cross-platform signals
+          {translate(locale, 'detail.crossPlatformSignals')}
         </h2>
         {project.platforms.length === 0 ? (
           <div className="rounded-xl border border-dashed border-neutral-300 p-8 text-center text-sm text-neutral-500 dark:border-neutral-700">
-            No platform data recorded yet.
+            {translate(locale, 'detail.noMetrics')}
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -304,6 +312,7 @@ export default async function ProjectDetailPage({
                 snap={snap}
                 metrics={project.metrics}
                 primaryUrl={project.primary_url}
+                locale={locale}
               />
             ))}
           </div>

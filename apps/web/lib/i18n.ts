@@ -51,6 +51,27 @@ const en: Messages = {
   'lang.label': 'Language',
   'lang.english': 'English',
   'lang.chinese': '中文',
+
+  'projects.subtitle': 'Tracked {count} indie products across GitHub, Hacker News & Product Hunt. Sorted by GitHub stars — open a non-GitHub project for its cross-platform detail.',
+
+  'table.header.project': 'Project',
+  'table.header.source': 'Source',
+  'table.header.category': 'Category',
+  'table.header.stars': 'Stars',
+  'table.header.forks': 'Forks',
+
+  'detail.visitSite': 'Visit site',
+  'detail.stars': 'stars',
+  'detail.forks': 'forks',
+  'detail.upvotes': 'upvotes',
+  'detail.points': 'points',
+  'detail.comments': 'comments',
+  'detail.updated': 'Updated {date}',
+  'detail.crossPlatformSignals': 'Cross-platform signals',
+  'detail.mentions': 'Mentions',
+  'projects.trackedSince': 'Tracked since {date}',
+  'detail.notEnoughHistory': 'Not enough history yet',
+  'detail.noMetrics': 'No metrics recorded yet',
 };
 
 const zh: Messages = {
@@ -83,6 +104,27 @@ const zh: Messages = {
   'lang.label': '语言',
   'lang.english': 'English',
   'lang.chinese': '中文',
+
+  'projects.subtitle': '已追踪 {count} 个独立产品，覆盖 GitHub、Hacker News 和 Product Hunt。按 GitHub stars 排序——点击非 GitHub 项目查看跨平台详情。',
+
+  'table.header.project': '项目',
+  'table.header.source': '来源',
+  'table.header.category': '分类',
+  'table.header.stars': '星标',
+  'table.header.forks': '复刻',
+
+  'detail.visitSite': '访问网站',
+  'detail.stars': '星标',
+  'detail.forks': '复刻',
+  'detail.upvotes': '点赞',
+  'detail.points': '分数',
+  'detail.comments': '评论',
+  'detail.updated': '更新于 {date}',
+  'detail.crossPlatformSignals': '跨平台信号',
+  'detail.mentions': '提及',
+  'projects.trackedSince': '自 {date} 开始追踪',
+  'detail.notEnoughHistory': '历史数据不足',
+  'detail.noMetrics': '暂无指标数据',
 };
 
 const MESSAGES: Record<Locale, Messages> = { en, zh };

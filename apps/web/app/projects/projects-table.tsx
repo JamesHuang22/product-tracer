@@ -15,6 +15,7 @@ import {
 import { ArrowDown, ArrowUp, ArrowUpDown, GitFork, Star } from 'lucide-react';
 import type { ProjectListItem } from '@/lib/db';
 import { fmtCount } from '@/lib/format';
+import { useI18n } from '@/lib/i18n-context';
 
 const ch = createColumnHelper<ProjectListItem>();
 
@@ -60,13 +61,14 @@ function projectHref(p: ProjectListItem): { href: string; external: boolean } {
 }
 
 export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
+  const { t } = useI18n();
   const [sorting, setSorting] = useState<SortingState>([{ id: 'github_stars', desc: true }]);
   const [filter, setFilter] = useState('');
 
   const columns = useMemo(
     () => [
       ch.accessor('name', {
-        header: 'Project',
+        header: t('table.header.project'),
         cell: (info) => {
           const p = info.row.original;
           const content = (
@@ -100,7 +102,7 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
         },
       }),
       ch.accessor('category', {
-        header: 'Category',
+        header: t('table.header.category'),
         cell: (info) => {
           const v = info.getValue();
           return v ? (
@@ -114,18 +116,18 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
       }),
       ch.display({
         id: 'source',
-        header: 'Source',
+        header: t('table.header.source'),
         cell: (info) => <PlatformBadges platforms={info.row.original.platforms ?? []} />,
       }),
       ch.accessor('github_stars', {
-        header: 'Stars',
+        header: t('table.header.stars'),
         cell: (info) => (
           <div className="text-right font-medium tabular-nums">{fmtCount(info.getValue())}</div>
         ),
         sortDescFirst: true,
       }),
       ch.accessor('github_forks', {
-        header: 'Forks',
+        header: t('table.header.forks'),
         cell: (info) => (
           <div className="text-right tabular-nums text-neutral-500">
             {fmtCount(info.getValue())}
@@ -133,7 +135,7 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
         ),
       }),
     ],
-    [],
+    [t],
   );
 
   const table = useReactTable({
