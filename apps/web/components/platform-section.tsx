@@ -35,6 +35,12 @@ export const PLATFORM_VISUALS = {
     monogramBg: 'bg-red-500',
     monogramFg: 'text-white',
   },
+  youtube: {
+    name: 'YouTube',
+    monogram: 'YT',
+    monogramBg: 'bg-red-600',
+    monogramFg: 'text-white',
+  },
   reddit: {
     name: 'Reddit',
     monogram: 'R',
@@ -194,11 +200,7 @@ export function ComingSoonSection({
 
       <div className="mt-auto space-y-1.5">
         {[1, 2, 3].map((i) => (
-          <div
-            key={i}
-            className="flex items-center gap-2 rounded-md px-1 py-1.5"
-            aria-hidden
-          >
+          <div key={i} className="flex items-center gap-2 rounded-md px-1 py-1.5" aria-hidden>
             <span className="block h-2 w-4 shrink-0 rounded bg-neutral-200 dark:bg-neutral-800" />
             <span className="block h-2 flex-1 rounded bg-neutral-200 dark:bg-neutral-800" />
             <span className="block h-2 w-8 shrink-0 rounded bg-neutral-200 dark:bg-neutral-800" />

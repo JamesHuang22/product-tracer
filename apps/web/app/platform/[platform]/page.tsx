@@ -3,18 +3,12 @@ import { notFound } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { getPlatformProjects } from '@/lib/db';
 import { ProjectsTable } from '@/app/projects/projects-table';
-import {
-  DEFAULT_LOCALE,
-  isLocale,
-  LOCALE_COOKIE,
-  translate,
-  type MessageKey,
-} from '@/lib/i18n';
+import { DEFAULT_LOCALE, isLocale, LOCALE_COOKIE, translate, type MessageKey } from '@/lib/i18n';
 
 // Live data — reflect the latest collector run on every request.
 export const dynamic = 'force-dynamic';
 
-const PLATFORMS = ['github', 'hacker_news', 'product_hunt', 'reddit', 'x'] as const;
+const PLATFORMS = ['github', 'hacker_news', 'product_hunt', 'youtube', 'reddit', 'x'] as const;
 type Platform = (typeof PLATFORMS)[number];
 
 function isPlatform(value: string): value is Platform {
@@ -36,11 +30,7 @@ export async function generateMetadata({
   return { title: `${name} projects — Product Tracer` };
 }
 
-export default async function PlatformPage({
-  params,
-}: {
-  params: Promise<{ platform: string }>;
-}) {
+export default async function PlatformPage({ params }: { params: Promise<{ platform: string }> }) {
   const { platform } = await params;
   if (!isPlatform(platform)) notFound();
 

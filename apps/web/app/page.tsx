@@ -6,26 +6,29 @@ export const dynamic = 'force-dynamic';
 export default async function HomePage() {
   // Fetch all live platforms in parallel (server-side); the UI chrome itself
   // is rendered by the client <HomeContent> so it can be localised.
-  const [ghTop, hnTop, phTop, ghCount, hnCount, phCount] = await Promise.all([
+  const [ghTop, hnTop, phTop, ytTop, ghCount, hnCount, phCount, ytCount] = await Promise.all([
     getPlatformTop('github', 5),
     getPlatformTop('hacker_news', 5),
     getPlatformTop('product_hunt', 5),
+    getPlatformTop('youtube', 5),
     getPlatformProjectCount('github'),
     getPlatformProjectCount('hacker_news'),
     getPlatformProjectCount('product_hunt'),
+    getPlatformProjectCount('youtube'),
   ]);
 
-  const totalLive = ghCount + hnCount + phCount;
+  const totalLive = ghCount + hnCount + phCount + ytCount;
 
   return (
     <HomeContent
       data={{
         totalLive,
-        livePlatforms: 3,
+        livePlatforms: 4,
         comingSoon: 2,
         github: { count: ghCount, items: ghTop },
         hackerNews: { count: hnCount, items: hnTop },
         productHunt: { count: phCount, items: phTop },
+        youtube: { count: ytCount, items: ytTop },
       }}
     />
   );

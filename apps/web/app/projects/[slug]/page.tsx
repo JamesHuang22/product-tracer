@@ -25,10 +25,9 @@ interface PlatformMeta {
   monogramBg: string;
   monogramFg: string;
   /** Which daily metric column drives this platform's trend sparkline. */
-  metricKey: keyof Pick<
-    ProjectMetricPoint,
-    'github_stars' | 'ph_upvotes' | 'hn_score' | 'reddit_score'
-  > | null;
+  metricKey:
+    | keyof Pick<ProjectMetricPoint, 'github_stars' | 'ph_upvotes' | 'hn_score' | 'reddit_score'>
+    | null;
 }
 
 const PLATFORM_META: Record<string, PlatformMeta> = {
@@ -52,6 +51,14 @@ const PLATFORM_META: Record<string, PlatformMeta> = {
     monogramBg: 'bg-red-500',
     monogramFg: 'text-white',
     metricKey: 'ph_upvotes',
+  },
+  youtube: {
+    name: 'YouTube',
+    monogram: 'YT',
+    monogramBg: 'bg-red-600',
+    monogramFg: 'text-white',
+    // No daily youtube metric column — engagement lives in the snapshot stat.
+    metricKey: null,
   },
   reddit: {
     name: 'Reddit',
@@ -102,7 +109,9 @@ function Sparkline({ values, className }: { values: number[]; className?: string
     const y = pad + (h - pad * 2) * (1 - (v - min) / span);
     return [x, y] as const;
   });
-  const line = coords.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
+  const line = coords
+    .map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`)
+    .join(' ');
   const area = `${line} L${coords[coords.length - 1]![0].toFixed(1)},${h - pad} L${coords[0]![0].toFixed(1)},${h - pad} Z`;
 
   return (
@@ -138,6 +147,11 @@ function platformLink(snap: ProjectPlatformSnapshot, primaryUrl: string | null):
       return `https://news.ycombinator.com/item?id=${snap.external_id}`;
     case 'github':
       return primaryUrl;
+    case 'youtube': {
+      // external_id is "videoId:owner/repo" — recover the video id for the link.
+      const videoId = snap.external_id.split(':')[0];
+      return videoId ? `https://www.youtube.com/watch?v=${videoId}` : null;
+    }
     default:
       return null;
   }
@@ -158,9 +172,7 @@ function PlatformCard({
   const series =
     meta.metricKey === null
       ? []
-      : metrics
-          .map((m) => m[meta.metricKey!])
-          .filter((v): v is number => typeof v === 'number');
+      : metrics.map((m) => m[meta.metricKey!]).filter((v): v is number => typeof v === 'number');
 
   const link = platformLink(snap, primaryUrl);
 
@@ -201,24 +213,38 @@ function PlatformCard({
             <Stat label={translate(locale, 'detail.comments')} value={snap.comments} />
           </>
         )}
-        {snap.platform === 'product_hunt' && <Stat label={translate(locale, 'detail.upvotes')} value={snap.upvotes} />}
+        {snap.platform === 'product_hunt' && (
+          <Stat label={translate(locale, 'detail.upvotes')} value={snap.upvotes} />
+        )}
         {snap.platform === 'reddit' && (
           <>
             <Stat label={translate(locale, 'detail.upvotes')} value={snap.upvotes} />
             <Stat label={translate(locale, 'detail.comments')} value={snap.comments} />
           </>
         )}
-        {snap.platform === 'x' && <Stat label={translate(locale, 'detail.mentions')} value={snap.upvotes} />}
+        {snap.platform === 'youtube' && (
+          <>
+            <Stat label={translate(locale, 'detail.views')} value={snap.upvotes} />
+            <Stat label={translate(locale, 'detail.likes')} value={snap.comments} />
+          </>
+        )}
+        {snap.platform === 'x' && (
+          <Stat label={translate(locale, 'detail.mentions')} value={snap.upvotes} />
+        )}
       </div>
 
       <div className="mt-auto pt-4">
         {series.length >= 2 ? (
           <Sparkline values={series} />
         ) : (
-          <div className="text-xs text-neutral-400">{translate(locale, 'detail.notEnoughHistory')}</div>
+          <div className="text-xs text-neutral-400">
+            {translate(locale, 'detail.notEnoughHistory')}
+          </div>
         )}
         {snap.updated_at && (
-          <div className="mt-1 text-[11px] text-neutral-400">{translate(locale, 'detail.updated', { date: snap.updated_at })}</div>
+          <div className="mt-1 text-[11px] text-neutral-400">
+            {translate(locale, 'detail.updated', { date: snap.updated_at })}
+          </div>
         )}
       </div>
     </section>
@@ -243,11 +269,7 @@ export async function generateMetadata({
   };
 }
 
-export default async function ProjectDetailPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
+export default async function ProjectDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const project: ProjectDetail | null = await getProjectBySlug(slug);
   if (!project) notFound();
@@ -292,7 +314,9 @@ export default async function ProjectDetailPage({
               <ArrowUpRight className="h-3.5 w-3.5" />
             </a>
           )}
-          <span className="text-neutral-400">{translate(locale, 'projects.trackedSince', { date: project.created_at })}</span>
+          <span className="text-neutral-400">
+            {translate(locale, 'projects.trackedSince', { date: project.created_at })}
+          </span>
         </div>
       </header>
 

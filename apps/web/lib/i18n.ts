@@ -27,7 +27,7 @@ const en: Messages = {
   'hero.titleLead': 'for ',
   'hero.titleAccent': 'indie products.',
   'hero.subtitle':
-    'Daily intelligence on what’s gaining traction across GitHub, Hacker News, Product Hunt, Reddit, and X — surfaced into a 5-minute morning read.',
+    'Daily intelligence on what’s gaining traction across GitHub, Hacker News, Product Hunt, YouTube, Reddit, and X — surfaced into a 5-minute morning read.',
   'hero.browseAll': 'Browse all projects',
   'hero.dailyEmail': 'Daily email digest',
   'hero.comingSoon': 'coming soon',
@@ -52,7 +52,8 @@ const en: Messages = {
   'lang.english': 'English',
   'lang.chinese': '中文',
 
-  'projects.subtitle': 'Tracked {count} indie products across GitHub, Hacker News & Product Hunt. Sorted by GitHub stars — open a non-GitHub project for its cross-platform detail.',
+  'projects.subtitle':
+    'Tracked {count} indie products across GitHub, Hacker News, Product Hunt & YouTube. Sorted by GitHub stars — open a non-GitHub project for its cross-platform detail.',
 
   'table.header.project': 'Project',
   'table.header.source': 'Source',
@@ -66,6 +67,8 @@ const en: Messages = {
   'detail.upvotes': 'upvotes',
   'detail.points': 'points',
   'detail.comments': 'comments',
+  'detail.views': 'views',
+  'detail.likes': 'likes',
   'detail.updated': 'Updated {date}',
   'detail.crossPlatformSignals': 'Cross-platform signals',
   'detail.mentions': 'Mentions',
@@ -76,6 +79,7 @@ const en: Messages = {
   'platform.name.github': 'GitHub',
   'platform.name.hacker_news': 'Hacker News',
   'platform.name.product_hunt': 'Product Hunt',
+  'platform.name.youtube': 'YouTube',
   'platform.name.reddit': 'Reddit',
   'platform.name.x': 'X',
   'platform.page.subtitle': '{count} projects tracked on {platform}.',
@@ -88,7 +92,7 @@ const zh: Messages = {
   'hero.titleLead': '',
   'hero.titleAccent': '发现独立产品',
   'hero.subtitle':
-    '每日洞察 GitHub、Hacker News、Product Hunt、Reddit 和 X 上正在增长的热门项目，浓缩成 5 分钟晨间阅读。',
+    '每日洞察 GitHub、Hacker News、Product Hunt、YouTube、Reddit 和 X 上正在增长的热门项目，浓缩成 5 分钟晨间阅读。',
   'hero.browseAll': '浏览所有项目',
   'hero.dailyEmail': '每日邮件摘要',
   'hero.comingSoon': '即将上线',
@@ -104,16 +108,15 @@ const zh: Messages = {
   'platform.projectsTracked': '已追踪 {count} 个项目',
   'platform.oneProject': '已追踪 1 个项目',
   'platform.viewAll': '查看全部 {platform} 项目',
-  'platform.reddit.description':
-    'r/SideProject、r/indiehackers、r/SaaS —— 早期发现与社区信号。',
-  'platform.x.description':
-    '带有增长数据的创始人推文 —— 关注精选名单，而非信息洪流。',
+  'platform.reddit.description': 'r/SideProject、r/indiehackers、r/SaaS —— 早期发现与社区信号。',
+  'platform.x.description': '带有增长数据的创始人推文 —— 关注精选名单，而非信息洪流。',
 
   'lang.label': '语言',
   'lang.english': 'English',
   'lang.chinese': '中文',
 
-  'projects.subtitle': '已追踪 {count} 个独立产品，覆盖 GitHub、Hacker News 和 Product Hunt。按 GitHub stars 排序——点击非 GitHub 项目查看跨平台详情。',
+  'projects.subtitle':
+    '已追踪 {count} 个独立产品，覆盖 GitHub、Hacker News、Product Hunt 和 YouTube。按 GitHub stars 排序——点击非 GitHub 项目查看跨平台详情。',
 
   'table.header.project': '项目',
   'table.header.source': '来源',
@@ -127,6 +130,8 @@ const zh: Messages = {
   'detail.upvotes': '点赞',
   'detail.points': '分数',
   'detail.comments': '评论',
+  'detail.views': '播放量',
+  'detail.likes': '点赞',
   'detail.updated': '更新于 {date}',
   'detail.crossPlatformSignals': '跨平台信号',
   'detail.mentions': '提及',
@@ -137,6 +142,7 @@ const zh: Messages = {
   'platform.name.github': 'GitHub',
   'platform.name.hacker_news': 'Hacker News',
   'platform.name.product_hunt': 'Product Hunt',
+  'platform.name.youtube': 'YouTube',
   'platform.name.reddit': 'Reddit',
   'platform.name.x': 'X',
   'platform.page.subtitle': '在 {platform} 上追踪了 {count} 个项目。',

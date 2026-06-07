@@ -21,9 +21,13 @@ const ch = createColumnHelper<ProjectListItem>();
 
 // Short, colour-coded source chips for the platforms a project lives on.
 const PLATFORM_BADGE: Record<string, { label: string; cls: string }> = {
-  github: { label: 'GH', cls: 'bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900' },
+  github: {
+    label: 'GH',
+    cls: 'bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900',
+  },
   hacker_news: { label: 'HN', cls: 'bg-orange-500 text-white' },
   product_hunt: { label: 'PH', cls: 'bg-red-500 text-white' },
+  youtube: { label: 'YT', cls: 'bg-red-600 text-white' },
   reddit: { label: 'R', cls: 'bg-orange-600 text-white' },
   x: { label: 'X', cls: 'bg-black text-white dark:bg-white dark:text-black' },
 };
@@ -33,8 +37,10 @@ function PlatformBadges({ platforms }: { platforms: string[] }) {
   return (
     <span className="inline-flex gap-1">
       {platforms.map((p) => {
-        const b =
-          PLATFORM_BADGE[p] ?? { label: p.slice(0, 2).toUpperCase(), cls: 'bg-neutral-400 text-white' };
+        const b = PLATFORM_BADGE[p] ?? {
+          label: p.slice(0, 2).toUpperCase(),
+          cls: 'bg-neutral-400 text-white',
+        };
         return (
           <span
             key={p}
@@ -77,7 +83,9 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
                 {p.name}
               </div>
               {cleanOneLiner(p.one_liner) && (
-                <div className="mt-0.5 line-clamp-1 text-sm text-neutral-500">{cleanOneLiner(p.one_liner)}</div>
+                <div className="mt-0.5 line-clamp-1 text-sm text-neutral-500">
+                  {cleanOneLiner(p.one_liner)}
+                </div>
               )}
             </>
           );
@@ -240,7 +248,9 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
                   <PlatformBadges platforms={p.platforms ?? []} />
                 </div>
                 {cleanOneLiner(p.one_liner) && (
-                  <div className="mt-1 line-clamp-2 text-sm text-neutral-500">{cleanOneLiner(p.one_liner)}</div>
+                  <div className="mt-1 line-clamp-2 text-sm text-neutral-500">
+                    {cleanOneLiner(p.one_liner)}
+                  </div>
                 )}
               </div>
               <div className="mt-3 flex items-center gap-4 text-xs">
