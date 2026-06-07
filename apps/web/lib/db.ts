@@ -56,7 +56,7 @@ export async function getTopProjects(limit: number): Promise<ProjectListItem[]> 
 // Platform-segmented queries (home page sections)
 // ---------------------------------------------------------------------------
 
-export type LivePlatform = 'github' | 'hacker_news' | 'product_hunt';
+export type LivePlatform = 'github' | 'hacker_news' | 'product_hunt' | 'youtube';
 
 export interface PlatformTopItem {
   id: string;
@@ -64,10 +64,10 @@ export interface PlatformTopItem {
   name: string;
   one_liner: string | null;
   primary_url: string | null;
-  /** Stars for GitHub, score for HN, upvotes for Product Hunt. Null if no snapshot recorded yet. */
+  /** Stars for GitHub, score for HN, upvotes for PH, views for YouTube. Null if no snapshot recorded yet. */
   metric: number | null;
   /** Human label for the metric. */
-  metric_label: 'stars' | 'score' | 'upvotes';
+  metric_label: 'stars' | 'score' | 'upvotes' | 'views';
 }
 
 /**
@@ -109,6 +109,24 @@ export async function getPlatformTop(
         order by pm.date desc limit 1
       ) latest on true
       order by latest.ph_upvotes desc nulls last, p.created_at desc
+      limit ${limit}
+    `;
+  }
+  if (platform === 'youtube') {
+    // YouTube engagement is stored in raw.snapshot (upvotes=views). A project
+    // can be linked from several videos; take its highest recorded view count.
+    return await sql<PlatformTopItem[]>`
+      select
+        p.id, p.slug, p.name, p.one_liner, p.primary_url,
+        latest.views as metric,
+        'views'::text as metric_label
+      from app.project p
+      join app.identity_link il on il.project_id = p.id and il.platform = 'youtube'
+      left join lateral (
+        select max(s.upvotes) as views from raw.snapshot s
+        where s.project_id = p.id and s.platform = 'youtube'
+      ) latest on true
+      order by latest.views desc nulls last, p.created_at desc
       limit ${limit}
     `;
   }

@@ -17,6 +17,7 @@ export interface HomeData {
   github: { count: number; items: PlatformTopItem[] };
   hackerNews: { count: number; items: PlatformTopItem[] };
   productHunt: { count: number; items: PlatformTopItem[] };
+  youtube: { count: number; items: PlatformTopItem[] };
 }
 
 /**
@@ -92,15 +93,19 @@ export function HomeContent({ data }: { data: HomeData }) {
             viewAllHref="/platform/product_hunt"
           />
 
+          <LivePlatformSection
+            visual={PLATFORM_VISUALS.youtube}
+            count={data.youtube.count}
+            items={data.youtube.items}
+            viewAllHref="/platform/youtube"
+          />
+
           <ComingSoonSection
             visual={PLATFORM_VISUALS.reddit}
             descriptionKey="platform.reddit.description"
           />
 
-          <ComingSoonSection
-            visual={PLATFORM_VISUALS.x}
-            descriptionKey="platform.x.description"
-          />
+          <ComingSoonSection visual={PLATFORM_VISUALS.x} descriptionKey="platform.x.description" />
         </div>
       </section>
     </main>
