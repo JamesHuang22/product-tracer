@@ -77,6 +77,7 @@ export function HomeContent({ data }: { data: HomeData }) {
             visual={PLATFORM_VISUALS.github}
             count={data.github.count}
             items={data.github.items}
+            viewAllHref="/platform/github"
           />
 
           <LivePlatformSection

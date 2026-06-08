@@ -167,11 +167,12 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
           type="text"
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
-          placeholder="Search projects…"
+          placeholder={t('table.search')}
+          aria-label={t('table.search')}
           className="w-full max-w-sm rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm placeholder:text-neutral-400 focus:border-neutral-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900"
         />
-        <div className="text-xs tabular-nums text-neutral-500">
-          {rows.length} of {projects.length}
+        <div className="shrink-0 text-xs tabular-nums text-neutral-500">
+          {t('table.count', { shown: rows.length, total: projects.length })}
         </div>
       </div>
 
@@ -282,7 +283,7 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
 
       {rows.length === 0 && (
         <div className="rounded-lg border border-dashed border-neutral-300 p-8 text-center text-sm text-neutral-500 dark:border-neutral-700">
-          No projects match &ldquo;{filter}&rdquo;.
+          {filter ? t('table.noMatch', { query: filter }) : t('table.empty')}
         </div>
       )}
     </div>

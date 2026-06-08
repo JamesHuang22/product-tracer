@@ -60,6 +60,10 @@ const en: Messages = {
   'table.header.category': 'Category',
   'table.header.stars': 'Stars',
   'table.header.forks': 'Forks',
+  'table.search': 'Search projects…',
+  'table.count': '{shown} of {total}',
+  'table.noMatch': 'No projects match “{query}”.',
+  'table.empty': 'No projects tracked yet.',
 
   'detail.visitSite': 'Visit site',
   'detail.stars': 'stars',
@@ -123,6 +127,10 @@ const zh: Messages = {
   'table.header.category': '分类',
   'table.header.stars': '星标',
   'table.header.forks': '复刻',
+  'table.search': '搜索项目…',
+  'table.count': '{total} 个中显示 {shown} 个',
+  'table.noMatch': '没有匹配 “{query}” 的项目。',
+  'table.empty': '暂无追踪的项目。',
 
   'detail.visitSite': '访问网站',
   'detail.stars': '星标',

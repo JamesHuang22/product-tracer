@@ -1,31 +1,42 @@
-# Frontend Response → Alex / James
+# Frontend Response — Claude Code (Frontend) → Alex
 
-> 状态: ✅ **已完成** — one_liner HTML 实体 + 过长文本修复
+## Task: Frontend UI audit — find, document, fix
 
-## 任务: 详情页 one_liner 显示原始 HTML + 过长文本
+Done. Full audit written to `apps/web/FRONTEND_AUDIT.md`. Walked all five view types
+(`/`, `/projects`, `/projects/[slug]`, `/platform/[platform]` for GH/HN/PH/YT/Reddit/X)
+and cross-checked every string, link, badge, and number against its source.
 
-### 已完成
+### Fixed (4)
 
-1. **新增 helper `cleanOneLiner`** — `apps/web/lib/format.ts`
-   - 解码常见 HTML 实体：`&#x2F;` → `/`，`&quot;` → `"`，`&amp;` → `&`，`&lt;` → `<`，`&gt;` → `>`，`&#39;` → `'`
-   - `trim()` 去掉首尾空白，空字符串返回 `null`
-   - 超过 120 字符截断并补省略号（用 `…` 单字符，末尾再 `trimEnd()` 避免出现「单词 …」前的空格）
+1. **i18n hole — table search placeholder** (`projects-table.tsx`): `"Search projects…"`
+   was hardcoded English. Added `table.search` (en/zh) + an `aria-label` (input had no
+   accessible name).
+2. **i18n hole — result count** (`projects-table.tsx`): `"{n} of {m}"` rendered the
+   English word "of". Added `table.count` key with `{shown}`/`{total}`.
+3. **i18n hole + empty-state bug** (`projects-table.tsx`): no-results message was English
+   and also fired the "No projects match \"\"" nonsense when the list was genuinely empty.
+   Added `table.noMatch` + new `table.empty`, branched on whether a filter is active.
+4. **Nav inconsistency** (`home-content.tsx`): GitHub "View all GitHub projects" linked to
+   `/projects` instead of `/platform/github` like the other four live cards. Pointed it at
+   `/platform/github`.
 
-2. **详情页** — `apps/web/app/projects/[slug]/page.tsx`
-   - `<head>` metadata 的 `description` 用 `cleanOneLiner(project.one_liner)`
-   - 页面正文 one_liner 段落用 `cleanOneLiner(project.one_liner)`（条件判断和显示都走 helper）
+### Confirmed clean
 
-3. **项目表格** — `apps/web/app/projects/projects-table.tsx`
-   - 移动端卡片视图（line-clamp-1）和桌面表格视图（line-clamp-2）两处都改用 `cleanOneLiner(p.one_liner)`
+- No broken links — `/youtube` doesn't exist and nothing references it; the YouTube card
+  correctly uses `/platform/youtube`.
+- `fmtCount` guards all numbers (null → `—`); no raw null/undefined in the UI.
+- All six platform badges/monograms present (table + home + detail).
+- All other i18n keys resolve in both en/zh; dictionaries in lockstep.
+- Server/client split correct; locale toggle has no hydration mismatch.
 
-### 说明
-- **首页** (`apps/web/app/page.tsx` + `components/home-content.tsx`) 经检查并不渲染 `one_liner` 字段（只显示项目名 + 指标），所以无需改动。
-- 全仓 grep 确认已无直接渲染原始 `one_liner` 的地方。
+### Known issues (not fixed — out of frontend scope)
 
-### 验证
-- `npx tsc --noEmit` 通过，无类型错误。
+- YouTube detail sparkline always "Not enough history yet": `app.project_metric` has no
+  YouTube column. Needs a backend metric column.
+- Home rows show a bare metric number (no unit); `metric_label` fetched but unused. Low.
 
-### 改动文件（仅 apps/web/ 下 .ts / .tsx）
-- `apps/web/lib/format.ts`
-- `apps/web/app/projects/[slug]/page.tsx`
-- `apps/web/app/projects/projects-table.tsx`
+### Verification
+
+`tsc --noEmit` passes (clean before and after). Only `apps/web/` files touched:
+`lib/i18n.ts`, `app/projects/projects-table.tsx`, `components/home-content.tsx`,
+plus the new `apps/web/FRONTEND_AUDIT.md`.
