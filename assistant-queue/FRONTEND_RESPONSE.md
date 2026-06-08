@@ -1,42 +1,65 @@
 # Frontend Response — Claude Code (Frontend) → Alex
 
-## Task: Frontend UI audit — find, document, fix
+## Task: Fix YouTube — data shows but not rendering
 
-Done. Full audit written to `apps/web/FRONTEND_AUDIT.md`. Walked all five view types
-(`/`, `/projects`, `/projects/[slug]`, `/platform/[platform]` for GH/HN/PH/YT/Reddit/X)
-and cross-checked every string, link, badge, and number against its source.
+Done. Root cause was a **YouTube-specific data-shape mismatch** in the frontend
+queries, fixed entirely in `apps/web/lib/db.ts`. `pnpm typecheck` passes.
 
-### Fixed (4)
+### Root cause
 
-1. **i18n hole — table search placeholder** (`projects-table.tsx`): `"Search projects…"`
-   was hardcoded English. Added `table.search` (en/zh) + an `aria-label` (input had no
-   accessible name).
-2. **i18n hole — result count** (`projects-table.tsx`): `"{n} of {m}"` rendered the
-   English word "of". Added `table.count` key with `{shown}`/`{total}`.
-3. **i18n hole + empty-state bug** (`projects-table.tsx`): no-results message was English
-   and also fired the "No projects match \"\"" nonsense when the list was genuinely empty.
-   Added `table.noMatch` + new `table.empty`, branched on whether a filter is active.
-4. **Nav inconsistency** (`home-content.tsx`): GitHub "View all GitHub projects" linked to
-   `/projects` instead of `/platform/github` like the other four live cards. Pointed it at
-   `/platform/github`.
+The YouTube collector (`collect-youtube.ts`) writes **one `app.identity_link` per
+`(video, repo)` pair** — `external_id = "{videoId}:{owner/repo}"`. So a project
+showcased in N videos has **N** `platform='youtube'` identity_link rows. Every other
+collector writes ~one link per project, so only YouTube triggered this.
 
-### Confirmed clean
+The frontend queries `join app.identity_link` (an inner join) to scope/identify
+platform projects. With multiple YouTube links per project, that join **multiplied
+rows**, producing:
 
-- No broken links — `/youtube` doesn't exist and nothing references it; the YouTube card
-  correctly uses `/platform/youtube`.
-- `fmtCount` guards all numbers (null → `—`); no raw null/undefined in the UI.
-- All six platform badges/monograms present (table + home + detail).
-- All other i18n keys resolve in both en/zh; dictionaries in lockstep.
-- Server/client split correct; locale toggle has no hydration mismatch.
+1. **Detail page** (`getProjectBySlug`): a YouTube project returned N identical
+   platform rows → the page rendered N duplicate YouTube cards, all with the same
+   `key={snap.platform}` (React duplicate-key warning + broken render).
+2. **Home top list** (`getPlatformTop('youtube')`): the same project repeated in the
+   top-5, with duplicate `key={p.id}`.
+3. **Platform page** (`getPlatformProjects('youtube')`): the same project repeated as
+   multiple table rows.
 
-### Known issues (not fixed — out of frontend scope)
+### Fixes (all in `apps/web/lib/db.ts`)
 
-- YouTube detail sparkline always "Not enough history yet": `app.project_metric` has no
-  YouTube column. Needs a backend metric column.
-- Home rows show a bare metric number (no unit); `metric_label` fetched but unused. Low.
+- **`getProjectBySlug`** — platforms query now uses `select distinct on (il.platform) …
+  order by il.platform, latest.timestamp desc` → exactly one card per platform (keeps
+  the link whose snapshot is newest). Kills the duplicate YouTube cards / duplicate keys.
+- **`getPlatformTop`** (all four branches: github / product_hunt / youtube / hacker_news)
+  — replaced the row-multiplying `join app.identity_link` with a `where exists (…)`
+  semi-join. One row per project. (Also future-proofs HN/PH, where a project can be
+  submitted more than once.)
+- **`getPlatformProjects`** (platform page table) — same `join` → `where exists (…)`
+  semi-join, so each project appears once.
 
-### Verification
+### On the "0 projects tracked" symptom
 
-`tsc --noEmit` passes (clean before and after). Only `apps/web/` files touched:
-`lib/i18n.ts`, `app/projects/projects-table.tsx`, `components/home-content.tsx`,
-plus the new `apps/web/FRONTEND_AUDIT.md`.
+`getPlatformProjectCount('youtube')` already uses `count(distinct project_id)` and reads
+`app.identity_link` directly — that query is correct and unaffected by the join bug. If
+the home card still literally shows **0**, that means there are **no `platform='youtube'`
+rows in `app.identity_link`** — i.e. the collector didn't persist links, or migration
+`0005_youtube_platform.sql` (which adds `'youtube'` to the `identity_link` /
+`raw.snapshot` check constraints) hasn't been applied to the live DB. Both are
+backend/worker/DB concerns **outside `apps/web/`**, so I did not touch them. Flagging for
+the backend agent: confirm 0005 is applied and that `collect-youtube` isn't logging
+`store_video_failed` / constraint violations into `raw.collector_error`.
+
+Once YouTube identity_links exist, the home count, the home top-5 list, the
+`/platform/youtube` table, and YouTube-only project detail pages will all render
+correctly with these fixes (verified by code/data-model tracing; no live DB available in
+this environment).
+
+### Navigation (verified)
+
+YouTube-only projects (no `github` in `platforms`) route to `/projects/[slug]` (internal
+detail), which now shows a single YouTube card with views/likes and a working
+`youtube.com/watch?v=…` link. The home "View all YouTube projects" link points to
+`/platform/youtube` (valid route; there is no `/youtube` route and nothing references one).
+
+### Files touched
+
+`apps/web/lib/db.ts` only. `pnpm --filter @product-tracer/web typecheck` passes.

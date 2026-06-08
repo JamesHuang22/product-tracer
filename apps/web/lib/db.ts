@@ -85,12 +85,15 @@ export async function getPlatformTop(
         latest.stars as metric,
         'stars'::text as metric_label
       from app.project p
-      join app.identity_link il on il.project_id = p.id and il.platform = 'github'
       left join lateral (
         select s.stars from raw.snapshot s
         where s.project_id = p.id and s.platform = 'github'
         order by s.timestamp desc limit 1
       ) latest on true
+      where exists (
+        select 1 from app.identity_link il
+        where il.project_id = p.id and il.platform = 'github'
+      )
       order by latest.stars desc nulls last, p.created_at desc
       limit ${limit}
     `;
@@ -102,12 +105,15 @@ export async function getPlatformTop(
         latest.ph_upvotes as metric,
         'upvotes'::text as metric_label
       from app.project p
-      join app.identity_link il on il.project_id = p.id and il.platform = 'product_hunt'
       left join lateral (
         select pm.ph_upvotes from app.project_metric pm
         where pm.project_id = p.id
         order by pm.date desc limit 1
       ) latest on true
+      where exists (
+        select 1 from app.identity_link il
+        where il.project_id = p.id and il.platform = 'product_hunt'
+      )
       order by latest.ph_upvotes desc nulls last, p.created_at desc
       limit ${limit}
     `;
@@ -121,11 +127,14 @@ export async function getPlatformTop(
         latest.views as metric,
         'views'::text as metric_label
       from app.project p
-      join app.identity_link il on il.project_id = p.id and il.platform = 'youtube'
       left join lateral (
         select max(s.upvotes) as views from raw.snapshot s
         where s.project_id = p.id and s.platform = 'youtube'
       ) latest on true
+      where exists (
+        select 1 from app.identity_link il
+        where il.project_id = p.id and il.platform = 'youtube'
+      )
       order by latest.views desc nulls last, p.created_at desc
       limit ${limit}
     `;
@@ -136,12 +145,15 @@ export async function getPlatformTop(
       latest.upvotes as metric,
       'score'::text as metric_label
     from app.project p
-    join app.identity_link il on il.project_id = p.id and il.platform = 'hacker_news'
     left join lateral (
       select s.upvotes from raw.snapshot s
       where s.project_id = p.id and s.platform = 'hacker_news'
       order by s.timestamp desc limit 1
     ) latest on true
+    where exists (
+      select 1 from app.identity_link il
+      where il.project_id = p.id and il.platform = 'hacker_news'
+    )
     order by latest.upvotes desc nulls last, p.created_at desc
     limit ${limit}
   `;
@@ -181,7 +193,6 @@ export async function getPlatformProjects(platform: string): Promise<ProjectList
         '{}'
       ) as platforms
     from app.project p
-    join app.identity_link il on il.project_id = p.id and il.platform = ${platform}
     left join lateral (
       select s.stars, s.forks
       from raw.snapshot s
@@ -203,6 +214,10 @@ export async function getPlatformProjects(platform: string): Promise<ProjectList
           )
         end as sort_metric
     ) ord on true
+    where exists (
+      select 1 from app.identity_link il
+      where il.project_id = p.id and il.platform = ${platform}
+    )
     order by ord.sort_metric desc nulls last, p.created_at desc
   `;
 }
@@ -275,8 +290,13 @@ export async function getProjectBySlug(slug: string): Promise<ProjectDetail | nu
   `;
   if (!project) return null;
 
+  // A project can carry several identity_links for the same platform — notably
+  // YouTube, which writes one link per (video, repo) pair. Collapse to a single
+  // row per platform (the one whose latest snapshot is newest) so the detail
+  // page renders one card per platform instead of duplicate cards with
+  // duplicate React keys.
   const platforms = await sql<ProjectPlatformSnapshot[]>`
-    select
+    select distinct on (il.platform)
       il.platform,
       il.external_id,
       latest.stars,
@@ -294,7 +314,7 @@ export async function getProjectBySlug(slug: string): Promise<ProjectDetail | nu
       limit 1
     ) latest on true
     where il.project_id = ${project.id}
-    order by il.platform
+    order by il.platform, latest.timestamp desc nulls last
   `;
 
   const metrics = await sql<ProjectMetricPoint[]>`
