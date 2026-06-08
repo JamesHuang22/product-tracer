@@ -1,10 +1,12 @@
 /**
- * Collect recent videos from a curated YouTube channel list, mine their
- * descriptions for the projects they showcase, and store them in Supabase.
- * Built on the official YouTube Data API v3 (read-only).
+ * Collect recent videos from a set of YouTube channels, mine their descriptions
+ * for the projects they showcase, and store them in Supabase. Built on the
+ * official YouTube Data API v3 (read-only).
  *
- * Flow each run (weekly):
- *   1. Build the channel list: config/youtube-channels.json (∪ DEFAULT_CHANNELS)
+ * Flow each run (every 8h):
+ *   1. Build the channel list:
+ *        - OAuth (GOOGLE_OAUTH_TOKEN): the authenticated user's subscriptions
+ *        - API key fallback: config/youtube-channels.json (∪ DEFAULT_CHANNELS)
  *   2. For each channel (sequential, polite delay): pull the latest N videos
  *   3. For each video: extract GitHub repo URLs from the description
  *   4. Match each repo to an existing project (by github primary_url) or create a
@@ -14,12 +16,16 @@
  *      comments=likes) — one snapshot per (video, repo) pair, raw_data carries
  *      the full video + which repo it linked
  *
- * Auth comes from env / GitHub secrets (YOUTUBE_API_KEY). When the key is absent
- * the script logs and exits 0 — so the workflow and local typecheck never
- * hard-fail just because the secret is missing.
+ * Already-seen (video, repo) pairs don't duplicate a project or identity_link
+ * (insert ... on conflict do nothing); snapshots intentionally append each run
+ * so engagement is tracked over time, same as every other collector.
+ *
+ * Auth comes from env / GitHub secrets — GOOGLE_OAUTH_TOKEN (preferred) or
+ * YOUTUBE_API_KEY. When neither is set the script logs and exits 0, so the
+ * workflow and local typecheck never hard-fail just because nothing's configured.
  *
  * Run from repo root: pnpm collect:youtube
- * Production cron: .github/workflows/collect-youtube.yml (weekly)
+ * Production cron: .github/workflows/collect-youtube.yml (every 8h)
  */
 import { readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
@@ -34,7 +40,9 @@ import {
   DEFAULT_CHANNELS,
   YoutubeChannelList,
   getChannelVideos,
+  getSubscribedChannels,
   isAuthConfigured,
+  type YtAuth,
   type YoutubeChannel,
   type YoutubeVideo,
 } from '../collectors/youtube.js';
@@ -45,6 +53,8 @@ const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout
 
 const MAX_VIDEOS_PER_CHANNEL = 10;
 const DELAY_BETWEEN_CHANNELS_MS = 1000;
+/** Cap on subscriptions swept per run (override with YOUTUBE_MAX_CHANNELS). */
+const MAX_CHANNELS = Math.max(1, Number(process.env.YOUTUBE_MAX_CHANNELS) || 100);
 
 /** Read config/youtube-channels.json (relative to this script); fall back to defaults. */
 function loadChannels(): YoutubeChannel[] {
@@ -121,15 +131,55 @@ async function storeVideoRepo(video: YoutubeVideo, ownerRepo: string): Promise<S
   return { matched };
 }
 
-async function main(): Promise<void> {
-  const channels = loadChannels();
-  console.log(`→ ${channels.length} YouTube channels to check.`);
+/**
+ * Resolve auth + channel list. OAuth (GOOGLE_OAUTH_TOKEN) reads the user's live
+ * subscriptions; if that's unavailable or empty we fall back to the static list
+ * (and to the API key for fetching, when one is set).
+ */
+async function resolveSource(): Promise<{ auth: YtAuth; channels: YoutubeChannel[] } | null> {
+  const oauthToken = process.env.GOOGLE_OAUTH_TOKEN;
+  const apiKey = process.env.YOUTUBE_API_KEY;
 
+  if (oauthToken) {
+    let channels: YoutubeChannel[] = [];
+    try {
+      channels = await getSubscribedChannels(oauthToken, MAX_CHANNELS);
+      console.log(`→ ${channels.length} subscribed channels (via OAuth).`);
+    } catch (err) {
+      console.error(`  ✗ could not read subscriptions: ${err instanceof Error ? err.message : err}`);
+    }
+    if (channels.length > 0) return { auth: { kind: 'oauth', accessToken: oauthToken }, channels };
+    // Subscriptions empty/unavailable — fall back to the static list. Prefer the
+    // API key for fetching if present, else reuse the OAuth token.
+    const channelsFallback = loadChannels();
+    console.log(`→ falling back to ${channelsFallback.length} static channels.`);
+    return {
+      auth: apiKey ? { kind: 'apiKey', apiKey } : { kind: 'oauth', accessToken: oauthToken },
+      channels: channelsFallback,
+    };
+  }
+
+  if (apiKey) {
+    const channels = loadChannels();
+    console.log(`→ ${channels.length} static channels (via API key).`);
+    return { auth: { kind: 'apiKey', apiKey }, channels };
+  }
+
+  return null;
+}
+
+async function main(): Promise<void> {
   if (!isAuthConfigured()) {
-    console.log('No YOUTUBE_API_KEY configured. Skipping — nothing collected.');
+    console.log('No GOOGLE_OAUTH_TOKEN or YOUTUBE_API_KEY configured. Skipping — nothing collected.');
     return;
   }
-  const apiKey = process.env.YOUTUBE_API_KEY!;
+
+  const source = await resolveSource();
+  if (!source || source.channels.length === 0) {
+    console.log('No channels resolved. Nothing collected.');
+    return;
+  }
+  const { auth, channels } = source;
 
   let videosSeen = 0;
   let stored = 0;
@@ -141,7 +191,7 @@ async function main(): Promise<void> {
     const channel = channels[i]!;
     const label = channel.name ?? channel.id;
     try {
-      const videos = await getChannelVideos(channel.id, apiKey, MAX_VIDEOS_PER_CHANNEL);
+      const videos = await getChannelVideos(channel.id, auth, MAX_VIDEOS_PER_CHANNEL);
       videosSeen += videos.length;
 
       let channelStored = 0;

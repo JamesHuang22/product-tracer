@@ -5,13 +5,17 @@ import { z } from 'zod';
  * AI projects and indie products, and mines their video descriptions for the
  * projects they point at (GitHub repos first, then any external links).
  *
- * Built on the official YouTube Data API v3 (read-only). A single API key is
- * all that's needed; supply it via env / GitHub secrets:
- *   - YOUTUBE_API_KEY — Google Cloud API key with "YouTube Data API v3" enabled
+ * Built on the official YouTube Data API v3 (read-only). Two auth modes:
+ *   - OAuth 2.0 (preferred) — a user access token (GOOGLE_OAUTH_TOKEN) with the
+ *     `youtube.readonly` scope. Lets us read the authenticated user's *own*
+ *     subscriptions (getSubscribedChannels) so the channel list is dynamic.
+ *   - API key (fallback) — YOUTUBE_API_KEY, a Google Cloud key with "YouTube
+ *     Data API v3" enabled. Can't read `mine=true` subscriptions, so it pairs
+ *     with the static DEFAULT_CHANNELS / config list.
  *
- * The key is never committed. When it's absent the batch script skips cleanly
- * (see collect-youtube.ts), so the workflow and local typecheck never hard-fail
- * just because the secret isn't set.
+ * Neither secret is committed. When both are absent the batch script skips
+ * cleanly (see collect-youtube.ts), so the workflow and local typecheck never
+ * hard-fail just because nothing is configured.
  */
 
 const YT_API = 'https://www.googleapis.com/youtube/v3';
@@ -68,9 +72,17 @@ export type YoutubeVideo = {
 // Auth
 // ---------------------------------------------------------------------------
 
-/** True when a YouTube API key is configured. */
+/**
+ * How a request authenticates to the Data API. OAuth sends a `Bearer` token
+ * (and unlocks `mine=true` subscriptions); an API key is appended as `?key=`.
+ */
+export type YtAuth =
+  | { kind: 'oauth'; accessToken: string }
+  | { kind: 'apiKey'; apiKey: string };
+
+/** True when either an OAuth access token or an API key is configured. */
 export function isAuthConfigured(): boolean {
-  return Boolean(process.env.YOUTUBE_API_KEY);
+  return Boolean(process.env.GOOGLE_OAUTH_TOKEN || process.env.YOUTUBE_API_KEY);
 }
 
 // ---------------------------------------------------------------------------
@@ -141,11 +153,29 @@ export function extractDescriptionUrls(text: string): string[] {
 // Fetch + normalise (YouTube Data API v3)
 // ---------------------------------------------------------------------------
 
-const SearchResponse = z.object({
+/** Channels the authenticated user subscribes to (OAuth `mine=true` only). */
+const SubscriptionsResponse = z.object({
   items: z
     .array(
       z.object({
-        id: z.object({ videoId: z.string().optional() }).optional(),
+        snippet: z
+          .object({
+            title: z.string().default(''),
+            resourceId: z.object({ channelId: z.string().optional() }).default({}),
+          })
+          .default({ title: '', resourceId: {} }),
+      }),
+    )
+    .default([]),
+  nextPageToken: z.string().optional(),
+});
+
+/** A channel's uploads playlist — latest videos, newest first, 1 quota unit. */
+const PlaylistItemsResponse = z.object({
+  items: z
+    .array(
+      z.object({
+        contentDetails: z.object({ videoId: z.string().optional() }).optional(),
       }),
     )
     .default([]),
@@ -176,11 +206,56 @@ const VideosResponse = z.object({
     .default([]),
 });
 
-async function ytFetch(pathAndQuery: string, apiKey: string): Promise<Response> {
-  const sep = pathAndQuery.includes('?') ? '&' : '?';
-  return fetch(`${YT_API}${pathAndQuery}${sep}key=${encodeURIComponent(apiKey)}`, {
-    headers: { Accept: 'application/json', 'User-Agent': 'product-tracer' },
-  });
+async function ytFetch(pathAndQuery: string, auth: YtAuth): Promise<Response> {
+  const headers: Record<string, string> = {
+    Accept: 'application/json',
+    'User-Agent': 'product-tracer',
+  };
+  let url = `${YT_API}${pathAndQuery}`;
+  if (auth.kind === 'oauth') {
+    headers.Authorization = `Bearer ${auth.accessToken}`;
+  } else {
+    const sep = pathAndQuery.includes('?') ? '&' : '?';
+    url += `${sep}key=${encodeURIComponent(auth.apiKey)}`;
+  }
+  return fetch(url, { headers });
+}
+
+/**
+ * The channels the authenticated user subscribes to. OAuth only (the API key
+ * can't resolve `mine=true`). Paginates 50 at a time up to `maxChannels`.
+ */
+export async function getSubscribedChannels(
+  accessToken: string,
+  maxChannels = 100,
+): Promise<YoutubeChannel[]> {
+  const auth: YtAuth = { kind: 'oauth', accessToken };
+  const out: YoutubeChannel[] = [];
+  const seen = new Set<string>();
+  let pageToken: string | undefined;
+  do {
+    const res = await ytFetch(
+      `/subscriptions?part=snippet&mine=true&maxResults=50&order=alphabetical` +
+        (pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ''),
+      auth,
+    );
+    if (!res.ok) {
+      const body = await res.text();
+      throw new Error(
+        `YouTube subscriptions failed: ${res.status} ${res.statusText} — ${body.slice(0, 200)}`,
+      );
+    }
+    const parsed = SubscriptionsResponse.parse(await res.json());
+    for (const item of parsed.items) {
+      const id = item.snippet.resourceId.channelId;
+      if (!id || seen.has(id)) continue;
+      seen.add(id);
+      out.push({ id, name: item.snippet.title || undefined });
+      if (out.length >= maxChannels) return out;
+    }
+    pageToken = parsed.nextPageToken;
+  } while (pageToken);
+  return out;
 }
 
 function toInt(v: string | undefined): number {
@@ -197,37 +272,45 @@ function bestThumbnail(thumbs: Record<string, { url?: string }>): string | null 
   return null;
 }
 
+/** A channel's uploads playlist id is its channel id with "UC" → "UU". */
+function uploadsPlaylistId(channelId: string): string {
+  return channelId.startsWith('UC') ? `UU${channelId.slice(2)}` : channelId;
+}
+
 /**
  * Fetch a channel's most recent videos via the Data API v3.
  *
- * Two calls: search.list (channel's latest video ids, by date) then videos.list
- * (full descriptions + statistics — search snippets truncate the description and
- * omit view/like counts). Returns videos newest-first.
+ * Two calls: playlistItems.list on the channel's uploads playlist (latest video
+ * ids, newest first — 1 quota unit, vs search.list's 100) then videos.list
+ * (full descriptions + statistics). Cheap enough to sweep every subscription
+ * every few hours inside the default 10k-unit/day quota.
  */
 export async function getChannelVideos(
   channelId: string,
-  apiKey: string,
+  auth: YtAuth,
   maxResults = 10,
 ): Promise<YoutubeVideo[]> {
   const n = Math.min(Math.max(maxResults, 1), 50);
-  const searchRes = await ytFetch(
-    `/search?part=id&channelId=${encodeURIComponent(channelId)}` +
-      `&order=date&type=video&maxResults=${n}`,
-    apiKey,
+  const listRes = await ytFetch(
+    `/playlistItems?part=contentDetails` +
+      `&playlistId=${encodeURIComponent(uploadsPlaylistId(channelId))}&maxResults=${n}`,
+    auth,
   );
-  if (!searchRes.ok) {
-    const body = await searchRes.text();
+  if (!listRes.ok) {
+    const body = await listRes.text();
     throw new Error(
-      `YouTube search (${channelId}) failed: ${searchRes.status} ${searchRes.statusText} — ${body.slice(0, 200)}`,
+      `YouTube uploads (${channelId}) failed: ${listRes.status} ${listRes.statusText} — ${body.slice(0, 200)}`,
     );
   }
-  const search = SearchResponse.parse(await searchRes.json());
-  const ids = search.items.map((i) => i.id?.videoId).filter((v): v is string => Boolean(v));
+  const list = PlaylistItemsResponse.parse(await listRes.json());
+  const ids = list.items
+    .map((i) => i.contentDetails?.videoId)
+    .filter((v): v is string => Boolean(v));
   if (ids.length === 0) return [];
 
   const videosRes = await ytFetch(
     `/videos?part=snippet,statistics&id=${ids.map(encodeURIComponent).join(',')}&maxResults=${n}`,
-    apiKey,
+    auth,
   );
   if (!videosRes.ok) {
     const body = await videosRes.text();

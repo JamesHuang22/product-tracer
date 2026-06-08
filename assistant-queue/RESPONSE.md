@@ -1,67 +1,72 @@
 # Assistant Queue — Claude Code → Alex (Backend)
 
-## ✅ YouTube Collector — done
+## ✅ YouTube collector — OAuth + dynamic subscriptions + 8h cron — done
 
-All 7 tasks implemented. Worker + web typecheck both pass. Runs cleanly without
-`YOUTUBE_API_KEY` (graceful skip, exit 0).
+Worker typecheck passes. Graceful skip still works (no auth → logs + exit 0).
+No new dependencies (native `fetch` only), so `--frozen-lockfile` is unaffected.
 
-### Files created
-| File | What |
+### What changed
+| File | Change |
 |---|---|
-| `apps/worker/src/collectors/youtube.ts` | Collector module — `YoutubeVideo` type, `getChannelVideos()`, `extractGithubUrls()`, `extractDescriptionUrls()`, `isAuthConfigured()`, `DEFAULT_CHANNELS`, Zod schemas |
-| `apps/worker/src/scripts/collect-youtube.ts` | Weekly batch script (match repos → projects, write identity_link + snapshot) |
-| `apps/worker/config/youtube-channels.json` | Channel list (5 channels) |
-| `.github/workflows/collect-youtube.yml` | Weekly cron (Mon 08:00 UTC) + manual dispatch |
-| `packages/db/migrations/0005_youtube_platform.sql` | **Required migration** — see note below |
+| `apps/worker/src/collectors/youtube.ts` | New `YtAuth` union (oauth bearer \| api key); `getSubscribedChannels(accessToken, maxChannels=100)` (paginated `subscriptions?mine=true`); `isAuthConfigured()` now true for `GOOGLE_OAUTH_TOKEN` **or** `YOUTUBE_API_KEY`; `getChannelVideos(channelId, auth, …)` re-signed to take `YtAuth`. |
+| `apps/worker/src/scripts/collect-youtube.ts` | New `resolveSource()` — OAuth → live subscriptions; else static list. Loop passes `auth`. `YOUTUBE_MAX_CHANNELS` cap (default 100). |
+| `apps/worker/src/scripts/refresh-google-token.mjs` | **New.** Exchanges refresh token → access token, prints it to stdout. Missing creds → exit 0 (no token); broken creds → exit 1. |
+| `.github/workflows/collect-youtube.yml` | Cron `0 8 * * 1` → `0 */8 * * *`; added a masked OAuth-refresh step that feeds `GOOGLE_OAUTH_TOKEN` into the collector. |
 
-### Files updated
-- `apps/web/lib/db.ts` — `LivePlatform` now includes `'youtube'`; `getPlatformTop('youtube')` branch added (orders by max recorded views); `getPlatformProjects`/`getPlatformProjectCount` already generic over a platform string.
-- `apps/web/app/page.tsx` + `components/home-content.tsx` — YouTube is now a 4th **live** platform card (livePlatforms 3 → 4).
-- `apps/web/components/platform-section.tsx` — `YT` monogram (red-600).
-- `apps/web/app/projects/projects-table.tsx` — `YT` source badge.
-- `apps/web/app/projects/[slug]/page.tsx` — YouTube platform card (views/likes stats) + `View` link reconstructed from `external_id`.
-- `apps/web/app/platform/[platform]/page.tsx` — `/platform/youtube` route enabled.
-- `apps/web/lib/i18n.ts` — `platform.name.youtube`, `detail.views`, `detail.likes` (en + zh); hero/projects subtitles now mention YouTube.
-- `package.json` — `collect:youtube` script.
+### ⚠️ Heads-up #1 — the Gmail refresh token will NOT work as-is (action needed)
+An OAuth refresh token only grants the scopes it was **consented to at mint time**.
+The existing `alexchenog23` token was minted for Gmail scopes only, so it
+**cannot** read YouTube subscriptions — `subscriptions?mine=true` will return
+`403 insufficient scope` (the collector logs it and falls back to the static
+list, so it won't crash, but you won't get dynamic subscriptions).
 
-### ⚠️ Heads-up #1 — a migration WAS needed
-The spec said "no new migration needed", but migration `0001` puts a CHECK
-constraint on `app.identity_link.platform` **and** `raw.snapshot.platform` that
-only allows `github/product_hunt/hacker_news/reddit/x`. Inserting
-`platform='youtube'` would be rejected outright. `0005_youtube_platform.sql`
-widens both constraints (idempotent). **Apply it in the Supabase SQL Editor
-before the collector runs**, or every insert will fail.
+To actually get subscriptions you must **re-consent and mint a NEW refresh token**
+whose scope set includes `https://www.googleapis.com/auth/youtube.readonly`
+(alongside the Gmail scopes if you want one token for both). Use the same OAuth
+client; just add the scope to the consent request and re-authorize. The new
+`refresh_token` is what goes into the `GOOGLE_REFRESH_TOKEN` secret.
 
-### ⚠️ Heads-up #2 — verify channel IDs
-I could not verify the channel IDs against the live API (no key locally). I used
-the IDs from the request verbatim. `Fireship` (`UCsBjURrPoezykLs9EqgamOA`) and
-`Two Minute Papers` (`UCbfYPyITQ-7l4upoX8nWQdQ`) look right; the other three are
-flagged `VERIFY id` in `youtube-channels.json`. A wrong id just yields zero
-videos for that channel (logged via `raw.collector_error`, never fatal).
+### ⚠️ Heads-up #2 — I switched the video fetch off `search.list` (quota)
+The original collector fetched a channel's latest videos via `search.list` =
+**100 quota units per channel**. With "every 8h × all subscriptions × 10 videos"
+that blows the default 10k-unit/day quota almost immediately (≈100 channels =
+one run = whole day's quota, and there are 3 runs/day).
 
-### Design decisions worth a look
-- **GitHub-repo-centric matching.** Per video we extract canonical
-  `github.com/owner/repo` URLs, match each to an existing project by github
-  `primary_url`, else create a new project keyed on `repoSlug(owner/repo)` — the
-  *same* slug the GitHub collector uses, so it adopts/enriches the row on its
-  next run. Videos with **no** GitHub link are skipped (no project to attach to),
-  mirroring the X collector's "needs a URL to mint a project" rule.
-- **One video → many repos.** `identity_link.external_id` is
-  `"{videoId}:{owner/repo}"` so the `(platform, external_id)` unique constraint
-  doesn't collide when a video showcases several repos. The detail page splits on
-  `:` to rebuild the watch URL.
-- **Engagement storage.** `raw.snapshot.upvotes = views`, `comments = likes`;
-  full video JSON (incl. likes/comments/thumbnail/title) in `raw_data`. No new
-  metric columns added (matches "no YouTube-specific metrics"). Home/platform
-  views read views from the snapshot.
-- **Quota.** `search.list` (latest ids) + `videos.list` (full description +
-  stats) per channel, weekly, 10 videos/channel — comfortably inside the default
-  10k-unit/day quota.
+I changed `getChannelVideos` to read the channel's **uploads playlist**
+(`playlistItems.list`, **1 unit**) + `videos.list` (1 unit) = ~2 units/channel.
+That's a 50× reduction and is what makes the 8h cadence over every subscription
+actually viable (100 channels ≈ 200 units/run, ~600/day — well inside quota).
+Implementation note: the uploads playlist id is the channel id with `UC` → `UU`
+(standard for YT channels). Behaviour is otherwise identical (newest-first,
+full description + stats from `videos.list`).
 
-### Verification
-```
-pnpm --filter @product-tracer/worker typecheck   # ✓ pass
-pnpm --filter @product-tracer/web typecheck      # ✓ pass
-```
-Both green. (Note: `pnpm install --frozen-lockfile` was needed first — the
-worker's `agent-twitter-client` dep wasn't present in node_modules.)
+### Dedup — verified
+- `app.project`: `insert … on conflict (slug) do update` — re-seen repos enrich,
+  never duplicate.
+- `app.identity_link`: `on conflict (platform, external_id) do nothing` —
+  `external_id` is `"{videoId}:{owner/repo}"`, so re-processing a video is a
+  no-op.
+- `raw.snapshot`: **intentionally appends** one row per run (no conflict clause)
+  — this is the time-series engagement record, identical to every other
+  collector (github/hn/ph/reddit/x). Re-runs add fresh view/like points, they
+  don't duplicate projects. So "skip already-stored videos" holds for
+  projects/links; snapshots accumulate by design.
+
+### Fallback chain (unchanged failure-safety)
+1. `GOOGLE_OAUTH_TOKEN` set + subscriptions readable → **dynamic** subscriptions.
+2. OAuth token set but subscriptions empty/403 → static `youtube-channels.json`
+   (∪ `DEFAULT_CHANNELS`), fetched with the API key if present, else the token.
+3. Only `YOUTUBE_API_KEY` set → static list (original behaviour).
+4. Neither set → log + exit 0.
+
+### GitHub secrets James needs to add
+| Secret | Source | Notes |
+|---|---|---|
+| `GOOGLE_CLIENT_ID` | gmail-credentials.json | reuse existing OAuth client |
+| `GOOGLE_CLIENT_SECRET` | gmail-credentials.json | |
+| `GOOGLE_REFRESH_TOKEN` | **new** token minted with `youtube.readonly` scope | see Heads-up #1 — the current Gmail-only token won't grant subscriptions |
+| `YOUTUBE_API_KEY` | already set | kept as fallback |
+| `DATABASE_URL` | already set | |
+
+`YOUTUBE_MAX_CHANNELS` (optional repo/Actions var) caps channels swept per run
+(default 100).
