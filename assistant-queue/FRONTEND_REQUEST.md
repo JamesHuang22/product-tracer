@@ -1,64 +1,64 @@
 # Assistant Queue — Alex → Claude Code (Frontend)
 
-## Task: Fix YouTube — home page shows "0 projects tracked" even though data exists
+## Task: Add pagination to /projects page
 
-### Problem
-The home page YouTube section shows "0 projects tracked" / "0 projects" even though the YouTube collector has run successfully. Need to debug and fix.
+### Background
+The `/projects` page shows all projects in a single table. As more collectors come online, this table grows large. Add pagination with configurable page sizes.
 
-### What to check
+### What to build
 
-**1. `getPlatformProjectCount('youtube')` in `lib/db.ts`**
-This SQL counts distinct project_ids from `identity_link WHERE platform='youtube'`. Run it and see what it returns:
-```sql
-select count(distinct project_id)::int as n
-from app.identity_link
-where platform = 'youtube'
+**1. Pagination controls below the table**
+
+Add to `apps/web/app/projects/projects-table.tsx`:
+
+- **Page size selector**: dropdown showing "10 / 50 / 100" options, default 50
+- **Page navigation**: "Prev" / "Next" buttons + "Page X of Y" indicator
+- **Styling**: consistent with existing table design (neutral colors, border, rounded)
+
+**2. Pagination approach**
+
+Use **client-side pagination** (not server-side). The full dataset is already fetched server-side and passed as props. Just add:
+- `useState` for current page and page size
+- Slice `rows` to show only the current page
+- Re-filter/sort integration: pagination resets to page 1 when filter changes
+
+**3. Mobile support**
+
+The mobile card view should also paginate with the same controls.
+
+### i18n strings to add
+
 ```
-If it returns 0, the collector didn't write identity_links.
-
-**2. `getPlatformTop('youtube')` in `lib/db.ts`**
-If identity_links exist but the home page still shows nothing, the SQL might be wrong. The current query:
-```sql
-select
-  p.id, p.slug, p.name, p.one_liner, p.primary_url,
-  latest.views as metric,
-  'views'::text as metric_label
-from app.project p
-join app.identity_link il on il.project_id = p.id and il.platform = 'youtube'
-left join lateral (
-  select max(s.upvotes) as views from raw.snapshot s
-  where s.project_id = p.id and s.platform = 'youtube'
-) latest on true
-order by latest.views desc nulls last, p.created_at desc
+'table.pagination.page': 'Page {current} of {total}'
+'table.pagination.prev': 'Prev'
+'table.pagination.next': 'Next'
+'table.pagination.perPage': '{count} per page'
+'table.pagination.showing': 'Showing {start}–{end} of {total}'
 ```
-Maybe the `upvotes` column in `raw.snapshot` isn't being populated for YouTube rows. Check what the collector writes.
 
-**3. `HomePageData` flow in `page.tsx`**
-Trace from `getHomePageData()` → `HomeContent` props → rendering. Check if the YouTube branch is actually wired into the returned data object.
-
-**4. `HomeContent` component in `home-content.tsx`**
-Check that the YouTube `LivePlatformSection` gets `data.youtube` passed correctly.
-
-### Fix approach
-Whichever the root cause is:
-- Fix the SQL (if query is wrong)
-- Fix the collector data writing (if upvotes/views is null) — but DO NOT touch worker code, only frontend
-- Fix the home page wiring (if the YouTube data isn't being passed)
-
-If the root cause is in the worker/collector (e.g., `raw.snapshot.upvotes` is null for YouTube entries), document this clearly in the RESPONSE so the backend agent can fix it.
+And Chinese translations:
+```
+'table.pagination.page': '第 {current} 页，共 {total} 页'
+'table.pagination.prev': '上一页'
+'table.pagination.next': '下一页'
+'table.pagination.perPage': '每页 {count} 条'
+'table.pagination.showing': '显示 {start}–{end}，共 {total} 条'
+```
 
 ### Files to touch (ONLY apps/web/)
-- `apps/web/lib/db.ts`
-- `apps/web/lib/db.ts` → `getPlatformTop` function
-- `apps/web/app/page.tsx`
-- `apps/web/components/home-content.tsx` — only if rendering is wrong
 
-### DO NOT touch worker/backend code
+- `apps/web/app/projects/projects-table.tsx` — pagination state + controls
+- `apps/web/lib/i18n.ts` — add pagination i18n keys (en + zh)
+
+### DO NOT touch
+- Any file in `apps/worker/`, `packages/`, `.github/workflows/`, migration `.sql`, `research/`
 
 ### Verification
-- After fix, home page YouTube section shows correct count (not 0)
-- YouTube project cards render in the home page
-- Clicking "View all YouTube projects" goes to the correct page
+- Table shows max 50 rows by default
+- Can switch to 10 or 100
+- Pagination resets on filter/search change
+- Mobile card view also paginated
+- `pnpm typecheck` passes
 
 ---
 
