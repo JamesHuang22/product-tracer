@@ -1,45 +1,59 @@
 # Assistant Queue — Claude Code → Alex (Backend)
 
-## ✅ AI integration research — done
+## ✅ LLM integration foundation — done (plumbing only, no features)
 
-Wrote `research-docs/ai-integration.md` (research only — no code, as instructed).
-Covers all 7 ideas + feasibility matrix + phased roadmap + technical
-considerations, grounded in the actual schema and pipeline.
+Worker typecheck passes. Graceful skip verified (no key → log + `null`, **zero
+network calls**). No features implemented, no collectors/scripts/migrations/
+frontend touched.
 
-### Headline finding — the schema already paid for most of the AI foundation
-While reading `0001_init.sql` I found a lot of AI infrastructure already
-**provisioned but unwired**, which changes the effort math:
-- `create extension vector` is **already enabled** (pgvector live on this
-  Supabase project — works on free tier).
-- `app.project_embedding (vector(1536) + HNSW cosine index)` exists with 0 rows /
-  no writer — one embedding backfill powers search + dedup + recommendations.
-- `identity_link.source` already allows `'embedding'` — fuzzy matching was planned.
-- `app.signal` (velocity/cross_platform/founder/alert) + `app.subscriber` +
-  `app.digest_run` all exist with no generator — anomaly + digest are mostly SQL.
-- `project_metric.github_stars_delta_24h` already there → anomaly detection has a
-  ready-made delta column.
+### Files
+| File | What |
+|---|---|
+| `apps/worker/src/lib/llm.ts` | **New.** Reusable OpenAI-compatible LLM client. |
+| `research-docs/llm-integration-foundation.md` | **New.** Model choice + architecture + cost + swap guide. |
+| `apps/worker/package.json` | **Unchanged** — native `fetch` + existing `zod`, no SDK/deps needed. |
 
-### Two constraints I flagged
-1. **`vector(1536)` fixes the embedding family** to OpenAI `text-embedding-3-small`
-   (1536 dims). Any other-dimension model needs a migration. Use 3-small to reuse
-   the table as-is.
-2. **The real gate is LLM/embedding access from the worker** — Actions has no
-   direct key (OpenClaw gateway only). Ideas #1/#2/#3/#5 depend on resolving this;
-   I gave 3 options (gateway as OpenAI-compatible proxy / scoped secret / self-host).
+### Model choice: DeepSeek `deepseek-chat`
+Cheapest viable (~$0.14/$0.28 per 1M in/out), strong **bilingual EN+ZH** (matches
+our i18n), hosted (zero infra, runs from Actions), OpenAI-compatible incl. JSON
+mode, ~1–4s/call (meets <5s). OpenRouter / OpenAI / Haiku all reachable by env
+only (see doc §5).
 
-### Recommended roadmap (short version)
-- **Phase 1 (no LLM access needed, ~$0):** #6 velocity/anomaly signals (pure
-  worker math over `project_metric`) → #4a data-only weekly digest. Ship value
-  before solving the API-access question.
-- **Phase 2 (resolve access; cheap):** #1 semantic search (one embedding backfill
-  ~$0.002 unlocks #1/#3/#5) → #2 LLM categorization → #4b LLM narration.
-- **Phase 3:** #3 fuzzy dedup (needs a reversible merge primitive) → #5
-  personalized recs (gated on a user/auth model that doesn't exist yet).
+### Client surface (`llm.ts`)
+- `isLlmConfigured()` — is `LLM_API_KEY` set.
+- `callLlm(prompt, options?) → LlmResponse | null` — `{content, model, usage}`.
+- `callLlmJson<T>(prompt, zodSchema, options?) → T | null` — JSON mode + zod-validated.
+- `LlmOptions`: `model`, `systemPrompt`, `temperature` (0.2), `maxTokens` (1024),
+  `timeoutMs` (60s), `json`, `signal`.
+- Retries 429/5xx/network/timeout ×3 with exponential backoff; client errors
+  (401/400) fail fast; caller `signal` aborts without retry.
+- Returns `null` (never throws) when unconfigured, so callers degrade gracefully.
 
-### Cross-reference
-I did **not** re-derive idea #2 (categorization) — `research/llm-classification.md`
-already covers provider choice, batching, cost, and gray-zone integration. The new
-doc references it and focuses on the other six ideas + the shared embedding/access
-story. Recurring spend stays single-digit $/month with batching + hash idempotency.
+### Env vars (document only — no real key committed)
+```
+LLM_API_KEY=sk-...                      # James fills in
+LLM_MODEL=deepseek-chat                 # default if unset
+LLM_BASE_URL=https://api.deepseek.com   # default if unset
+```
 
-No schema/code changed.
+### ⚠️ Two heads-up
+1. **Worker needs its own key.** The existing DeepSeek key is in the macOS
+   Keychain via the OpenClaw gateway — **not in the worker env**. Set `LLM_API_KEY`
+   as a local `.env` value + a GitHub secret before any LLM feature runs. Until
+   then everything no-ops cleanly.
+2. **Embeddings are a separate endpoint, not this client.** Semantic search /
+   dedup / recs need `POST /embeddings` — a different API. Also DeepSeek has **no**
+   embeddings endpoint, so those will use OpenAI `text-embedding-3-small` (matches
+   the existing `vector(1536)` column) via a small sibling `embeddings.ts` when
+   that work starts. This client is chat-only by design.
+
+### Note on the shared working tree
+A frontend agent is operating concurrently in this same clone (2 unpushed
+frontend commits were present). To avoid capturing its in-progress work I staged
+**only my backend files** (not `git add -A`): `llm.ts`,
+`llm-integration-foundation.md`, `RESPONSE.md`, and the `REQUEST.md` deletion.
+
+### Verification
+- `pnpm --filter @product-tracer/worker typecheck` ✅
+- No-key smoke test → `null`, no network ✅
+- No API key read/committed; no out-of-scope files touched ✅
