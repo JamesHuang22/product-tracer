@@ -1,6 +1,6 @@
 # Data Sources
 
-> Cron 每小时自动发现。最后更新: 2026-05-28 10:01 PDT
+> Cron 每小时自动发现。最后更新: 2026-06-09 06:01 PDT
 
 ## GitHub Repositories
 
@@ -33,6 +33,7 @@
 | [Lacemakingatmometer593/awesome-ai-startups](https://github.com/Lacemakingatmometer593/awesome-ai-startups) | 0 stars |
 | [hidden-developer/open-product-hunt](https://github.com/hidden-developer/open-product-hunt) | 0 stars |
 | [healertrix/new-40-Glock](https://github.com/healertrix/new-40-Glock) | 0 stars |
+| [lightning1377/smoke-tracker-cloud-dashboard](https://github.com/lightning1377/smoke-tracker-cloud-dashboard) | 0 stars |
 
 ---
 *🤖 product-tracer 数据源探索 · 每小时自动发现*
