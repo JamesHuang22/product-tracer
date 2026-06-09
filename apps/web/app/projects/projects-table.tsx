@@ -8,8 +8,10 @@ import {
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
+  getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
+  type PaginationState,
   type SortingState,
 } from '@tanstack/react-table';
 import { ArrowDown, ArrowUp, ArrowUpDown, GitFork, Star } from 'lucide-react';
@@ -70,6 +72,7 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
   const { t } = useI18n();
   const [sorting, setSorting] = useState<SortingState>([{ id: 'github_stars', desc: true }]);
   const [filter, setFilter] = useState('');
+  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 50 });
 
   const columns = useMemo(
     () => [
@@ -149,15 +152,26 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
   const table = useReactTable({
     data: projects,
     columns,
-    state: { sorting, globalFilter: filter },
+    state: { sorting, globalFilter: filter, pagination },
     onSortingChange: setSorting,
     onGlobalFilterChange: setFilter,
+    onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    // Changing the search filter snaps back to page 1 (tanstack default).
+    autoResetPageIndex: true,
   });
 
+  // `rows` is the current page only; `filteredCount` is the full match count
+  // (across all pages) that drives the count chip, empty state, and pager math.
   const rows = table.getRowModel().rows;
+  const filteredCount = table.getFilteredRowModel().rows.length;
+  const pageCount = table.getPageCount();
+  const { pageIndex, pageSize } = table.getState().pagination;
+  const rangeStart = filteredCount === 0 ? 0 : pageIndex * pageSize + 1;
+  const rangeEnd = Math.min((pageIndex + 1) * pageSize, filteredCount);
   const numeric = (id: string) => id === 'github_stars' || id === 'github_forks';
 
   return (
@@ -172,7 +186,7 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
           className="w-full max-w-sm rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm placeholder:text-neutral-400 focus:border-neutral-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900"
         />
         <div className="shrink-0 text-xs tabular-nums text-neutral-500">
-          {t('table.count', { shown: rows.length, total: projects.length })}
+          {t('table.count', { shown: filteredCount, total: projects.length })}
         </div>
       </div>
 
@@ -281,9 +295,59 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
         })}
       </div>
 
-      {rows.length === 0 && (
+      {filteredCount === 0 && (
         <div className="rounded-lg border border-dashed border-neutral-300 p-8 text-center text-sm text-neutral-500 dark:border-neutral-700">
           {filter ? t('table.noMatch', { query: filter }) : t('table.empty')}
+        </div>
+      )}
+
+      {/* Pagination — applies to both the desktop table and the mobile cards,
+          since both render `rows` (the current page only). */}
+      {filteredCount > 0 && (
+        <div className="mt-4 flex flex-col items-center justify-between gap-3 sm:flex-row">
+          <div className="flex items-center gap-3 text-xs text-neutral-500">
+            <span className="tabular-nums">
+              {t('table.pagination.showing', {
+                start: rangeStart,
+                end: rangeEnd,
+                total: filteredCount,
+              })}
+            </span>
+            <select
+              value={pageSize}
+              onChange={(e) => table.setPageSize(Number(e.target.value))}
+              aria-label={t('table.pagination.perPage', { count: pageSize })}
+              className="rounded-md border border-neutral-300 bg-white px-2 py-1 text-xs focus:border-neutral-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900"
+            >
+              {[10, 50, 100].map((n) => (
+                <option key={n} value={n}>
+                  {t('table.pagination.perPage', { count: n })}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-center gap-2 text-xs">
+            <button
+              type="button"
+              onClick={() => table.previousPage()}
+              disabled={!table.getCanPreviousPage()}
+              className="rounded-md border border-neutral-300 px-2.5 py-1 font-medium transition-colors hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-neutral-700 dark:hover:bg-neutral-900"
+            >
+              {t('table.pagination.prev')}
+            </button>
+            <span className="tabular-nums text-neutral-500">
+              {t('table.pagination.page', { current: pageIndex + 1, total: pageCount })}
+            </span>
+            <button
+              type="button"
+              onClick={() => table.nextPage()}
+              disabled={!table.getCanNextPage()}
+              className="rounded-md border border-neutral-300 px-2.5 py-1 font-medium transition-colors hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-neutral-700 dark:hover:bg-neutral-900"
+            >
+              {t('table.pagination.next')}
+            </button>
+          </div>
         </div>
       )}
     </div>

@@ -64,6 +64,11 @@ const en: Messages = {
   'table.count': '{shown} of {total}',
   'table.noMatch': 'No projects match “{query}”.',
   'table.empty': 'No projects tracked yet.',
+  'table.pagination.page': 'Page {current} of {total}',
+  'table.pagination.prev': 'Prev',
+  'table.pagination.next': 'Next',
+  'table.pagination.perPage': '{count} per page',
+  'table.pagination.showing': 'Showing {start}–{end} of {total}',
 
   'detail.visitSite': 'Visit site',
   'detail.stars': 'stars',
@@ -131,6 +136,11 @@ const zh: Messages = {
   'table.count': '{total} 个中显示 {shown} 个',
   'table.noMatch': '没有匹配 “{query}” 的项目。',
   'table.empty': '暂无追踪的项目。',
+  'table.pagination.page': '第 {current} 页，共 {total} 页',
+  'table.pagination.prev': '上一页',
+  'table.pagination.next': '下一页',
+  'table.pagination.perPage': '每页 {count} 条',
+  'table.pagination.showing': '显示 {start}–{end}，共 {total} 条',
 
   'detail.visitSite': '访问网站',
   'detail.stars': '星标',

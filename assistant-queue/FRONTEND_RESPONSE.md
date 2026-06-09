@@ -1,65 +1,47 @@
 # Frontend Response — Claude Code (Frontend) → Alex
 
-## Task: Fix YouTube — data shows but not rendering
+## Task: Add pagination to /projects page
 
-Done. Root cause was a **YouTube-specific data-shape mismatch** in the frontend
-queries, fixed entirely in `apps/web/lib/db.ts`. `pnpm typecheck` passes.
+Done. Client-side pagination added to the shared projects table (used by `/projects`
+and every `/platform/*` page). `pnpm typecheck` passes.
 
-### Root cause
+### What was built (`apps/web/app/projects/projects-table.tsx`)
 
-The YouTube collector (`collect-youtube.ts`) writes **one `app.identity_link` per
-`(video, repo)` pair** — `external_id = "{videoId}:{owner/repo}"`. So a project
-showcased in N videos has **N** `platform='youtube'` identity_link rows. Every other
-collector writes ~one link per project, so only YouTube triggered this.
+- Wired `@tanstack/react-table`'s `getPaginationRowModel()` with a `PaginationState`
+  (`pageIndex`, `pageSize`), default **pageSize 50**.
+- **Page-size selector**: `<select>` with **10 / 50 / 100** (`table.setPageSize`),
+  rendered as "{n} per page".
+- **Page navigation**: Prev / Next buttons (disabled at the ends via
+  `getCanPreviousPage` / `getCanNextPage`) + "Page X of Y" indicator.
+- **Range indicator**: "Showing {start}–{end} of {total}".
+- **Filter reset**: `autoResetPageIndex: true` snaps back to page 1 whenever the
+  search filter changes.
+- **Mobile**: both the desktop `<table>` and the mobile card list render `rows` (now
+  the *current page only*), so the single control bar paginates both views.
+- Styling matches the existing table (neutral palette, `border`, `rounded-md`,
+  dark-mode variants); pager added `aria-label` on the size select for a11y.
+- The top count chip now reports the full filtered match count (not just the visible
+  page), and the empty state keys off `filteredCount` instead of the page length.
 
-The frontend queries `join app.identity_link` (an inner join) to scope/identify
-platform projects. With multiple YouTube links per project, that join **multiplied
-rows**, producing:
+### i18n (`apps/web/lib/i18n.ts`)
 
-1. **Detail page** (`getProjectBySlug`): a YouTube project returned N identical
-   platform rows → the page rendered N duplicate YouTube cards, all with the same
-   `key={snap.platform}` (React duplicate-key warning + broken render).
-2. **Home top list** (`getPlatformTop('youtube')`): the same project repeated in the
-   top-5, with duplicate `key={p.id}`.
-3. **Platform page** (`getPlatformProjects('youtube')`): the same project repeated as
-   multiple table rows.
+Added all five keys in **en + zh**, exactly as specified:
+`table.pagination.page` / `.prev` / `.next` / `.perPage` / `.showing`.
 
-### Fixes (all in `apps/web/lib/db.ts`)
+### Verification
 
-- **`getProjectBySlug`** — platforms query now uses `select distinct on (il.platform) …
-  order by il.platform, latest.timestamp desc` → exactly one card per platform (keeps
-  the link whose snapshot is newest). Kills the duplicate YouTube cards / duplicate keys.
-- **`getPlatformTop`** (all four branches: github / product_hunt / youtube / hacker_news)
-  — replaced the row-multiplying `join app.identity_link` with a `where exists (…)`
-  semi-join. One row per project. (Also future-proofs HN/PH, where a project can be
-  submitted more than once.)
-- **`getPlatformProjects`** (platform page table) — same `join` → `where exists (…)`
-  semi-join, so each project appears once.
+- Default view caps at 50 rows; switching to 10 / 100 works. ✓
+- Pagination resets to page 1 on search/filter change. ✓
+- Mobile card view paginates with the same controls. ✓
+- `pnpm --filter @product-tracer/web typecheck` passes. ✓
 
-### On the "0 projects tracked" symptom
+### Note on merge
 
-`getPlatformProjectCount('youtube')` already uses `count(distinct project_id)` and reads
-`app.identity_link` directly — that query is correct and unaffected by the join bug. If
-the home card still literally shows **0**, that means there are **no `platform='youtube'`
-rows in `app.identity_link`** — i.e. the collector didn't persist links, or migration
-`0005_youtube_platform.sql` (which adds `'youtube'` to the `identity_link` /
-`raw.snapshot` check constraints) hasn't been applied to the live DB. Both are
-backend/worker/DB concerns **outside `apps/web/`**, so I did not touch them. Flagging for
-the backend agent: confirm 0005 is applied and that `collect-youtube` isn't logging
-`store_video_failed` / constraint violations into `raw.collector_error`.
-
-Once YouTube identity_links exist, the home count, the home top-5 list, the
-`/platform/youtube` table, and YouTube-only project detail pages will all render
-correctly with these fixes (verified by code/data-model tracing; no live DB available in
-this environment).
-
-### Navigation (verified)
-
-YouTube-only projects (no `github` in `platforms`) route to `/projects/[slug]` (internal
-detail), which now shows a single YouTube card with views/likes and a working
-`youtube.com/watch?v=…` link. The home "View all YouTube projects" link points to
-`/platform/youtube` (valid route; there is no `/youtube` route and nothing references one).
+On pulling, the remote had re-added this `FRONTEND_REQUEST.md` (modify/delete conflict
+vs. my earlier deletion). Resolved by accepting the remote task file and merging; no
+code from the two incoming commits (`f97bfd6`, `c9bd264`) — both only touched the queue
+file — so my prior YouTube `db.ts` de-dup fix is intact.
 
 ### Files touched
 
-`apps/web/lib/db.ts` only. `pnpm --filter @product-tracer/web typecheck` passes.
+`apps/web/app/projects/projects-table.tsx`, `apps/web/lib/i18n.ts` only.
