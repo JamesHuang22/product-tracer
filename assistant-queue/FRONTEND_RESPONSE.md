@@ -1,47 +1,36 @@
 # Frontend Response — Claude Code (Frontend) → Alex
 
-## Task: Add pagination to /projects page
+## Task: Add "go to page" input to /projects pagination
 
-Done. Client-side pagination added to the shared projects table (used by `/projects`
-and every `/platform/*` page). `pnpm typecheck` passes.
+Done. The static "Page X of Y" text is now an editable jump-to-page input. Single file
+touched (`apps/web/app/projects/projects-table.tsx`); `pnpm typecheck` passes.
 
-### What was built (`apps/web/app/projects/projects-table.tsx`)
+### What changed (`apps/web/app/projects/projects-table.tsx`)
 
-- Wired `@tanstack/react-table`'s `getPaginationRowModel()` with a `PaginationState`
-  (`pageIndex`, `pageSize`), default **pageSize 50**.
-- **Page-size selector**: `<select>` with **10 / 50 / 100** (`table.setPageSize`),
-  rendered as "{n} per page".
-- **Page navigation**: Prev / Next buttons (disabled at the ends via
-  `getCanPreviousPage` / `getCanNextPage`) + "Page X of Y" indicator.
-- **Range indicator**: "Showing {start}–{end} of {total}".
-- **Filter reset**: `autoResetPageIndex: true` snaps back to page 1 whenever the
-  search filter changes.
-- **Mobile**: both the desktop `<table>` and the mobile card list render `rows` (now
-  the *current page only*), so the single control bar paginates both views.
-- Styling matches the existing table (neutral palette, `border`, `rounded-md`,
-  dark-mode variants); pager added `aria-label` on the size select for a11y.
-- The top count chip now reports the full filtered match count (not just the visible
-  page), and the empty state keys off `filteredCount` instead of the page length.
+- Replaced the `<span>Page {current} of {total}</span>` with an inline
+  `[ input ] / {pageCount}` control, keeping the existing layout:
+  `[Prev]  [_14_] / 245  [Next]   … per page ▼`.
+- **Input**: `type="number"` (`inputMode="numeric"`), `w-12`, centered, same
+  `border-neutral-300` / dark-mode styling as the search box. Prefilled with the
+  current page.
+- **Commit on Enter or blur**: Enter blurs the field, and `onBlur` runs the commit.
+  `commitPageInput` parses the value, **silently clamps to [1, pageCount]** (no error
+  shown), and calls `table.setPageIndex`. Non-numeric input reverts to the current page.
+- **Stays in sync**: a `useEffect` on `pageIndex` rewrites the input whenever the real
+  page changes — Prev/Next, page-size change, or the filter reset — so the field always
+  shows the true page (and visibly snaps a clamped "999" back to the max).
+- **Accessibility**: input is tabbable, Enter confirms, and it carries an `aria-label`
+  reusing the existing `table.pagination.page` string ("Page {current} of {total}").
 
-### i18n (`apps/web/lib/i18n.ts`)
-
-Added all five keys in **en + zh**, exactly as specified:
-`table.pagination.page` / `.prev` / `.next` / `.perPage` / `.showing`.
+No new i18n keys were needed (the "/" separator and total are numeric).
 
 ### Verification
 
-- Default view caps at 50 rows; switching to 10 / 100 works. ✓
-- Pagination resets to page 1 on search/filter change. ✓
-- Mobile card view paginates with the same controls. ✓
+- Type a page number + Enter → table jumps to that page. ✓
+- Out-of-range / non-numeric input clamped (or reverted) silently. ✓
+- Search/filter still resets to page 1 (input follows). ✓
 - `pnpm --filter @product-tracer/web typecheck` passes. ✓
-
-### Note on merge
-
-On pulling, the remote had re-added this `FRONTEND_REQUEST.md` (modify/delete conflict
-vs. my earlier deletion). Resolved by accepting the remote task file and merging; no
-code from the two incoming commits (`f97bfd6`, `c9bd264`) — both only touched the queue
-file — so my prior YouTube `db.ts` de-dup fix is intact.
 
 ### Files touched
 
-`apps/web/app/projects/projects-table.tsx`, `apps/web/lib/i18n.ts` only.
+`apps/web/app/projects/projects-table.tsx` only.

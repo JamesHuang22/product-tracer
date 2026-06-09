@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { Route } from 'next';
 import {
@@ -174,6 +174,25 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
   const rangeEnd = Math.min((pageIndex + 1) * pageSize, filteredCount);
   const numeric = (id: string) => id === 'github_stars' || id === 'github_forks';
 
+  // "Go to page" input. Held as free text while typing, kept in sync with the
+  // real page index (so Prev/Next, page-size changes, and filter resets all
+  // reflect here), and committed on Enter/blur with a silent clamp to [1, N].
+  const [pageInput, setPageInput] = useState(String(pageIndex + 1));
+  useEffect(() => {
+    setPageInput(String(pageIndex + 1));
+  }, [pageIndex]);
+
+  const commitPageInput = () => {
+    const parsed = Number.parseInt(pageInput, 10);
+    if (Number.isNaN(parsed)) {
+      setPageInput(String(pageIndex + 1));
+      return;
+    }
+    const clamped = Math.min(Math.max(parsed, 1), Math.max(pageCount, 1));
+    table.setPageIndex(clamped - 1);
+    setPageInput(String(clamped));
+  };
+
   return (
     <div>
       <div className="mb-4 flex items-center justify-between gap-3">
@@ -336,8 +355,29 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
             >
               {t('table.pagination.prev')}
             </button>
-            <span className="tabular-nums text-neutral-500">
-              {t('table.pagination.page', { current: pageIndex + 1, total: pageCount })}
+            <span className="flex items-center gap-1 tabular-nums text-neutral-500">
+              <input
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={pageCount}
+                value={pageInput}
+                onChange={(e) => setPageInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    e.currentTarget.blur();
+                  }
+                }}
+                onBlur={commitPageInput}
+                aria-label={t('table.pagination.page', {
+                  current: pageIndex + 1,
+                  total: pageCount,
+                })}
+                className="w-12 rounded-md border border-neutral-300 bg-white px-1.5 py-1 text-center text-xs tabular-nums focus:border-neutral-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900"
+              />
+              <span aria-hidden>/</span>
+              <span>{pageCount}</span>
             </span>
             <button
               type="button"
