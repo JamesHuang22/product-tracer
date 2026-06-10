@@ -44,62 +44,23 @@ const RedditListing = z.object({
   }),
 });
 
-const USER_AGENT = 'ProductTracer/1.0';
-
-// Cache the app-only bearer token across calls within a single run.
-let cachedToken: string | null = null;
-
 /**
- * Obtain a Reddit app-only OAuth token (client_credentials grant) when
- * `REDDIT_CLIENT_ID` / `REDDIT_CLIENT_SECRET` are set. Reddit increasingly
- * blocks anonymous JSON from datacenter/cloud IPs (403), so OAuth is the
- * reliable path in CI. Returns null when no creds are configured.
+ * Reddit requires a descriptive, unique User-Agent even for unauthenticated
+ * access; generic UAs get rate-limited / blocked. Overridable via env.
  */
-async function getAppToken(): Promise<string | null> {
-  if (cachedToken) return cachedToken;
-  const id = process.env.REDDIT_CLIENT_ID;
-  const secret = process.env.REDDIT_CLIENT_SECRET;
-  if (!id || !secret) return null;
-
-  const basic = Buffer.from(`${id}:${secret}`).toString('base64');
-  const res = await fetch('https://www.reddit.com/api/v1/access_token', {
-    method: 'POST',
-    headers: {
-      Authorization: `Basic ${basic}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'User-Agent': USER_AGENT,
-    },
-    body: 'grant_type=client_credentials',
-  });
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(
-      `Reddit OAuth token failed: ${res.status} ${res.statusText} — ${body.slice(0, 200)}`,
-    );
-  }
-  const json = (await res.json()) as { access_token?: string };
-  if (!json.access_token) throw new Error('Reddit OAuth token response missing access_token');
-  cachedToken = json.access_token;
-  return cachedToken;
-}
+const USER_AGENT = process.env.REDDIT_USER_AGENT || 'ProductTracer/1.0 (+https://github.com/JamesHuang22/product-tracer)';
 
 /**
- * Fetch the current "hot" listing for a subreddit. Uses app-only OAuth
- * (oauth.reddit.com) when Reddit creds are configured, otherwise falls back to
- * the public JSON endpoint. A descriptive User-Agent is required either way —
- * Reddit rate-limits / blocks generic UAs aggressively.
+ * Fetch the current "hot" listing for a subreddit via Reddit's public JSON
+ * endpoint — no OAuth, no API key (Reddit's "Responsible Builder Policy" blocks
+ * app creation, but `/r/{sub}/hot.json` is still served anonymously, rate
+ * limited to ~60 req/min). A descriptive User-Agent header is required.
  */
 export async function fetchSubredditHot(subreddit: string, limit = 25): Promise<RedditPost[]> {
   const capped = Math.min(Math.max(limit, 1), 100);
-  const token = await getAppToken();
+  const url = `https://www.reddit.com/r/${subreddit}/hot.json?limit=${capped}`;
 
-  const url = token
-    ? `https://oauth.reddit.com/r/${subreddit}/hot?limit=${capped}`
-    : `https://www.reddit.com/r/${subreddit}/hot.json?limit=${capped}`;
-  const headers: Record<string, string> = { 'User-Agent': USER_AGENT };
-  if (token) headers.Authorization = `Bearer ${token}`;
-
-  const res = await fetch(url, { headers });
+  const res = await fetch(url, { headers: { 'User-Agent': USER_AGENT } });
   if (!res.ok) {
     const body = await res.text();
     throw new Error(

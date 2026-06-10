@@ -96,22 +96,24 @@ Index: HNSW on `embedding vector_cosine_ops` for approximate nearest-neighbor.
 
 ### `app.signal`
 
-Surfaced per-project signals — the unit that ends up in the daily digest (PRD §5).
+Trending / growth signals — what's worth attention right now. Written by the
+rule-based engine `apps/worker/src/scripts/run-signals.ts` (migration 0006
+replaced the unused v0.1 digest-era table with this schema).
 
-| Column                | Type           | Notes                                                                 |
-| --------------------- | -------------- | --------------------------------------------------------------------- |
-| `id`                  | `uuid`         | PK                                                                    |
-| `project_id`          | `uuid`         | FK → `app.project(id)` cascade                                        |
-| `type`                | `text`         | `check in ('velocity','cross_platform','founder','alert')`            |
-| `severity`            | `text`         | `check in ('info','notable','high')`, default `info`                  |
-| `score`               | `numeric(5,2)` | ranking score                                                         |
-| `title`               | `text`         |                                                                       |
-| `description`         | `text`         |                                                                       |
-| `linked_snapshot_ids` | `uuid[]`       | array of `raw.snapshot.id`s that evidence the signal                  |
-| `created_at`          | `timestamptz`  |                                                                       |
-| `sent_in_digest_at`   | `timestamptz`  | null = unsent; partial index `signal_unsent_idx` covers this hot path |
+| Column        | Type          | Notes                                                                                                                              |
+| ------------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `id`          | `uuid`        | PK                                                                                                                               |
+| `project_id`  | `uuid`        | FK → `app.project(id)` cascade                                                                                                   |
+| `signal_type` | `text`        | `check in ('github_star_burst','hn_wave','ph_launch_hot','youtube_spike','cross_platform_heat','new_discovery','rising_trend')` |
+| `severity`    | `int`         | `check between 1 and 5`                                                                                                          |
+| `title`       | `text`        | short headline, e.g. `⭐ 340 stars in 24h`                                                                                       |
+| `description` | `text`        | one-liner detail                                                                                                                 |
+| `metadata`    | `jsonb`       | `default '{}'` — `{delta, timeframe_hours, platform_count, ...}`                                                                  |
+| `created_at`  | `timestamptz` | refreshed on each upsert                                                                                                         |
+| `expires_at`  | `timestamptz` | auto-cleanup hint; null = no expiry                                                                                             |
 
-Indexes: `(project_id)`, `(created_at desc)`, partial unsent index.
+Unique `(project_id, signal_type)` — one live signal of each type per project
+(the engine upserts). Indexes: `(project_id)`, `(signal_type)`, `(severity desc)`.
 
 ### `app.subscriber`
 

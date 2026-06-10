@@ -1,5 +1,8 @@
 name: Collect Reddit
 
+# No OAuth — uses Reddit's public JSON endpoint (/r/{sub}/hot.json). Only needs
+# DATABASE_URL; REDDIT_USER_AGENT is optional (a sensible default is built in).
+
 on:
   schedule:
     - cron: '0 2-23/4 * * *'
@@ -19,3 +22,5 @@ jobs:
       - run: pnpm --filter @product-tracer/worker exec tsx src/scripts/collect-reddit.ts
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          # Optional — Reddit asks for a unique UA; falls back to a built-in default.
+          REDDIT_USER_AGENT: ${{ vars.REDDIT_USER_AGENT }}

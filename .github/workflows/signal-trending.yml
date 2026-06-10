@@ -1,0 +1,24 @@
+name: Signal Trending
+
+# Aggregates raw collector data into app.signal (trending/growth signals).
+# Daily at 07:00 UTC — after Data Quality (06:00) and all collectors have run.
+
+on:
+  schedule:
+    - cron: '0 7 * * *' # daily UTC 07:00
+  workflow_dispatch:
+
+jobs:
+  signals:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @product-tracer/worker exec tsx src/scripts/run-signals.ts
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
