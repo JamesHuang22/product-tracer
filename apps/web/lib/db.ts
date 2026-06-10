@@ -52,6 +52,59 @@ export async function getTopProjects(limit: number): Promise<ProjectListItem[]> 
   return rows.slice(0, limit);
 }
 
+/** Total number of tracked projects (home stats bar). */
+export async function getTotalProjectCount(): Promise<number> {
+  const [row] = await sql<{ n: number }[]>`select count(*)::int as n from app.project`;
+  return row?.n ?? 0;
+}
+
+/** Projects created in the last 7 days (home stats bar). */
+export async function getNewThisWeek(): Promise<number> {
+  const [row] = await sql<{ n: number }[]>`
+    select count(*)::int as n
+    from app.project
+    where created_at > now() - interval '7 days'
+  `;
+  return row?.n ?? 0;
+}
+
+/** Count of surfaced signals (home stats bar "Hot Signals"); 0 when none. */
+export async function getActiveSignalCount(): Promise<number> {
+  const [row] = await sql<{ n: number }[]>`select count(*)::int as n from app.signal`;
+  return row?.n ?? 0;
+}
+
+/** Most recently created projects, any platform (home "Latest Activity" feed). */
+export async function getLatestProjects(limit: number): Promise<ProjectListItem[]> {
+  return await sql<ProjectListItem[]>`
+    select
+      p.id,
+      p.slug,
+      p.name,
+      p.one_liner,
+      p.category,
+      p.primary_url,
+      latest.stars as github_stars,
+      latest.forks as github_forks,
+      p.created_at,
+      coalesce(
+        (select array_agg(distinct il.platform)
+         from app.identity_link il where il.project_id = p.id),
+        '{}'
+      ) as platforms
+    from app.project p
+    left join lateral (
+      select s.stars, s.forks
+      from raw.snapshot s
+      where s.project_id = p.id and s.platform = 'github'
+      order by s.timestamp desc
+      limit 1
+    ) latest on true
+    order by p.created_at desc
+    limit ${limit}
+  `;
+}
+
 // ---------------------------------------------------------------------------
 // Platform-segmented queries (home page sections)
 // ---------------------------------------------------------------------------

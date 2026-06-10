@@ -37,6 +37,18 @@ const en: Messages = {
   'byPlatform.title': 'By platform',
   'byPlatform.summary': '{live} live · {soon} coming soon',
 
+  'home.stats.totalProjects': 'Total projects',
+  'home.stats.activePlatforms': 'Active platforms',
+  'home.stats.newThisWeek': 'New this week',
+  'home.stats.hotSignals': 'Hot signals',
+  'home.latest.title': 'Latest activity',
+  'home.latest.subtitle': 'Last {count} projects added',
+  'home.latest.empty': 'No projects yet.',
+  'time.justNow': 'just now',
+  'time.minutesAgo': '{n}m ago',
+  'time.hoursAgo': '{n}h ago',
+  'time.daysAgo': '{n}d ago',
+
   'platform.live': 'Live',
   'platform.comingSoon': 'Coming soon',
   'platform.notYetIntegrated': 'Not yet integrated',
@@ -110,6 +122,18 @@ const zh: Messages = {
 
   'byPlatform.title': '按平台',
   'byPlatform.summary': '{live} 个已上线 · {soon} 个即将上线',
+
+  'home.stats.totalProjects': '项目总数',
+  'home.stats.activePlatforms': '活跃平台',
+  'home.stats.newThisWeek': '本周新增',
+  'home.stats.hotSignals': '热门信号',
+  'home.latest.title': '最新动态',
+  'home.latest.subtitle': '最近新增的 {count} 个项目',
+  'home.latest.empty': '暂无项目。',
+  'time.justNow': '刚刚',
+  'time.minutesAgo': '{n} 分钟前',
+  'time.hoursAgo': '{n} 小时前',
+  'time.daysAgo': '{n} 天前',
 
   'platform.live': '已上线',
   'platform.comingSoon': '即将上线',

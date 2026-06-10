@@ -1,9 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowRight } from 'lucide-react';
-import type { PlatformTopItem } from '@/lib/db';
+import type { Route } from 'next';
+import { Activity, ArrowRight, Boxes, Flame, Radio, Sparkles } from 'lucide-react';
+import type { PlatformTopItem, ProjectListItem } from '@/lib/db';
+import { cleanOneLiner, fmtCount } from '@/lib/format';
 import { useI18n } from '@/lib/i18n-context';
+import type { MessageKey } from '@/lib/i18n';
 import {
   ComingSoonSection,
   LivePlatformSection,
@@ -14,10 +17,105 @@ export interface HomeData {
   totalLive: number;
   livePlatforms: number;
   comingSoon: number;
+  totalProjects: number;
+  newThisWeek: number;
+  hotSignals: number;
+  latest: ProjectListItem[];
   github: { count: number; items: PlatformTopItem[] };
   hackerNews: { count: number; items: PlatformTopItem[] };
   productHunt: { count: number; items: PlatformTopItem[] };
   youtube: { count: number; items: PlatformTopItem[] };
+}
+
+type Translate = (key: MessageKey, params?: Record<string, string | number>) => string;
+
+/** Coarse relative time ("2d ago"), localised. Day granularity is stable across
+ * the SSR→hydration boundary, so no mismatch despite `now` differing by ms. */
+function relativeLabel(value: string, t: Translate): string {
+  const then = new Date(value).getTime();
+  if (!Number.isFinite(then)) return '';
+  const diff = Date.now() - then;
+  const min = Math.floor(diff / 60_000);
+  const hr = Math.floor(min / 60);
+  const day = Math.floor(hr / 24);
+  if (day >= 1) return t('time.daysAgo', { n: day });
+  if (hr >= 1) return t('time.hoursAgo', { n: hr });
+  if (min >= 1) return t('time.minutesAgo', { n: min });
+  return t('time.justNow');
+}
+
+// Short, colour-coded platform chips (mirrors the projects table).
+const PLATFORM_BADGE: Record<string, { label: string; cls: string }> = {
+  github: { label: 'GH', cls: 'bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900' },
+  hacker_news: { label: 'HN', cls: 'bg-orange-500 text-white' },
+  product_hunt: { label: 'PH', cls: 'bg-red-500 text-white' },
+  youtube: { label: 'YT', cls: 'bg-red-600 text-white' },
+  reddit: { label: 'R', cls: 'bg-orange-600 text-white' },
+  x: { label: 'X', cls: 'bg-black text-white dark:bg-white dark:text-black' },
+};
+
+function PlatformBadges({ platforms }: { platforms: string[] }) {
+  if (!platforms || platforms.length === 0) return null;
+  return (
+    <span className="inline-flex gap-1">
+      {platforms.map((p) => {
+        const b = PLATFORM_BADGE[p] ?? { label: p.slice(0, 2).toUpperCase(), cls: 'bg-neutral-400 text-white' };
+        return (
+          <span
+            key={p}
+            className={`inline-flex h-4 min-w-[1rem] items-center justify-center rounded px-1 text-[9px] font-bold ${b.cls}`}
+            title={p}
+          >
+            {b.label}
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
+function StatCard({
+  icon,
+  value,
+  label,
+}: {
+  icon: React.ReactNode;
+  value: string;
+  label: string;
+}) {
+  return (
+    <div className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950">
+      <div className="flex items-center gap-1.5 text-neutral-400">
+        {icon}
+        <span className="text-[11px] font-medium uppercase tracking-wide">{label}</span>
+      </div>
+      <div className="mt-2 text-2xl font-semibold tabular-nums tracking-tight">{value}</div>
+    </div>
+  );
+}
+
+function LatestCard({ project }: { project: ProjectListItem }) {
+  const { t } = useI18n();
+  const oneLiner = cleanOneLiner(project.one_liner);
+  return (
+    <Link
+      href={`/projects/${project.slug}` as Route}
+      className="flex w-60 shrink-0 flex-col rounded-xl border border-neutral-200 bg-white p-4 transition-colors hover:border-neutral-400 dark:border-neutral-800 dark:bg-neutral-950 dark:hover:border-neutral-600"
+    >
+      <div className="flex items-center justify-between gap-2">
+        <span className="truncate text-sm font-medium text-neutral-900 dark:text-neutral-50">
+          {project.name}
+        </span>
+        <PlatformBadges platforms={project.platforms ?? []} />
+      </div>
+      {oneLiner && (
+        <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-neutral-500">{oneLiner}</p>
+      )}
+      <span className="mt-auto pt-3 text-[11px] tabular-nums text-neutral-400">
+        {relativeLabel(project.created_at, t)}
+      </span>
+    </Link>
+  );
 }
 
 /**
@@ -61,6 +159,57 @@ export function HomeContent({ data }: { data: HomeData }) {
             <span className="text-neutral-400">{t('hero.comingSoon')}</span>
           </span>
         </div>
+      </section>
+
+      {/* Stats overview */}
+      <section className="mt-12 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <StatCard
+          icon={<Boxes className="h-3.5 w-3.5" />}
+          value={fmtCount(data.totalProjects)}
+          label={t('home.stats.totalProjects')}
+        />
+        <StatCard
+          icon={<Radio className="h-3.5 w-3.5" />}
+          value={data.livePlatforms.toLocaleString()}
+          label={t('home.stats.activePlatforms')}
+        />
+        <StatCard
+          icon={<Sparkles className="h-3.5 w-3.5" />}
+          value={fmtCount(data.newThisWeek)}
+          label={t('home.stats.newThisWeek')}
+        />
+        <StatCard
+          icon={<Flame className="h-3.5 w-3.5" />}
+          value={fmtCount(data.hotSignals)}
+          label={t('home.stats.hotSignals')}
+        />
+      </section>
+
+      {/* Latest activity */}
+      <section className="mt-12">
+        <div className="mb-4 flex items-baseline justify-between gap-3">
+          <h2 className="inline-flex items-center gap-2 text-xl font-semibold tracking-tight">
+            <Activity className="h-4 w-4 text-emerald-500" />
+            {t('home.latest.title')}
+          </h2>
+          {data.latest.length > 0 && (
+            <span className="text-xs tabular-nums text-neutral-500">
+              {t('home.latest.subtitle', { count: data.latest.length })}
+            </span>
+          )}
+        </div>
+
+        {data.latest.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-neutral-300 p-8 text-center text-sm text-neutral-500 dark:border-neutral-700">
+            {t('home.latest.empty')}
+          </div>
+        ) : (
+          <div className="-mx-6 flex gap-3 overflow-x-auto px-6 pb-2 sm:mx-0 sm:px-0">
+            {data.latest.map((p) => (
+              <LatestCard key={p.id} project={p} />
+            ))}
+          </div>
+        )}
       </section>
 
       {/* Platform sections */}
