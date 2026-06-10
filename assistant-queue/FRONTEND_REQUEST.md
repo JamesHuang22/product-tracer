@@ -1,46 +1,52 @@
 # Assistant Queue — Alex → Claude Code (Frontend)
 
-## Task: Remove Reddit and X "Coming Soon" sections from home page
+## Task 1: Redesign home page — add stats bar + last 10 activity feed
 
 ### Background
-The home page (`apps/web/app/page.tsx` + `apps/web/components/platform-section.tsx` + `apps/web/components/home-content.tsx`) currently shows Reddit and X as "Coming Soon" platform cards. These collectors are not active and the placeholder looks unprofessional. Remove them.
+The home page currently shows 4 platform sections (GitHub/HN/PH/YouTube) but feels sparse and doesn't give an immediate sense of "what's happening." Add a stats overview and a unified "Latest Projects" activity feed above the platform sections.
 
-### What to do
+### What to build
 
-**1. Home page** (`apps/web/app/page.tsx`)
+**1. Stats bar (below hero, above platform sections)**
 
-- Remove the Reddit and X counts from `totalLive` calculation (currently `comingSoon: 2`)
-- Remove the `comingSoon` prop from `<HomeContent>` — it's no longer needed
-- Also update the `livePlatforms` count down from 4 to 4 (it's already correct — just the 4 live ones)
-- Remove `reddit` and `x` imports / references if any
+Add a simple row of stat cards showing:
+- **Total Projects** — total count of all projects in DB
+- **Active Platforms** — count of platforms with live data (4)
+- **New This Week** — projects created in last 7 days (add a `getNewThisWeek()` query)
+- **Hot Signals** — count of active signals (if `app.signal` table has data; otherwise show 0)
 
-**2. Home content component** (`apps/web/components/home-content.tsx` — likely named)
+Each card: small icon + number + label. Same design language as the existing cards (neutral bg, subtle border, rounded).
 
-- Find and remove the section that renders "Coming Soon" cards for Reddit and X
-- If there's a separate rendering path that checks `data.reddit` or `data.x`, remove those checks
-- Make sure the platform section grid doesn't have Reddit/X gaps
+**2. "Latest Projects" section**
 
-**3. i18n** (`apps/web/lib/i18n.ts`)
+Between the stats bar and platform sections, add a "Latest Activity" section showing the **last 10 projects** created (any platform), as a simple horizontal scroll or compact grid of cards.
 
-- Remove the `'platform.name.reddit'` and `'platform.name.x'` translation keys IF they only existed for the Coming Soon section
-- Keep them if they're used elsewhere (e.g. /projects table platform badges)
+Each card shows:
+- Project name
+- Platform badges (which platforms it's on)
+- One_liner (truncated)
+- Created date (relative, e.g. "2d ago")
 
-**4. Platform page** (`apps/web/app/platform/[platform]/page.tsx`)
+**3. DB query additions** (`apps/web/lib/db.ts`)
 
-- The `PLATFORMS` array includes `'reddit'` and `'x'` — leave those, they're for direct URL access (we still have the data model, just no active collector). Only remove the home page sections.
+Add two new functions:
+- `getNewThisWeek(): Promise<number>` — count of projects with created_at > now() - 7 days
+- `getLatestProjects(limit: number): Promise<ProjectListItem[]>` — recent projects ordered by created_at desc
+
+Both should be simple SQL queries following the existing pattern.
 
 ### Files to touch (ONLY apps/web/)
-- `apps/web/app/page.tsx` — remove comingSoon, adjust counts
-- `apps/web/components/home-content.tsx` — remove Coming Soon card rendering
-- `apps/web/lib/i18n.ts` — maybe, if keys are removable
+- `apps/web/app/page.tsx` — add new data fetches, pass to HomeContent
+- `apps/web/components/home-content.tsx` — add stats bar + Latest Activity section
+- `apps/web/lib/db.ts` — add `getNewThisWeek()` and `getLatestProjects()`
 
 ### DO NOT touch
 - Any file in `apps/worker/`, `packages/`, `.github/workflows/`, migration `.sql`, `research/`
 
 ### Verification
-- Home page no longer shows "Coming Soon" for Reddit or X
-- Layout is clean — no empty gaps where the sections were
-- `/platform/reddit` and `/platform/x` URLs still work (they should — collectors may come later)
+- Stats bar shows real numbers
+- Latest Activity shows last 10 projects
+- Layout is clean and responsive on mobile
 - `pnpm typecheck` passes
 
 ---
