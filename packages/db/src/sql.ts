@@ -24,6 +24,13 @@ export function createSqlClient(): SqlClient {
   if (!url) {
     throw new Error('Missing DATABASE_URL. Check .env (Supabase → Connect → Session pooler URI).');
   }
-  g.__ptSql = postgres(url, { ssl: 'require', prepare: false, max: 1 });
+  g.__ptSql = postgres(url, {
+    ssl: 'require',
+    prepare: false,
+    max: 2,
+    max_lifetime: 60,         // recycle connections after 60s to avoid stale sockets
+    idle_timeout: 10,         // close idle connections after 10s
+    connect_timeout: 10,      // fail fast if Supabase is unreachable
+  });
   return g.__ptSql;
 }
