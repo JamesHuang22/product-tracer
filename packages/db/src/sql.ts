@@ -11,11 +11,19 @@ export type SqlClient = Sql;
  *
  * `prepare: false` keeps it compatible with both the Supabase session and
  * transaction poolers.
+ *
+ * For Vercel serverless: connections are cached in globalThis so each cold
+ * instance creates at most one connection. Without this, every invocation
+ * opens a new socket, exhausting the pool under traffic.
  */
+const g = globalThis as unknown as { __ptSql?: SqlClient };
+
 export function createSqlClient(): SqlClient {
+  if (g.__ptSql) return g.__ptSql;
   const url = process.env.DATABASE_URL;
   if (!url) {
     throw new Error('Missing DATABASE_URL. Check .env (Supabase → Connect → Session pooler URI).');
   }
-  return postgres(url, { ssl: 'require', prepare: false });
+  g.__ptSql = postgres(url, { ssl: 'require', prepare: false, max: 1 });
+  return g.__ptSql;
 }
