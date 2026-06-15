@@ -11,7 +11,7 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 export const metadata: Metadata = {
   title: 'Product Tracer — Cross-platform indie product signals',
   description:
-    'Daily intelligence on indie products gaining traction across GitHub, Product Hunt, Hacker News, Reddit, and X.',
+    'Daily intelligence on indie products gaining traction across GitHub, Hacker News, Product Hunt, and YouTube.',
 };
 
 export default async function RootLayout({

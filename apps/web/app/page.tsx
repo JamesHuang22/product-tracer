@@ -48,7 +48,6 @@ export default async function HomePage() {
       data={{
         totalLive,
         livePlatforms: 4,
-        comingSoon: 2,
         totalProjects,
         newThisWeek,
         hotSignals,

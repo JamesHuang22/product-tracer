@@ -7,16 +7,19 @@ import type { PlatformTopItem, ProjectListItem } from '@/lib/db';
 import { cleanOneLiner, fmtCount } from '@/lib/format';
 import { useI18n } from '@/lib/i18n-context';
 import type { MessageKey } from '@/lib/i18n';
-import {
-  ComingSoonSection,
-  LivePlatformSection,
-  PLATFORM_VISUALS,
-} from '@/components/platform-section';
+import { LivePlatformSection, Monogram, PLATFORM_VISUALS } from '@/components/platform-section';
+
+/** The four integrated sources, in display order — drives the hero chips. */
+const LIVE_PLATFORMS = [
+  PLATFORM_VISUALS.github,
+  PLATFORM_VISUALS.hacker_news,
+  PLATFORM_VISUALS.product_hunt,
+  PLATFORM_VISUALS.youtube,
+];
 
 export interface HomeData {
   totalLive: number;
   livePlatforms: number;
-  comingSoon: number;
   totalProjects: number;
   newThisWeek: number;
   hotSignals: number;
@@ -154,10 +157,23 @@ export function HomeContent({ data }: { data: HomeData }) {
             {t('hero.browseAll')}
             <ArrowRight className="h-3.5 w-3.5" />
           </Link>
-          <span className="text-sm text-neutral-500">
-            {t('hero.dailyEmail')} &middot;{' '}
-            <span className="text-neutral-400">{t('hero.comingSoon')}</span>
+          <span className="text-sm text-neutral-500">{t('hero.dailyEmail')}</span>
+        </div>
+
+        {/* Coverage at a glance — the four integrated sources. */}
+        <div className="mt-8 flex flex-wrap items-center gap-2">
+          <span className="mr-1 text-[11px] font-medium uppercase tracking-wide text-neutral-400">
+            {t('home.sources.label')}
           </span>
+          {LIVE_PLATFORMS.map((v) => (
+            <span
+              key={v.name}
+              className="inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white py-1 pl-1 pr-3 text-xs font-medium text-neutral-700 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-300"
+            >
+              <Monogram visual={v} size="sm" />
+              {v.name}
+            </span>
+          ))}
         </div>
       </section>
 
@@ -217,11 +233,11 @@ export function HomeContent({ data }: { data: HomeData }) {
         <div className="mb-6 flex items-baseline justify-between">
           <h2 className="text-xl font-semibold tracking-tight">{t('byPlatform.title')}</h2>
           <span className="text-xs tabular-nums text-neutral-500">
-            {t('byPlatform.summary', { live: data.livePlatforms, soon: data.comingSoon })}
+            {t('byPlatform.summary', { live: data.livePlatforms })}
           </span>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <LivePlatformSection
             visual={PLATFORM_VISUALS.github}
             count={data.github.count}
@@ -249,13 +265,6 @@ export function HomeContent({ data }: { data: HomeData }) {
             items={data.youtube.items}
             viewAllHref="/platform/youtube"
           />
-
-          <ComingSoonSection
-            visual={PLATFORM_VISUALS.reddit}
-            descriptionKey="platform.reddit.description"
-          />
-
-          <ComingSoonSection visual={PLATFORM_VISUALS.x} descriptionKey="platform.x.description" />
         </div>
       </section>
     </main>
