@@ -1,66 +1,48 @@
-# CRITICAL: Fix Vercel deployment — site is completely down
+# Task: LLM Classification Pipeline — activate AI features
 
 ## Context
-The product-tracer Vercel deployment at https://product-tracer.vercel.app is DOWN.
-- Serverless functions timeout (HTTP 000 / 10s+ hang)
-- Vercel project: product-tracer (team: jameshuangs-projects)
-- Working deployment: commit `5a12625` (23h ago, manually deployed via Vercel UI)
-- Blocked deployments: 3+ newer commits stuck as "Blocked" in Vercel
-- Root cause: Git Integration not properly connected. Vercel shows "1/5 Connect Git Repository" — GitHub auto-deploy is broken.
-- Second problem: DB connection exhaustion (postgres connection pool in serverless)
+James added `LLM_API_KEY` (DeepSeek) to GitHub secrets. The LLM client (`apps/worker/src/lib/llm.ts`) is already built and tested — it's plumbing-only, no features write to it yet.
 
-## What you must do
+## What to do
 
-### 1. Install and use Vercel MCP
-Claude Code needs the Vercel MCP tool to deploy:
-```
-npx @anthropic/mcp-vercel
-```
-Or if not available, use Vercel CLI:
-```
-npm install -g vercel
-```
+### 1. Create LLM classification script
+Write `apps/worker/src/scripts/llm-classify.ts`:
+- Query `app.project` for projects where:
+  - `data_quality_score` is between 15–39 (the "gray zone" — rule classifier marked as uncertain)
+  - `status = 'active'` (not already noise)
+  - Not yet classified by LLM (add a column or use a tracking table)
+- Batch up to 20 projects per LLM call
+- Call `callLlm()` from the existing client with a prompt like:
+  ```
+  Given these project names and descriptions, classify each as:
+  - status: "active" (genuine product/dev tool) or "noise" (spam/placeholder/duplicate)
+  - category: one of [ai/ml, devtool, saas, open-source, design, data, security, productivity, other]
+  - confidence: 1-5 (5 = very confident)
+  
+  Input: JSON array of {id, name, description}
+  Output: JSON array of {id, status, category, confidence}
+  ```
+- Update `app.project` table: set `data_quality_score` override or `status` to noise
+- Log to console: count classified, noise found, cost estimate (token usage)
 
-### 2. Fix Git Integration
-Connect Vercel to GitHub repo `JamesHuang22/product-tracer`:
-- Use `vercel git connect` or Vercel API to link the repo
-- Author: jameshuang22 / ZhiyuHuang23
-- Make sure new pushes to `main` trigger auto-deployment
+### 2. Create LLM classification workflow
+Write `.github/workflows/llm-classify.yml`:
+- Schedule: daily at 06:30 UTC (after `data-quality.yml` at 06:00)
+- Trigger: manual too (`workflow_dispatch`)
+- Environment: `LLM_API_KEY` from GitHub secrets
+- Job: run the script via pnpm
 
-### 3. Check Environment Variables
-Verify in Vercel Dashboard (or via CLI `vercel env ls`):
-- `DATABASE_URL` — MUST be Supabase transaction pooler (port 6543), NOT session pooler (port 5432)
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY`
+### 3. DO NOT touch
+- `apps/web/` — frontend is off-limits
+- `assistant-queue/` — those files are for me
+- Any existing collectors or workflows
 
-### 4. Redeploy Latest Code
-The latest main commit (`ca3f9b1`) has the postgres connection fix already merged.
-Deploy it:
-```
-vercel --prod --confirm
-```
-
-### 5. Verify Site Works
-After deployment:
-```
-curl -sI https://product-tracer.vercel.app
-curl -sI https://product-tracer.vercel.app/projects
-```
-Both should return HTTP 200 within 3 seconds.
-
-### 6. If Still Broken — Check Logs
-```
-vercel logs product-tracer.vercel.app
-```
-Look for the actual error causing 500/timout.
-
-### CRITICAL: Do NOT modify any source code
-This is purely a deployment/infrastructure issue. The code is fine.
-Do NOT change `apps/web/`, `apps/worker/`, `packages/`, or any `.ts`/`.tsx` files.
-Only use Vercel CLI/MCP to configure and deploy.
-
-### DO NOT touch my assistant-queue/ files — those are for me.
+### 4. After completion
+Write RESPONSE.md summarizing what was created:
+- File list
+- How it works
+- How to verify
+- Token cost estimate per run
 
 ---
 
