@@ -27,15 +27,15 @@ const en: Messages = {
   'hero.titleLead': 'for ',
   'hero.titleAccent': 'indie products.',
   'hero.subtitle':
-    'Daily intelligence on what’s gaining traction across GitHub, Hacker News, Product Hunt, YouTube, Reddit, and X — surfaced into a 5-minute morning read.',
+    'Daily intelligence on what’s gaining traction across GitHub, Hacker News, Product Hunt, and YouTube — surfaced into a 5-minute morning read.',
   'hero.browseAll': 'Browse all projects',
   'hero.dailyEmail': 'Daily email digest',
-  'hero.comingSoon': 'coming soon',
+  'home.sources.label': 'Tracking across',
 
   'nav.projects': 'Projects',
 
   'byPlatform.title': 'By platform',
-  'byPlatform.summary': '{live} live · {soon} coming soon',
+  'byPlatform.summary': '{live} active sources',
 
   'home.stats.totalProjects': 'Total projects',
   'home.stats.activePlatforms': 'Active platforms',
@@ -55,6 +55,9 @@ const en: Messages = {
   'platform.projectsTracked': '{count} projects tracked',
   'platform.oneProject': '1 project tracked',
   'platform.viewAll': 'View all {platform} projects',
+  'platform.topProjects': 'Top projects',
+  'platform.rankedBy': 'by {metric}',
+  'platform.empty': 'No projects yet',
   'platform.reddit.description':
     'r/SideProject, r/indiehackers, r/SaaS — early discovery and community signal.',
   'platform.x.description':
@@ -113,15 +116,15 @@ const zh: Messages = {
   'hero.titleLead': '',
   'hero.titleAccent': '发现独立产品',
   'hero.subtitle':
-    '每日洞察 GitHub、Hacker News、Product Hunt、YouTube、Reddit 和 X 上正在增长的热门项目，浓缩成 5 分钟晨间阅读。',
+    '每日洞察 GitHub、Hacker News、Product Hunt 和 YouTube 上正在增长的热门项目，浓缩成 5 分钟晨间阅读。',
   'hero.browseAll': '浏览所有项目',
   'hero.dailyEmail': '每日邮件摘要',
-  'hero.comingSoon': '即将上线',
+  'home.sources.label': '覆盖平台',
 
   'nav.projects': '项目',
 
   'byPlatform.title': '按平台',
-  'byPlatform.summary': '{live} 个已上线 · {soon} 个即将上线',
+  'byPlatform.summary': '{live} 个活跃来源',
 
   'home.stats.totalProjects': '项目总数',
   'home.stats.activePlatforms': '活跃平台',
@@ -141,6 +144,9 @@ const zh: Messages = {
   'platform.projectsTracked': '已追踪 {count} 个项目',
   'platform.oneProject': '已追踪 1 个项目',
   'platform.viewAll': '查看全部 {platform} 项目',
+  'platform.topProjects': '热门项目',
+  'platform.rankedBy': '按{metric}',
+  'platform.empty': '暂无项目',
   'platform.reddit.description': 'r/SideProject、r/indiehackers、r/SaaS —— 早期发现与社区信号。',
   'platform.x.description': '带有增长数据的创始人推文 —— 关注精选名单，而非信息洪流。',
 

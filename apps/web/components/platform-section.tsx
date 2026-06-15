@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import type { Route } from 'next';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, ArrowUpRight } from 'lucide-react';
 import type { PlatformTopItem } from '@/lib/db';
 import { fmtCount } from '@/lib/format';
 import { useI18n } from '@/lib/i18n-context';
@@ -59,15 +59,25 @@ export const PLATFORM_VISUALS = {
 // Shared bits
 // ---------------------------------------------------------------------------
 
-function Monogram({ visual }: { visual: PlatformVisual }) {
+/** Brand monogram badge. `sm` is used inline (e.g. hero source chips). */
+export function Monogram({ visual, size = 'md' }: { visual: PlatformVisual; size?: 'sm' | 'md' }) {
+  const dims = size === 'sm' ? 'h-5 w-5 rounded text-[9px]' : 'h-7 w-7 rounded-md text-[10px]';
   return (
     <span
-      className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[10px] font-bold tracking-tight ${visual.monogramBg} ${visual.monogramFg}`}
+      className={`inline-flex shrink-0 items-center justify-center font-bold tracking-tight ${dims} ${visual.monogramBg} ${visual.monogramFg}`}
     >
       {visual.monogram}
     </span>
   );
 }
+
+/** Maps a platform's raw metric label to a localised unit word. */
+const METRIC_UNIT_KEY: Record<string, MessageKey> = {
+  stars: 'detail.stars',
+  score: 'detail.points',
+  upvotes: 'detail.upvotes',
+  views: 'detail.views',
+};
 
 function StatusBadge({ live }: { live: boolean }) {
   const { t } = useI18n();
@@ -104,8 +114,9 @@ export function LivePlatformSection({
   viewAllHref?: Route;
 }) {
   const { t } = useI18n();
+  const unitLabel = items[0] ? t(METRIC_UNIT_KEY[items[0].metric_label] ?? 'detail.stars') : null;
   return (
-    <section className="flex h-full flex-col rounded-xl border border-neutral-200 bg-white p-5 transition-colors dark:border-neutral-800 dark:bg-neutral-950">
+    <section className="flex h-full flex-col rounded-xl border border-neutral-200 bg-white p-5 transition-colors hover:border-neutral-300 dark:border-neutral-800 dark:bg-neutral-950 dark:hover:border-neutral-700">
       <header className="mb-4 flex items-start justify-between gap-3">
         <div className="flex items-center gap-2.5">
           <Monogram visual={visual} />
@@ -121,26 +132,38 @@ export function LivePlatformSection({
         <StatusBadge live />
       </header>
 
-      <ol className="-mx-1 space-y-0.5">
-        {items.map((p, i) => (
-          <li key={p.id}>
-            {p.primary_url ? (
-              <a
-                href={p.primary_url}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-baseline gap-2 rounded-md px-1 py-1.5 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-900"
-              >
-                <RowContent item={p} index={i} />
-              </a>
-            ) : (
-              <div className="flex items-baseline gap-2 px-1 py-1.5">
-                <RowContent item={p} index={i} />
-              </div>
-            )}
-          </li>
-        ))}
-      </ol>
+      {items.length > 0 ? (
+        <>
+          <div className="mb-1.5 flex items-center justify-between px-1 text-[10px] font-medium uppercase tracking-wide text-neutral-400">
+            <span>{t('platform.topProjects')}</span>
+            {unitLabel && <span>{t('platform.rankedBy', { metric: unitLabel })}</span>}
+          </div>
+          <ol className="-mx-1 space-y-0.5">
+            {items.map((p, i) => (
+              <li key={p.id}>
+                {p.primary_url ? (
+                  <a
+                    href={p.primary_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="group flex items-baseline gap-2 rounded-md px-1 py-1.5 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-900"
+                  >
+                    <RowContent item={p} index={i} />
+                    <ArrowUpRight className="h-3 w-3 shrink-0 self-center text-neutral-300 opacity-0 transition-opacity group-hover:opacity-100 dark:text-neutral-600" />
+                  </a>
+                ) : (
+                  <div className="flex items-baseline gap-2 px-1 py-1.5">
+                    <RowContent item={p} index={i} />
+                    <span className="h-3 w-3 shrink-0" aria-hidden />
+                  </div>
+                )}
+              </li>
+            ))}
+          </ol>
+        </>
+      ) : (
+        <p className="px-1 py-1.5 text-xs text-neutral-400">{t('platform.empty')}</p>
+      )}
 
       <footer className="mt-4 border-t border-neutral-200 pt-3 dark:border-neutral-800">
         <Link
