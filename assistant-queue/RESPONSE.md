@@ -1,92 +1,84 @@
-# Assistant Queue — Claude Code → Alex (Backend)
+# Response: LLM Classification Pipeline ✅
 
-## Task 1: Growth-signal / trending engine — ✅ done
+Built and committed. The DeepSeek LLM is now wired to a real feature — it re-examines
+the rule classifier's uncertain "gray zone" and confirms/rescues projects.
 
-Worker typecheck passes. Safe on empty data (every rule returns no rows → 0 signals).
+## Files created / changed
 
-### Files
 | File | What |
-|---|---|
-| `packages/db/migrations/0006_signals.sql` | New `app.signal` table (trending schema). |
-| `apps/worker/src/scripts/run-signals.ts` | New rule-based engine, 7 signal types. |
-| `.github/workflows/signal-trending.yml` | New — daily 07:00 UTC (after data-quality 06:00). |
-| `packages/db/SCHEMA.md` | Updated the `app.signal` section to the new schema. |
+|------|------|
+| `apps/worker/src/scripts/llm-classify.ts` | **New.** The classification script. |
+| `.github/workflows/llm-classify.yml` | **New.** Daily cron at 06:30 UTC + manual dispatch. |
+| `packages/db/migrations/0007_llm_classification.sql` | **New.** Adds LLM-tracking columns (idempotent). |
+| `apps/worker/package.json` | Added `llm:classify` script. |
 
-### ⚠️ Heads-up #1 — `app.signal` ALREADY existed (0001); 0006 replaces it
-Migration 0001 created an `app.signal` table for the old v0.1 digest design
-(`type` / `severity text` / `score` / `linked_snapshot_ids` / `sent_in_digest_at`).
-A repo-wide search found **no code reads or writes it** — it was schema-only. So a
-bare `create table app.signal` would have failed. `0006` does
-`drop table if exists app.signal cascade` then recreates with the trending
-schema. Safe: nothing references it (`digest_run` keeps signal ids as a plain
-`uuid[]`, not a FK). **You must run 0006 in the Supabase SQL Editor** before the
-engine works.
+Untouched, as instructed: `apps/web/`, existing collectors/workflows, `assistant-queue/README.md`, `FRONTEND_RESPONSE.md`.
 
-### Notes
-- **Added `unique (project_id, signal_type)`** (not in your SQL spec) — required to
-  honor "upsert by project_id + signal_type". One live signal of each type per
-  project; re-runs refresh severity/title/`created_at`.
-- **Implemented all 7 enum types**: the 6 in your rules table **plus
-  `youtube_spike`** (views grew >50% in 24h AND Δ>1000) since the enum lists it
-  and YouTube data flows. Easy to drop if unwanted.
-- `metadata jsonb not null default '{}'`; `expires_at = created_at + 3 days`;
-  stale rows (>3 days) deleted at the start of each run.
-- "Update the migration index in packages/db/migrations/" — there is **no index
-  file** there (just numbered `.sql` + `.gitkeep`). I updated `packages/db/SCHEMA.md`
-  instead (the actual schema doc). Say the word if you meant something else.
-- Rules use precomputed `project_metric.github_stars_delta_24h` for the burst /
-  rising-trend signals, and latest-2-snapshot deltas for youtube_spike. All
-  set-based (no N+1).
+## How it works
 
----
+1. **Find candidates.** Pulls every project that isn't `dead` and hasn't been LLM-classified
+   yet (`llm_classified_at is null`). Recomputes each one's quality score with the *same*
+   `assessProject()` the rule pass uses, then keeps only the **gray zone: score 15–39**.
+2. **Classify in batches of 20.** Each batch is one DeepSeek call (`callLlm`, JSON mode) asking
+   for `{id, status, category, confidence}` per project. Response is JSON-parsed and zod-validated;
+   unknown categories collapse to `other`, confidence is clamped to 1–5.
+3. **Apply the verdict.** Every examined project is stamped with `llm_status`, `llm_category`,
+   `llm_confidence`, `llm_classified_at` (so it's never re-sent). When the model is confident
+   (`confidence >= 3`) the rule `status` is updated:
+   - `noise` verdict on an `active` project → **demote** to `noise`
+   - `active` verdict on a `noise` project → **rescue** back to `active`
+   - Category is back-filled only when the project had none (never clobbers existing data).
+4. **Report.** Logs counts + token usage and writes a summary row to
+   `raw.collector_error` (`platform='llm'`, `error_type='llm_classify_report'`) — same
+   observability channel the quality pass uses.
 
-## Task 2: Reddit no-OAuth refactor — ✅ code done, ⚠️ endpoint is 403-blocked
+Graceful no-op if `LLM_API_KEY` is unset (mirrors the collectors' auth pattern).
 
-Rewrote `collectors/reddit.ts` to use the public JSON endpoint only (OAuth
-removed). Same exports (`RedditPost`, `fetchSubredditHot`, `isNoisePost`,
-`postSlug`, `DEFAULT_SUBREDDITS`) → `collect-reddit.ts` needed **no change**.
-Worker typecheck passes.
+## ⚠️ Two deviations from the request (and why)
 
-### Files
-| File | What |
-|---|---|
-| `apps/worker/src/collectors/reddit.ts` | Removed `getAppToken`/OAuth; plain fetch to `/r/{sub}/hot.json`; `REDDIT_USER_AGENT` env (default built-in). |
-| `.github/workflows/collect-reddit.yml` | Documented no-OAuth; added optional `REDDIT_USER_AGENT` (no OAuth secrets were present to remove). |
+The request assumed a persisted `data_quality_score` column and a `status='active'` filter.
+Neither matches the real schema/pipeline, so I adapted:
 
-### 🛑 Heads-up #2 — live test: Reddit returns **403 Blocked** without auth
-I verified against the live API and **every** unauthenticated variant 403s from
-this machine:
-- `www.reddit.com/r/{sub}/hot.json`, `old.reddit.com/...`, `api.reddit.com/...`,
-  `/r/{sub}.json`, `?raw_json=1`
-- with UA = `ProductTracer/1.0`, a full browser UA, **and** a descriptive
-  `research-bot ... (contact: …)` UA.
+1. **`data_quality_score` doesn't exist.** The rule classifier computes the 0–100 score
+   *in-memory* and only persists `status`. So I recompute the score with `assessProject()`
+   rather than reading a column. No behavior lost.
+2. **Gray zone is `active` *or* `noise`, not just `active`.** By the time this runs (06:30,
+   after data-quality at 06:00), the rule pass has already demoted the *entire* gray zone to
+   `noise`. Filtering to `active` only would make the script a permanent no-op. So it considers
+   both — letting the LLM **rescue** genuine products the rules wrongly demoted *and* confirm
+   real noise. If you'd rather it only demote (never rescue), say so and I'll narrow it.
 
-All return Reddit's network-level `403 Blocked` HTML page. This matches the
-**warning in the code I just removed**: Reddit blocks anonymous JSON from
-datacenter/cloud IPs (and is now clamping residential too). **GitHub Actions
-runners are datacenter IPs, so this collector will almost certainly 403 in CI.**
+## How to verify
 
-The rewrite is exactly what was requested and is ready the moment unauthenticated
-access works, but as of testing it does **not** return data. Options to actually
-collect Reddit again:
-1. Route through a residential/proxy egress for the fetch.
-2. Reinstate app-only OAuth (the blocker was app *creation* under the Responsible
-   Builder Policy — if an app can be created, `oauth.reddit.com` is far more
-   reliable than anonymous JSON; the old code path did this).
-3. Accept Reddit as best-effort and let the collector log `403` to
-   `raw.collector_error` (current behavior — it won't crash the pipeline).
+1. **Apply the migration** (Supabase → SQL Editor → paste `0007_llm_classification.sql` → Run).
+   It's idempotent. *(Required before first run — the script reads/writes the new columns.)*
+2. **Confirm the secret** `LLM_API_KEY` is set (it is). Optionally `LLM_MODEL` / `LLM_BASE_URL`.
+3. **Trigger manually:** GitHub → Actions → *LLM Classify* → *Run workflow*. Or locally with a
+   filled `.env`: `pnpm --filter @product-tracer/worker llm:classify`.
+4. **Check the log line:** `✓ Classified N/M: X demoted, Y rescued, Z low-confidence. Tokens in/out …`
+5. **Inspect results:**
+   ```sql
+   select llm_status, llm_category, llm_confidence, count(*)
+   from app.project where llm_classified_at is not null
+   group by 1,2,3 order by 4 desc;
 
-Your call on direction — I implemented the no-OAuth path as asked and flagged the
-reality rather than reporting a false success.
+   select payload from raw.collector_error
+   where platform='llm' order by occurred_at desc limit 1;
+   ```
 
----
+`pnpm --filter @product-tracer/worker typecheck` passes. A local end-to-end run wasn't possible
+here (no local DB creds; the LLM key lives only in GitHub secrets) — the workflow dispatch above
+is the smoke test.
 
-### Verification summary
-- `pnpm --filter @product-tracer/worker typecheck` ✅ (both tasks)
-- Signal engine: safe-on-empty by construction; SQL is set-based, idempotent upsert.
-- Reddit: code path exercised live → 403 from this IP (see Heads-up #2).
+## Token cost estimate per run
 
-### Shared-tree note
-A frontend agent is operating concurrently in this clone. I staged **only my
-backend files** (not `git add -A`): the two migrations/scripts/workflows above,
-`reddit.ts`, `SCHEMA.md`, `RESPONSE.md`, and the `REQUEST.md` deletion.
+DeepSeek `deepseek-chat` list price: **$0.14 / 1M input, $0.28 / 1M output** (cache-miss).
+
+- Prompt ≈ system + instructions + 20 projects of `{id,name,description}` ≈ **~1.5–2.5K input tokens/batch**.
+- Output ≈ 20 compact verdicts ≈ **~600–900 output tokens/batch**.
+- Per batch ≈ `2K×0.14 + 0.8K×0.28` per 1M ≈ **~$0.0005** (~0.05¢).
+- A typical gray zone of a few hundred projects (≈10–25 batches) on the **first** run ≈ **$0.005–$0.02**.
+- Steady state: only *newly-collected* gray-zone projects each day → usually **a handful of batches, well under a cent**.
+
+Real per-run usage is logged (`prompt_tokens` / `completion_tokens` / `est_cost_usd`) in the
+`raw.collector_error` summary so you can track actuals.

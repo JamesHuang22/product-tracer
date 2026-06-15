@@ -7,6 +7,7 @@
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
     "quality:check": "tsx src/scripts/run-quality-check.ts",
+    "llm:classify": "tsx src/scripts/llm-classify.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

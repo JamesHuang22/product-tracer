@@ -1,0 +1,25 @@
+name: LLM Classify
+
+on:
+  schedule:
+    - cron: '30 6 * * *' # daily UTC 06:30 — after data-quality.yml at 06:00
+  workflow_dispatch:
+
+jobs:
+  classify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @product-tracer/worker exec tsx src/scripts/llm-classify.ts
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          # Optional overrides — defaults: deepseek-chat @ api.deepseek.com
+          LLM_MODEL: ${{ secrets.LLM_MODEL }}
+          LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
