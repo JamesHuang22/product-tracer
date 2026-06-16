@@ -11,13 +11,15 @@ import {
   getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
+  type ColumnFiltersState,
   type PaginationState,
   type SortingState,
 } from '@tanstack/react-table';
 import { ArrowDown, ArrowUp, ArrowUpDown, GitFork, Star } from 'lucide-react';
-import type { ProjectListItem } from '@/lib/db';
+import { LLM_CATEGORIES, type ProjectListItem } from '@/lib/db';
 import { fmtCount, cleanOneLiner } from '@/lib/format';
 import { useI18n } from '@/lib/i18n-context';
+import { CategoryBadge } from '@/components/category-badge';
 
 const ch = createColumnHelper<ProjectListItem>();
 
@@ -72,7 +74,17 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
   const { t } = useI18n();
   const [sorting, setSorting] = useState<SortingState>([{ id: 'github_stars', desc: true }]);
   const [filter, setFilter] = useState('');
+  const [category, setCategory] = useState('');
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 50 });
+
+  // Category dropdown drives an exact-match column filter on `llm_category`.
+  // Empty string = "All". Going through tanstack's filter pipeline means the
+  // count chip, empty state, and pager all stay in sync, and autoResetPageIndex
+  // snaps back to page 1 on change.
+  const columnFilters = useMemo<ColumnFiltersState>(
+    () => (category ? [{ id: 'llm_category', value: category }] : []),
+    [category],
+  );
 
   const columns = useMemo(
     () => [
@@ -112,18 +124,18 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
           );
         },
       }),
-      ch.accessor('category', {
+      ch.accessor('llm_category', {
         header: t('table.header.category'),
         cell: (info) => {
           const v = info.getValue();
           return v ? (
-            <span className="inline-flex items-center rounded-md bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
-              {v}
-            </span>
+            <CategoryBadge category={v} />
           ) : (
             <span className="text-neutral-400">—</span>
           );
         },
+        enableSorting: false,
+        filterFn: 'equalsString',
       }),
       ch.display({
         id: 'source',
@@ -152,7 +164,7 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
   const table = useReactTable({
     data: projects,
     columns,
-    state: { sorting, globalFilter: filter, pagination },
+    state: { sorting, globalFilter: filter, columnFilters, pagination },
     onSortingChange: setSorting,
     onGlobalFilterChange: setFilter,
     onPaginationChange: setPagination,
@@ -195,15 +207,30 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <input
-          type="text"
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          placeholder={t('table.search')}
-          aria-label={t('table.search')}
-          className="w-full max-w-sm rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm placeholder:text-neutral-400 focus:border-neutral-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900"
-        />
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-1 items-center gap-2">
+          <input
+            type="text"
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            placeholder={t('table.search')}
+            aria-label={t('table.search')}
+            className="w-full max-w-sm rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm placeholder:text-neutral-400 focus:border-neutral-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900"
+          />
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            aria-label={t('table.filter.category')}
+            className="shrink-0 rounded-md border border-neutral-300 bg-white px-2.5 py-1.5 text-sm focus:border-neutral-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900"
+          >
+            <option value="">{t('table.filter.allCategories')}</option>
+            {LLM_CATEGORIES.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        </div>
         <div className="shrink-0 text-xs tabular-nums text-neutral-500">
           {t('table.count', { shown: filteredCount, total: projects.length })}
         </div>
@@ -288,11 +315,7 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
                 )}
               </div>
               <div className="mt-3 flex items-center gap-4 text-xs">
-                {p.category && (
-                  <span className="rounded-md bg-neutral-100 px-2 py-0.5 font-medium text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300">
-                    {p.category}
-                  </span>
-                )}
+                {p.llm_category && <CategoryBadge category={p.llm_category} />}
                 <span className="inline-flex items-center gap-1 tabular-nums text-neutral-600 dark:text-neutral-400">
                   <Star className="h-3 w-3" /> {fmtCount(p.github_stars)}
                 </span>

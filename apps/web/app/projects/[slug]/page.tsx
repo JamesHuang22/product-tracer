@@ -11,6 +11,7 @@ import {
 } from '@/lib/db';
 import { fmtCount, cleanOneLiner } from '@/lib/format';
 import { translate, DEFAULT_LOCALE, isLocale, LOCALE_COOKIE } from '@/lib/i18n';
+import { CategoryBadge } from '@/components/category-badge';
 
 // Live data — reflect the latest collector run on every request.
 export const dynamic = 'force-dynamic';
@@ -291,11 +292,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       <header className="mt-6">
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-3xl font-semibold tracking-tight">{project.name}</h1>
-          {project.category && (
-            <span className="inline-flex items-center rounded-md bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
-              {project.category}
-            </span>
-          )}
+          <CategoryBadge category={project.llm_category} />
         </div>
         {cleanOneLiner(project.one_liner) && (
           <p className="mt-3 max-w-2xl text-lg leading-relaxed text-neutral-600 dark:text-neutral-400">

@@ -8,6 +8,7 @@ import { cleanOneLiner, fmtCount } from '@/lib/format';
 import { useI18n } from '@/lib/i18n-context';
 import type { MessageKey } from '@/lib/i18n';
 import { LivePlatformSection, Monogram, PLATFORM_VISUALS } from '@/components/platform-section';
+import { CategoryBadge } from '@/components/category-badge';
 
 /** The four integrated sources, in display order — drives the hero chips. */
 const LIVE_PLATFORMS = [
@@ -114,9 +115,17 @@ function LatestCard({ project }: { project: ProjectListItem }) {
       {oneLiner && (
         <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-neutral-500">{oneLiner}</p>
       )}
-      <span className="mt-auto pt-3 text-[11px] tabular-nums text-neutral-400">
-        {relativeLabel(project.created_at, t)}
-      </span>
+      <div className="mt-auto flex items-center justify-between gap-2 pt-3">
+        <span className="text-[11px] tabular-nums text-neutral-400">
+          {relativeLabel(project.created_at, t)}
+        </span>
+        {project.llm_category && (
+          <CategoryBadge
+            category={project.llm_category}
+            className="px-1.5 py-0 text-[10px]"
+          />
+        )}
+      </div>
     </Link>
   );
 }

@@ -4,12 +4,32 @@ import { createSqlClient, type SqlClient } from '@product-tracer/db';
 const g = globalThis as unknown as { _ptSql?: SqlClient };
 export const sql: SqlClient = g._ptSql ?? (g._ptSql = createSqlClient());
 
+/**
+ * Canonical LLM category vocabulary (mirrors apps/worker's classifier output).
+ * Drives the /projects category filter and badge labels.
+ */
+export const LLM_CATEGORIES = [
+  'ai/ml',
+  'devtool',
+  'saas',
+  'open-source',
+  'design',
+  'data',
+  'security',
+  'productivity',
+  'other',
+] as const;
+
+export type LlmCategory = (typeof LLM_CATEGORIES)[number];
+
 export interface ProjectListItem {
   id: string;
   slug: string;
   name: string;
   one_liner: string | null;
   category: string | null;
+  /** AI-classified category (app.project.llm_category); null until classified. */
+  llm_category: string | null;
   primary_url: string | null;
   github_stars: number | null;
   github_forks: number | null;
@@ -26,6 +46,7 @@ export async function getAllProjects(): Promise<ProjectListItem[]> {
       p.name,
       p.one_liner,
       p.category,
+      p.llm_category,
       p.primary_url,
       latest.stars as github_stars,
       latest.forks as github_forks,
@@ -44,6 +65,48 @@ export async function getAllProjects(): Promise<ProjectListItem[]> {
       limit 1
     ) latest on true
     order by latest.stars desc nulls last, p.created_at desc
+  `;
+}
+
+/**
+ * Projects in a single LLM category, in the same shape and order as
+ * getAllProjects. Optional limit/offset for server-side pagination; omitted by
+ * default since the /projects table paginates client-side.
+ */
+export async function getProjectsByCategory(
+  category: string,
+  limit?: number,
+  offset?: number,
+): Promise<ProjectListItem[]> {
+  return await sql<ProjectListItem[]>`
+    select
+      p.id,
+      p.slug,
+      p.name,
+      p.one_liner,
+      p.category,
+      p.llm_category,
+      p.primary_url,
+      latest.stars as github_stars,
+      latest.forks as github_forks,
+      p.created_at,
+      coalesce(
+        (select array_agg(distinct il.platform)
+         from app.identity_link il where il.project_id = p.id),
+        '{}'
+      ) as platforms
+    from app.project p
+    left join lateral (
+      select s.stars, s.forks
+      from raw.snapshot s
+      where s.project_id = p.id and s.platform = 'github'
+      order by s.timestamp desc
+      limit 1
+    ) latest on true
+    where p.llm_category = ${category}
+    order by latest.stars desc nulls last, p.created_at desc
+    limit ${limit ?? null}
+    offset ${offset ?? 0}
   `;
 }
 
@@ -83,6 +146,7 @@ export async function getLatestProjects(limit: number): Promise<ProjectListItem[
       p.name,
       p.one_liner,
       p.category,
+      p.llm_category,
       p.primary_url,
       latest.stars as github_stars,
       latest.forks as github_forks,
@@ -236,6 +300,7 @@ export async function getPlatformProjects(platform: string): Promise<ProjectList
       p.name,
       p.one_liner,
       p.category,
+      p.llm_category,
       p.primary_url,
       gh.stars as github_stars,
       gh.forks as github_forks,
@@ -310,6 +375,7 @@ export interface ProjectDetail {
   name: string;
   one_liner: string | null;
   category: string | null;
+  llm_category: string | null;
   primary_url: string | null;
   created_at: string; // YYYY-MM-DD
   platforms: ProjectPlatformSnapshot[];
@@ -330,12 +396,13 @@ export async function getProjectBySlug(slug: string): Promise<ProjectDetail | nu
       name: string;
       one_liner: string | null;
       category: string | null;
+      llm_category: string | null;
       primary_url: string | null;
       created_at: string;
     }[]
   >`
     select
-      p.id, p.slug, p.name, p.one_liner, p.category, p.primary_url,
+      p.id, p.slug, p.name, p.one_liner, p.category, p.llm_category, p.primary_url,
       to_char(p.created_at, 'YYYY-MM-DD') as created_at
     from app.project p
     where p.slug = ${slug}
