@@ -1,4 +1,4 @@
-import type { LlmCategory } from '@/lib/db';
+import type { LlmCategory } from '@/lib/categories';
 
 /**
  * Subtle, muted per-category tints for the AI-classified `llm_category`.

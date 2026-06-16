@@ -4,23 +4,9 @@ import { createSqlClient, type SqlClient } from '@product-tracer/db';
 const g = globalThis as unknown as { _ptSql?: SqlClient };
 export const sql: SqlClient = g._ptSql ?? (g._ptSql = createSqlClient());
 
-/**
- * Canonical LLM category vocabulary (mirrors apps/worker's classifier output).
- * Drives the /projects category filter and badge labels.
- */
-export const LLM_CATEGORIES = [
-  'ai/ml',
-  'devtool',
-  'saas',
-  'open-source',
-  'design',
-  'data',
-  'security',
-  'productivity',
-  'other',
-] as const;
-
-export type LlmCategory = (typeof LLM_CATEGORIES)[number];
+// Re-exported for convenience; defined in a DB-free module so client
+// components can import the values without bundling the postgres driver.
+export { LLM_CATEGORIES, type LlmCategory } from './categories';
 
 export interface ProjectListItem {
   id: string;

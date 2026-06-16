@@ -16,7 +16,8 @@ import {
   type SortingState,
 } from '@tanstack/react-table';
 import { ArrowDown, ArrowUp, ArrowUpDown, GitFork, Star } from 'lucide-react';
-import { LLM_CATEGORIES, type ProjectListItem } from '@/lib/db';
+import type { ProjectListItem } from '@/lib/db';
+import { LLM_CATEGORIES } from '@/lib/categories';
 import { fmtCount, cleanOneLiner } from '@/lib/format';
 import { useI18n } from '@/lib/i18n-context';
 import { CategoryBadge } from '@/components/category-badge';
