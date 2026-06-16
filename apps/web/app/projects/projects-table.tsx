@@ -17,7 +17,7 @@ import {
 } from '@tanstack/react-table';
 import { ArrowDown, ArrowUp, ArrowUpDown, GitFork, Star } from 'lucide-react';
 import type { ProjectListItem } from '@/lib/db';
-import { LLM_CATEGORIES } from '@/lib/categories';
+import { LLM_CATEGORIES, formatCategory } from '@/lib/categories';
 import { fmtCount, cleanOneLiner } from '@/lib/format';
 import { useI18n } from '@/lib/i18n-context';
 import { CategoryBadge } from '@/components/category-badge';
@@ -227,7 +227,7 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
             <option value="">{t('table.filter.allCategories')}</option>
             {LLM_CATEGORIES.map((c) => (
               <option key={c} value={c}>
-                {c}
+                {formatCategory(c)}
               </option>
             ))}
           </select>
