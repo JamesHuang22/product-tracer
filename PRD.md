@@ -19,6 +19,13 @@
 
 **v0.1 → v0.2 主要改动**: 见 git 历史 / v0.2 文档。
 
+**v0.3 → v0.4 (2026-06-16) 主要改动**:
+- **LLM 分类上线**: DeepSeek 驱动的灰色地带自动分类（migration 0007），日成本 ~$0.0015
+- **Vercel 部署修复**: Node 22 锁定 + session pooler :5432 + Git identity 修复
+- **前端分类筛选**: /projects 页面新增 category filter dropdown + badges
+- **Agent 架构定型**: 前端 agent + 后端 agent 并行, 30min 轮询, PR→Vercel✅ → merge 工作流
+- **多源首页**: 4 平台 sections + stats bar + Latest Activity 卡片
+
 ---
 
 ## 1. Problem & Target User
