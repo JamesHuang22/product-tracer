@@ -2,7 +2,26 @@ import { createSqlClient, type SqlClient } from '@product-tracer/db';
 
 // One Postgres connection per process; HMR-safe via globalThis.
 const g = globalThis as unknown as { _ptSql?: SqlClient };
-export const sql: SqlClient = g._ptSql ?? (g._ptSql = createSqlClient());
+
+function getSql(): SqlClient {
+  return g._ptSql ?? (g._ptSql = createSqlClient());
+}
+
+// Lazy client. Every page is `force-dynamic`, so the DB is only needed at
+// request time — never at build. Constructing the connection eagerly here made
+// `next build` "collect page data" import this module and throw whenever
+// DATABASE_URL was absent (e.g. Vercel Preview envs). This proxy defers
+// createSqlClient() until the first tagged-template call or property access.
+export const sql: SqlClient = new Proxy(function () {} as unknown as SqlClient, {
+  apply(_target, thisArg, args: unknown[]) {
+    return (getSql() as unknown as (...a: unknown[]) => unknown).apply(thisArg, args);
+  },
+  get(_target, prop, receiver) {
+    const client = getSql();
+    const value = Reflect.get(client as object, prop, receiver);
+    return typeof value === 'function' ? value.bind(client) : value;
+  },
+}) as SqlClient;
 
 // Re-exported for convenience; defined in a DB-free module so client
 // components can import the values without bundling the postgres driver.
