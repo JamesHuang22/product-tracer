@@ -1,4 +1,4 @@
-import type { LlmCategory } from '@/lib/categories';
+import { formatCategory, type LlmCategory } from '@/lib/categories';
 
 /**
  * Subtle, muted per-category tints for the AI-classified `llm_category`.
@@ -33,12 +33,13 @@ export function CategoryBadge({
 }) {
   if (!category) return null;
   const cls = CATEGORY_STYLE[category as LlmCategory] ?? NEUTRAL;
+  const label = formatCategory(category);
   return (
     <span
       className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${cls} ${className}`}
-      title={category}
+      title={label}
     >
-      {category}
+      {label}
     </span>
   );
 }

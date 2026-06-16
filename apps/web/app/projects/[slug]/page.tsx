@@ -294,11 +294,6 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           <h1 className="text-3xl font-semibold tracking-tight">{project.name}</h1>
           <CategoryBadge category={project.llm_category} />
         </div>
-        {cleanOneLiner(project.one_liner) && (
-          <p className="mt-3 max-w-2xl text-lg leading-relaxed text-neutral-600 dark:text-neutral-400">
-            {cleanOneLiner(project.one_liner)}
-          </p>
-        )}
         <div className="mt-5 flex flex-wrap items-center gap-3 text-sm">
           {project.primary_url && (
             <a
