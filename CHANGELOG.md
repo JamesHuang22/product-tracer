@@ -5,6 +5,7 @@
 
 ## 2026-06-16
 
+- **feat(worker)**: YouTube Insights pipeline — LLM (DeepSeek) extracts trends/topics/tools/sentiment/key-insight/relevance per new video into `app.video_insight` (migration 0008, daily 05:00 UTC); adds `scripts/youtube-reauth.sh` to re-mint a revoked `GOOGLE_REFRESH_TOKEN`
 - **PR #19** — feat(web): drop detail one-liner, format ai/ml category as AI/ML
 - **PR #18** — feat(web): surface LLM classification — category filter & badges
 - **chore**: Git identity globally set to JamesHuang22 (fix Vercel block on new commits)

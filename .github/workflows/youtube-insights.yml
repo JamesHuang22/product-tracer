@@ -1,0 +1,65 @@
+name: YouTube Insights
+
+# Watches the authenticated user's YouTube subscriptions and runs an LLM
+# (DeepSeek) pass over each NEW video to extract structured insight — trends,
+# topics, tools mentioned, sentiment, a key takeaway, and a relevance score —
+# stored in app.video_insight. Runs daily at 05:00 UTC (before data-quality at
+# 06:00). Same OAuth-refresh pattern as Collect YouTube; also manually triggerable.
+
+on:
+  schedule:
+    - cron: '0 5 * * *' # daily UTC 05:00 — before data-quality.yml at 06:00
+  workflow_dispatch: {}
+
+concurrency:
+  group: youtube-insights
+  cancel-in-progress: false
+
+jobs:
+  insights:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      # Surfaced for the `if:` guard on the refresh step (secrets aren't
+      # directly usable in step-level conditions).
+      GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Refresh Google OAuth token
+        id: gtoken
+        if: ${{ env.GOOGLE_REFRESH_TOKEN != '' }}
+        run: |
+          TOKEN="$(node apps/worker/src/scripts/refresh-google-token.mjs)"
+          echo "::add-mask::$TOKEN"
+          echo "token=$TOKEN" >> "$GITHUB_OUTPUT"
+        env:
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
+
+      - name: Run YouTube insights pipeline
+        run: pnpm youtube:insights
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          # Fresh OAuth access token (preferred — enables dynamic subscriptions).
+          # Empty when no refresh token is configured; the pipeline then falls
+          # back to the API key + static channel list.
+          GOOGLE_OAUTH_TOKEN: ${{ steps.gtoken.outputs.token }}
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          # LLM (DeepSeek by default) — required for the insight extraction.
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          LLM_MODEL: ${{ secrets.LLM_MODEL }}
+          LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
