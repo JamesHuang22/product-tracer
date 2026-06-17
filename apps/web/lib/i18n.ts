@@ -33,6 +33,7 @@ const en: Messages = {
   'home.sources.label': 'Tracking across',
 
   'nav.projects': 'Projects',
+  'nav.insights': 'Insights',
 
   'byPlatform.title': 'By platform',
   'byPlatform.summary': '{live} active sources',
@@ -44,6 +45,10 @@ const en: Messages = {
   'home.latest.title': 'Latest activity',
   'home.latest.subtitle': 'Last {count} projects added',
   'home.latest.empty': 'No projects yet.',
+  'home.insights.title': 'Latest video insights',
+  'home.insights.subtitle': 'High-relevance picks',
+  'home.insights.empty': 'No video insights yet.',
+  'home.insights.viewAll': 'All insights',
   'time.justNow': 'just now',
   'time.minutesAgo': '{n}m ago',
   'time.hoursAgo': '{n}h ago',
@@ -110,6 +115,18 @@ const en: Messages = {
   'platform.name.x': 'X',
   'platform.page.subtitle': '{count} projects tracked on {platform}.',
   'platform.page.oneProject': '1 project tracked on {platform}.',
+
+  'insights.title': 'YouTube Insights',
+  'insights.subtitle': '{count} videos analysed for indie-dev & AI signal.',
+  'insights.empty': 'No video insights yet — check back once the analysis pipeline has run.',
+  'insights.relevance': 'Relevance {score}/10',
+  'insights.keyInsight': 'Key insight',
+  'insights.topics': 'Topics',
+  'insights.trends': 'Trends',
+  'insights.watchOn': 'Watch on YouTube',
+  'insights.sentiment.positive': 'Positive',
+  'insights.sentiment.neutral': 'Neutral',
+  'insights.sentiment.negative': 'Negative',
 };
 
 const zh: Messages = {
@@ -124,6 +141,7 @@ const zh: Messages = {
   'home.sources.label': '覆盖平台',
 
   'nav.projects': '项目',
+  'nav.insights': '洞察',
 
   'byPlatform.title': '按平台',
   'byPlatform.summary': '{live} 个活跃来源',
@@ -135,6 +153,10 @@ const zh: Messages = {
   'home.latest.title': '最新动态',
   'home.latest.subtitle': '最近新增的 {count} 个项目',
   'home.latest.empty': '暂无项目。',
+  'home.insights.title': '最新视频洞察',
+  'home.insights.subtitle': '高相关度精选',
+  'home.insights.empty': '暂无视频洞察。',
+  'home.insights.viewAll': '全部洞察',
   'time.justNow': '刚刚',
   'time.minutesAgo': '{n} 分钟前',
   'time.hoursAgo': '{n} 小时前',
@@ -199,6 +221,18 @@ const zh: Messages = {
   'platform.name.x': 'X',
   'platform.page.subtitle': '在 {platform} 上追踪了 {count} 个项目。',
   'platform.page.oneProject': '在 {platform} 上追踪了 1 个项目。',
+
+  'insights.title': 'YouTube 洞察',
+  'insights.subtitle': '已分析 {count} 个视频，提炼独立开发与 AI 信号。',
+  'insights.empty': '暂无视频洞察 —— 分析流程运行后再来查看。',
+  'insights.relevance': '相关度 {score}/10',
+  'insights.keyInsight': '核心洞察',
+  'insights.topics': '主题',
+  'insights.trends': '趋势',
+  'insights.watchOn': '在 YouTube 观看',
+  'insights.sentiment.positive': '正面',
+  'insights.sentiment.neutral': '中性',
+  'insights.sentiment.negative': '负面',
 };
 
 const MESSAGES: Record<Locale, Messages> = { en, zh };

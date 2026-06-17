@@ -21,6 +21,12 @@ export function SiteHeader() {
           >
             {t('nav.projects')}
           </Link>
+          <Link
+            href="/youtube-insights"
+            className="text-neutral-600 transition-colors hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-50"
+          >
+            {t('nav.insights')}
+          </Link>
           <LanguageSwitcher />
         </nav>
       </div>

@@ -4,6 +4,7 @@ import {
   getNewThisWeek,
   getPlatformProjectCount,
   getPlatformTop,
+  getTopVideoInsights,
   getTotalProjectCount,
 } from '@/lib/db';
 import { HomeContent } from '@/components/home-content';
@@ -26,6 +27,7 @@ export default async function HomePage() {
     newThisWeek,
     hotSignals,
     latest,
+    videoInsights,
   ] = await Promise.all([
     getPlatformTop('github', 5),
     getPlatformTop('hacker_news', 5),
@@ -39,6 +41,7 @@ export default async function HomePage() {
     getNewThisWeek(),
     getActiveSignalCount(),
     getLatestProjects(10),
+    getTopVideoInsights(3),
   ]);
 
   const totalLive = ghCount + hnCount + phCount + ytCount;
@@ -52,6 +55,7 @@ export default async function HomePage() {
         newThisWeek,
         hotSignals,
         latest,
+        videoInsights,
         github: { count: ghCount, items: ghTop },
         hackerNews: { count: hnCount, items: hnTop },
         productHunt: { count: phCount, items: phTop },
