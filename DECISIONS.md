@@ -3,6 +3,16 @@
 > Permanent record of architectural, process, and product decisions.
 > Each entry: date, decision, rationale, alternatives considered.
 
+## 2026-06-16 — YouTube Insights frontend surface (PR #21)
+
+**Decision**: Surface `app.video_insight` as a dedicated `/youtube-insights` page with **server-side pagination** (`?page=`, 12/page via `getVideoInsights(limit, offset)` + `getVideoInsightCount()`), plus a home "Latest video insights" strip showing the top 3 with `relevance_score >= 7`.
+
+**Rationale**: Insight rows are richer and potentially far more numerous than projects (one per analysed video, growing daily), so loading the full set client-side — as `/projects` does with TanStack — doesn't scale. Server-side `limit/offset` keeps each request bounded and the page `force-dynamic` so it always reflects the latest analysis run. The home strip filters to `relevance_score >= 7` so only high-signal videos get prime placement.
+
+**Alternatives considered**: (1) reuse the `/projects` client-side TanStack table — rejected, it would ship the entire insight set to the browser; (2) infinite scroll — rejected for now, a simple Prev/Next pager matches the existing `/projects` pager UX with no extra client state.
+
+---
+
 ## 2026-06-16 — YouTube Insights pipeline (video as a first-class entity)
 
 **Decision**: Add a second YouTube pipeline (`youtube-insights.ts` → `app.video_insight`) that runs a DeepSeek LLM pass over each _new_ subscription video and stores structured insight (trends, topics, tools_mentioned, sentiment, key_insight, relevance_score 1–10). It is separate from the existing collector, which only mines descriptions for GitHub repos → `app.project`.
