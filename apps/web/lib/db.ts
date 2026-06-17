@@ -456,3 +456,90 @@ export async function getProjectBySlug(slug: string): Promise<ProjectDetail | nu
 
   return { ...project, platforms, metrics };
 }
+
+// ---------------------------------------------------------------------------
+// YouTube video insights (/youtube-insights)
+// ---------------------------------------------------------------------------
+
+/**
+ * One LLM-analysed YouTube video (app.video_insight). The jsonb array columns
+ * (`trends`, `topics`, `tools_mentioned`) come back already parsed as string
+ * arrays from the postgres driver. `published_at` is rendered to a YYYY-MM-DD
+ * string for stable SSR.
+ */
+export interface VideoInsight {
+  id: string;
+  video_id: string;
+  channel_title: string;
+  video_title: string;
+  video_url: string;
+  thumbnail_url: string | null;
+  published_at: string | null; // YYYY-MM-DD
+  trends: string[];
+  topics: string[];
+  tools_mentioned: string[];
+  sentiment: string | null; // positive | neutral | negative
+  key_insight: string | null;
+  relevance_score: number | null; // 1–10
+}
+
+/**
+ * A page of video insights, newest first. `limit`/`offset` drive the
+ * server-side pager on /youtube-insights. Videos without a published date sort
+ * last so the freshest analysed content leads.
+ */
+export async function getVideoInsights(limit: number, offset = 0): Promise<VideoInsight[]> {
+  return await sql<VideoInsight[]>`
+    select
+      vi.id,
+      vi.video_id,
+      vi.channel_title,
+      vi.video_title,
+      vi.video_url,
+      vi.thumbnail_url,
+      to_char(vi.published_at, 'YYYY-MM-DD') as published_at,
+      coalesce(vi.trends, '[]'::jsonb) as trends,
+      coalesce(vi.topics, '[]'::jsonb) as topics,
+      coalesce(vi.tools_mentioned, '[]'::jsonb) as tools_mentioned,
+      vi.sentiment,
+      vi.key_insight,
+      vi.relevance_score
+    from app.video_insight vi
+    order by vi.published_at desc nulls last, vi.created_at desc
+    limit ${limit}
+    offset ${offset}
+  `;
+}
+
+/** Total number of analysed videos (drives the /youtube-insights pager). */
+export async function getVideoInsightCount(): Promise<number> {
+  const [row] = await sql<{ n: number }[]>`select count(*)::int as n from app.video_insight`;
+  return row?.n ?? 0;
+}
+
+/**
+ * The most recent high-relevance insights (relevance_score >= 7) for the home
+ * "Latest video insights" strip.
+ */
+export async function getTopVideoInsights(limit: number): Promise<VideoInsight[]> {
+  return await sql<VideoInsight[]>`
+    select
+      vi.id,
+      vi.video_id,
+      vi.channel_title,
+      vi.video_title,
+      vi.video_url,
+      vi.thumbnail_url,
+      to_char(vi.published_at, 'YYYY-MM-DD') as published_at,
+      coalesce(vi.trends, '[]'::jsonb) as trends,
+      coalesce(vi.topics, '[]'::jsonb) as topics,
+      coalesce(vi.tools_mentioned, '[]'::jsonb) as tools_mentioned,
+      vi.sentiment,
+      vi.key_insight,
+      vi.relevance_score
+    from app.video_insight vi
+    where vi.relevance_score >= 7
+    order by vi.published_at desc nulls last, vi.created_at desc
+    limit ${limit}
+  `;
+}
