@@ -3,6 +3,20 @@
 > Permanent record of architectural, process, and product decisions.
 > Each entry: date, decision, rationale, alternatives considered.
 
+## 2026-06-16 — YouTube Insights pipeline (video as a first-class entity)
+
+**Decision**: Add a second YouTube pipeline (`youtube-insights.ts` → `app.video_insight`) that runs a DeepSeek LLM pass over each _new_ subscription video and stores structured insight (trends, topics, tools_mentioned, sentiment, key_insight, relevance_score 1–10). It is separate from the existing collector, which only mines descriptions for GitHub repos → `app.project`.
+
+**Rationale**: The collector throws away most of a video's signal — it only cares about repo links. The user wants the _content_ itself (what's trending, which tools are discussed, the takeaway) as a frontend-surfaceable entity, which a rule-based scraper can't produce. DeepSeek is already wired in (`callLlm`, JSON mode) and is cheap (~$0.0005/video), so per-video LLM analysis is affordable. Idempotency is enforced by a unique `video_id` and a `MAX_INSIGHTS_PER_RUN` cap so the first-run backlog can't blow up cost.
+
+**Why DeepSeek for video analysis**: same provider as the classification pipeline — one OpenAI-compatible client, one `LLM_API_KEY` secret, $0.14/$0.28 per 1M in/out tokens, JSON mode. No reason to add a second provider.
+
+**OAuth note**: `GOOGLE_REFRESH_TOKEN` was revoked (`invalid_grant`). Re-minting requires manual consent, so `scripts/youtube-reauth.sh` walks James through the flow rather than trying (and failing) to automate it. Both YouTube workflows share the same refresh-token → access-token step.
+
+**Alternatives considered**: (1) extend the collector in-place — rejected, it would entangle two different concerns (project-mining vs. content-insight) and two storage shapes; (2) batch multiple videos per LLM call — rejected for now, per-video calls keep the raw response cleanly attributable and the richer schema reliable.
+
+---
+
 ## 2026-06-15 — PR-based deployment workflow
 
 **Decision**: Every code change (frontend AND backend) must go through PR → CI/Vercel passes → merge → verify production.
