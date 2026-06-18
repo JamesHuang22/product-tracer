@@ -5,6 +5,7 @@
 
 ## 2026-06-18
 
+- **PR #27** — feat(web): YouTube Insights gains a List/Grid view toggle (`?view=`), 20-per-page pagination (`?page=`), and a category filter dropdown (`?category=`, the 8 `category` values with live counts); insight cards drop the trends/topics line and gain a muted category badge. Reads `category` defensively (`to_jsonb`) so it degrades to NULL until migration 0010 is live
 - **feat(worker)**: YouTube Insights — content `category`. LLM now classifies each insight into one of ai_ml / developer_tools / startup_business / tech_news / hardware / security / design / other (by the summary content, not the title); migration 0010 adds the column + index; dedupe now requires `category` too, so pre-category rows backfill on re-analysis
 - **PR #25** — feat(web): YouTube Insights are now locale-aware — `/youtube-insights` and the home strip show a single paragraph in the active language (en→`key_insight`, zh→`key_insight_zh`) instead of both, with fallback to the other language. Renames the page + home headings to "Latest insights" (最新洞察) and the subtitle to "Insights come from up to date trends." (洞察来自最新趋势。)
 
