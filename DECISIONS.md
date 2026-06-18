@@ -3,6 +3,18 @@
 > Permanent record of architectural, process, and product decisions.
 > Each entry: date, decision, rationale, alternatives considered.
 
+## 2026-06-17 — Bilingual video insights + upsert on re-analysis
+
+**Decision**: The YouTube Insights LLM now returns a 2–4 sentence news-digest paragraph in both English (`key_insight`) and Mandarin (`key_insight_zh`) per video. The `app.video_insight` insert became an **upsert** (`on conflict (video_id) do update`), and the dedupe key changed from "row exists" to "row has `key_insight_zh`".
+
+**Rationale**: A single English sentence is too thin for a reader deciding whether to watch, and the audience includes Chinese indie devs — so one DeepSeek call produces both languages at once (no separate translation pass, no extra provider call). The upsert + `key_insight_zh IS NULL` dedupe means rows created before this change get backfilled the next time the daily run sees them, without a one-off migration script; `MAX_INSIGHTS_PER_RUN` and the latest-N fetch window bound the backfill so there's no cost spike.
+
+**Why one bilingual call vs. translate-after**: DeepSeek is strongly bilingual EN+ZH, so asking for both paragraphs in the same JSON response is cheaper and keeps the two versions semantically aligned (a translation pass can drift). Both summaries are required (zod `min(1)`) — a response missing either is a failed analysis and is retried, never stored half-done.
+
+**Trade-off**: re-analysing pre-upgrade rows re-spends tokens on videos already seen, but only those still inside the latest-N fetch window are reachable, so the backfill is naturally small and self-limiting.
+
+---
+
 ## 2026-06-16 — YouTube Insights frontend surface (PR #21)
 
 **Decision**: Surface `app.video_insight` as a dedicated `/youtube-insights` page with **server-side pagination** (`?page=`, 12/page via `getVideoInsights(limit, offset)` + `getVideoInsightCount()`), plus a home "Latest video insights" strip showing the top 3 with `relevance_score >= 7`.

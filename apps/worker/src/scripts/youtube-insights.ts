@@ -4,21 +4,24 @@
  *
  * This is a sibling to the YouTube *collector* (collect-youtube.ts). The collector
  * mines video descriptions for GitHub repos → app.project. This pipeline goes
- * wider: for every video we haven't seen before, it asks DeepSeek (callLlm, JSON
- * mode) to extract the trends, topics, AI tools/products mentioned, overall
- * sentiment, a one-line key insight, and an indie-dev/AI relevance score — the
- * kind of content signal the frontend can surface directly.
+ * wider: for every video that lacks a complete insight, it asks DeepSeek (callLlm,
+ * JSON mode) to extract the trends, topics, AI tools/products mentioned, overall
+ * sentiment, an indie-dev/AI relevance score, and a bilingual (English + Mandarin)
+ * news-digest summary paragraph — the kind of content signal the frontend can
+ * surface directly.
  *
  * Flow each run (daily, 05:00 UTC — before data-quality at 06:00):
  *   1. Resolve auth + channel list (same as the collector):
  *        - OAuth (GOOGLE_OAUTH_TOKEN): the authenticated user's subscriptions
  *        - API key fallback: config/youtube-channels.json (∪ DEFAULT_CHANNELS)
  *   2. Pull the latest N videos per channel (sequential, polite delay).
- *   3. Dedupe against app.video_insight.video_id — only analyse NEW videos.
- *   4. Per new video: one LLM call → validated insight → insert one row.
+ *   3. Skip videos that already have a bilingual insight (key_insight_zh present);
+ *      everything else — new videos AND pre-bilingual-upgrade rows — is analysed.
+ *   4. Per video: one LLM call → validated insight → upsert one row.
  *   5. Log + write a summary to raw.collector_error for observability.
  *
- * `video_id` is unique, so each video is analysed (and billed) exactly once.
+ * `video_id` is unique, so a complete insight is produced (and billed) once; the
+ * upsert lets a re-analysed row (e.g. a pre-upgrade one) be replaced in place.
  * MAX_INSIGHTS_PER_RUN caps LLM calls per run so a large first-run backlog can't
  * blow up cost; the rest are picked up on subsequent runs (newest first).
  *
@@ -130,6 +133,10 @@ const SENTIMENTS = ['positive', 'neutral', 'negative'] as const;
  * missing arrays default to [], unknown sentiment collapses to 'neutral',
  * out-of-range relevance is clamped to 1–10. We do NOT trust the model to echo
  * video_id (we already know it), so it isn't part of the schema.
+ *
+ * The two summary paragraphs ARE required (min length 1) — a bilingual digest is
+ * the whole point of this pass, so a response missing either is treated as a
+ * failed analysis (thrown, logged, retried next run) rather than stored empty.
  */
 const Insight = z.object({
   trends: z.array(z.string().trim()).catch([]).default([]),
@@ -141,18 +148,21 @@ const Insight = z.object({
     .pipe(z.enum(SENTIMENTS).catch('neutral'))
     .catch('neutral')
     .default('neutral'),
-  key_insight: z.string().trim().catch('').default(''),
+  // English news-digest paragraph (2–4 sentences) + its natural-Mandarin twin.
+  key_insight: z.string().trim().min(1),
+  key_insight_zh: z.string().trim().min(1),
   relevance_score: z.coerce.number().int().min(1).max(10).catch(5).default(5),
 });
 type Insight = z.infer<typeof Insight>;
 
 const SYSTEM_PROMPT =
-  'You are a sharp tech-trend analyst tracking the indie-developer and AI tooling space. ' +
-  'You watch videos from creators who review AI tools, demo new products, and discuss ' +
-  "developer trends. From a single video's metadata you extract the signal: what trends " +
-  'and topics it covers, which concrete tools/products it names, its overall tone toward ' +
-  'those tools, the one key takeaway, and how relevant it is to an indie dev / AI-builder ' +
-  'audience.';
+  'You are a bilingual (English + Mandarin Chinese) tech-news editor covering the ' +
+  'indie-developer and AI tooling space. You watch videos from creators who review AI ' +
+  'tools, demo new products, and discuss developer trends, and you write crisp digest ' +
+  'summaries for busy tech readers deciding whether a video is worth their time. From a ' +
+  "single video's metadata you extract the trends and topics it covers, the concrete " +
+  'tools/products it names, its overall tone toward those tools, a relevance score, and ' +
+  'two summary paragraphs — one in English and one in natural Mandarin Chinese.';
 
 const JSON_INSTRUCTION =
   'Respond ONLY with a single valid JSON object. No prose, no markdown code fences.';
@@ -168,10 +178,21 @@ function buildPrompt(video: YoutubeVideo): string {
     '  "topics": [string],            // specific topics covered (0-6)',
     '  "tools_mentioned": [string],   // concrete AI tools / products / libraries named (0-10)',
     '  "sentiment": "positive" | "neutral" | "negative",  // overall tone toward the tools/AI',
-    '  "key_insight": string,         // 1-2 sentence summary of the main takeaway',
+    '  "key_insight": string,         // ENGLISH digest paragraph, 2-4 sentences (see rules)',
+    '  "key_insight_zh": string,      // the SAME paragraph in natural Mandarin Chinese',
     '  "relevance_score": integer     // 1-10, how relevant to an indie-dev / AI-builder audience',
     '}',
-    'Use [] for arrays with nothing to report. Be concise; do not invent tools that are not implied.',
+    '',
+    'Rules for key_insight (English):',
+    '- A cohesive 2-4 sentence paragraph — NOT a single sentence, NOT a bullet list.',
+    "- Cover the video's main point, what the product/tool does, and why it matters.",
+    '- Write for a busy tech reader deciding whether the video is worth watching.',
+    '- Substantive but readable; avoid deep jargon.',
+    'Rules for key_insight_zh (Chinese):',
+    '- The same paragraph in fluent, natural Mandarin for Chinese indie devs / tech readers.',
+    '- Translate the meaning, not word-for-word; do not read like machine translation.',
+    '',
+    'Use [] for arrays with nothing to report. Do not invent tools that are not implied.',
     '',
     `Channel: ${video.channelTitle}`,
     `Title: ${video.title}`,
@@ -190,8 +211,9 @@ async function analyseVideo(
   const res = await callLlm(buildPrompt(video), {
     systemPrompt: `${SYSTEM_PROMPT}\n\n${JSON_INSTRUCTION}`,
     json: true,
-    maxTokens: 512,
-    temperature: 0.2,
+    // Two prose paragraphs (EN + ZH) — Chinese is token-dense, so give it room.
+    maxTokens: 1024,
+    temperature: 0.3,
   });
   if (res === null) return null;
 
@@ -209,7 +231,11 @@ async function analyseVideo(
   return { insight: Insight.parse(raw), raw, usage: res.usage };
 }
 
-/** Persist one analysed video. on conflict (video_id) do nothing → idempotent. */
+/**
+ * Persist one analysed video. on conflict (video_id) do UPDATE the insight fields
+ * (not the immutable video metadata) so a re-analysed row — e.g. an old row that
+ * predates the bilingual upgrade — is upgraded in place rather than ignored.
+ */
 async function storeInsight(
   video: YoutubeVideo,
   insight: Insight,
@@ -220,23 +246,40 @@ async function storeInsight(
     insert into app.video_insight (
       video_id, channel_id, channel_title, video_title, video_url, thumbnail_url,
       published_at, trends, topics, tools_mentioned, sentiment, key_insight,
-      relevance_score, raw_llm_response, llm_prompt_tokens, llm_completion_tokens
+      key_insight_zh, relevance_score, raw_llm_response, llm_prompt_tokens, llm_completion_tokens
     ) values (
       ${video.id}, ${video.channelId}, ${video.channelTitle}, ${video.title},
       ${video.videoUrl}, ${video.thumbnailUrl}, ${video.publishedAt || null},
       ${sql.json(insight.trends)}, ${sql.json(insight.topics)}, ${sql.json(insight.tools_mentioned)},
-      ${insight.sentiment}, ${insight.key_insight || null}, ${insight.relevance_score},
+      ${insight.sentiment}, ${insight.key_insight}, ${insight.key_insight_zh}, ${insight.relevance_score},
       ${sql.json(raw as never)}, ${usage?.promptTokens ?? 0}, ${usage?.completionTokens ?? 0}
     )
-    on conflict (video_id) do nothing
+    on conflict (video_id) do update set
+      trends                = excluded.trends,
+      topics                = excluded.topics,
+      tools_mentioned       = excluded.tools_mentioned,
+      sentiment             = excluded.sentiment,
+      key_insight           = excluded.key_insight,
+      key_insight_zh        = excluded.key_insight_zh,
+      relevance_score       = excluded.relevance_score,
+      raw_llm_response      = excluded.raw_llm_response,
+      llm_prompt_tokens     = excluded.llm_prompt_tokens,
+      llm_completion_tokens = excluded.llm_completion_tokens
   `;
 }
 
-/** Of the given video ids, which already have an insight row (so we skip them). */
-async function seenVideoIds(ids: string[]): Promise<Set<string>> {
+/**
+ * Of the given video ids, which already have a *complete bilingual* insight (so
+ * we skip them). Treating a row as done only when key_insight_zh is present means
+ * rows from before the bilingual upgrade — key_insight_zh IS NULL — are re-analysed
+ * and upserted with both languages (bounded by MAX_INSIGHTS_PER_RUN and the
+ * latest-N fetch window, so it backfills gradually without a cost spike).
+ */
+async function analysedVideoIds(ids: string[]): Promise<Set<string>> {
   if (ids.length === 0) return new Set();
   const rows = await sql<{ video_id: string }[]>`
-    select video_id from app.video_insight where video_id = any(${ids})
+    select video_id from app.video_insight
+    where video_id = any(${ids}) and key_insight_zh is not null
   `;
   return new Set(rows.map((r) => r.video_id));
 }
@@ -281,16 +324,17 @@ async function main(): Promise<void> {
     if (i < channels.length - 1) await sleep(DELAY_BETWEEN_CHANNELS_MS);
   }
 
-  // 2) Dedupe: drop videos we've already analysed, newest first, cap the run.
-  const seen = await seenVideoIds(candidates.map((v) => v.id));
+  // 2) Dedupe: drop videos that already have a complete bilingual insight (so
+  //    pre-upgrade rows still get backfilled), newest first, cap the run.
+  const done = await analysedVideoIds(candidates.map((v) => v.id));
   const fresh = candidates
-    .filter((v) => !seen.has(v.id))
+    .filter((v) => !done.has(v.id))
     .sort((a, b) => (b.publishedAt > a.publishedAt ? 1 : b.publishedAt < a.publishedAt ? -1 : 0));
   const toAnalyse = fresh.slice(0, MAX_INSIGHTS_PER_RUN);
 
   console.log(
-    `[youtube-insights] ${candidates.length} videos seen, ${fresh.length} new ` +
-      `(${candidates.length - fresh.length} already analysed); ` +
+    `[youtube-insights] ${candidates.length} videos seen, ${fresh.length} need analysis ` +
+      `(${candidates.length - fresh.length} already have bilingual insight); ` +
       `analysing ${toAnalyse.length} this run (cap ${MAX_INSIGHTS_PER_RUN}).`,
   );
 
@@ -332,7 +376,7 @@ async function main(): Promise<void> {
 
   const summary = {
     videos_seen: candidates.length,
-    new_videos: fresh.length,
+    needing_analysis: fresh.length,
     analysed,
     failed_videos: failedVideos,
     failed_channels: failedChannels,
