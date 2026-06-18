@@ -1,36 +1,46 @@
 # Frontend Agent — Response
 
-**Completed:** 2026-06-18T05:45Z
-**PR:** #25 — https://github.com/JamesHuang22/product-tracer/pull/25 (merged, `279c7b6`)
-**Branch:** `feat/frontend-locale-aware-insights`
+**Completed:** 2026-06-18T15:57Z
+**PR:** #27 — https://github.com/JamesHuang22/product-tracer/pull/27 (merged, `5a48540`)
+**Branch:** `feat/frontend-insights-views-filter`
 
-Locale-aware insights + "Latest insights" rename.
+List/Grid views, pagination, and a category filter for the YouTube Insights digest.
 
-## Task 1 — locale-aware display
-- `/youtube-insights` (`page.tsx`, server) and the home "Latest insights" strip (`home-content.tsx`, client via `useI18n().locale`) now render **one** paragraph in the active locale — `en → key_insight`, `zh → key_insight_zh` — instead of always showing both.
-- Falls back to the other language when the preferred translation is missing (e.g. `zh` before `key_insight_zh` is populated), so a card is never blank.
-- Rest of the card design unchanged (text-only, trends/topics meta, sentiment dot, 🔥, `▶ Watch on YouTube`).
-- Note: toggling the language calls `router.refresh()` in the i18n provider, so the server-rendered page re-renders in the new language on toggle (no manual reload).
+## Task 1 — declutter cards
+Removed the trends/topics line. Each card now shows: 🔥 (relevance ≥ 7) + sentiment dot + summary paragraph + a muted **category badge** (only when `category` is present) + `▶ Watch on YouTube`.
 
-## Task 2 — headings (`lib/i18n.ts`)
-- `insights.title`: "Latest insights" / 最新洞察 (page heading).
-- `insights.subtitle`: "Insights come from up to date trends." / 洞察来自最新趋势。 (dropped the unused `{count}` placeholder + its arg in `page.tsx`).
-- `home.insights.title`: "Latest insights" / 最新洞察 (home strip).
+## Task 2 — List/Grid toggle + pagination
+- `?view=list|grid` (default `list`). List = full-width cards; Grid = 2-column compact cards with `line-clamp-4`.
+- 20-per-page pagination via `?page=` with Prev/Next, fetching only the current page server-side via `getVideoInsights(limit, offset)`. Page is clamped to `[1, pageCount]`.
+
+## Task 3 — category filter
+- Category dropdown (`?category=`): "All categories" + the 8 canonical values, each annotated with a live count (e.g. "All categories (68)"). Filtering uses `getVideoInsightsByCategory(category, limit, offset)`.
+- `view` + `category` + `page` compose in the URL (e.g. `?view=grid&category=developer_tools&page=2`). Changing the filter or view resets to page 1; the pager preserves both.
+- New client component `app/youtube-insights/insights-controls.tsx` drives the dropdown + toggle; the cards and pager stay server-rendered.
+
+### db.ts
+- `category` added to `VideoInsight` and every select. Read via `to_jsonb(vi) ->> 'category'` (the category filter and count too), so the page **does not 500 if migration 0010 isn't applied yet** — it degrades to NULL / matches nothing until the column lands. `getTopVideoInsights` is covered as well, protecting the home page.
+- New functions: `getVideoInsightsByCategory()`, `getVideoInsightCount(category?)`, `getVideoInsightCategories()`.
+
+## Task 4 — i18n
+`insights.categoryAll` + `insights.category{AiMl,DevTools,Startup,TechNews,Hardware,Security,Design,Other}` and `insights.viewList` / `insights.viewGrid` (en/zh).
 
 ## Verification
-- `pnpm --filter @product-tracer/web typecheck` → passes. Local `next build` → succeeds.
-- Vercel preview build (PR #25): ✅ pass → merged to `main` (`279c7b6`).
-- Production: `/` → **200**, `/youtube-insights` → **200**. Live content check (en default): "Latest insights" heading present, old `>YouTube Insights<` h1 gone, new subtitle present.
+- `pnpm --filter @product-tracer/web typecheck` → passes. Local `next build` → succeeds (`/youtube-insights` 4.4 kB).
+- Vercel preview (PR #27): ✅ pass → merged to `main` (`5a48540`).
+- Production: `/` → **200**, `/youtube-insights` → **200**, `?view=grid&category=ai_ml` → **200**.
+- Live HTML check: category `<select>` renders all 9 options with counts (`All categories (68)`, AI/ML, Developer Tools, Startup/Business, Tech News, Hardware, Security, Design, Other); category badges present on cards; old `Trends:` meta gone.
 
-## Note on a fetch race
-Right after merge, a `git pull --ff-only` on local main briefly raced the merge commit and showed pre-merge content; `origin/main` already contained the PR #25 merge, and a re-fetch + fast-forward resolved it. No changes were lost — flagging only for transparency.
+## Notes
+- Migration 0010 (`category`) is already noted as shipped in CHANGELOG (backend), and the production data confirms it — 68 insights, AI/ML and other categories populated. The `to_jsonb` guard remains as defensive insurance.
+- Category dropdown options are a fixed canonical list (so every category is always selectable); `getVideoInsightCategories()` supplies the live counts shown beside each.
 
 ## Post-completion
-- `CHANGELOG.md`: PR #25 entry added at the top of a new 2026-06-18 section (merged as part of the PR).
+- `CHANGELOG.md`: PR #27 entry at top of the 2026-06-18 section (merged as part of the PR).
 - `FRONTEND_REQUEST.md`: deleted.
 
 ## Scope
-Only `apps/web/` (+ CHANGELOG.md docs) touched. No `apps/worker/`, `packages/`, or `.github/workflows/`.
+Only `apps/web/` (+ CHANGELOG.md docs). No `apps/worker/`, `packages/`, or `.github/workflows/`.
 
 ## Files changed
-`apps/web/app/youtube-insights/page.tsx`, `apps/web/components/home-content.tsx`, `apps/web/lib/i18n.ts`, `CHANGELOG.md`
+`apps/web/app/youtube-insights/page.tsx`, `apps/web/app/youtube-insights/insights-controls.tsx` (new), `apps/web/lib/db.ts`, `apps/web/lib/i18n.ts`, `CHANGELOG.md`
