@@ -5,6 +5,7 @@
 
 ## 2026-06-17
 
+- **PR #23** — feat(web): bilingual news-digest redesign of YouTube Insights — `/youtube-insights` and the home strip now render the English `key_insight` over its Chinese `key_insight_zh` translation (text-only, no thumbnails/pagination); sentiment dot, 🔥 for relevance ≥ 7, Trends/Topics meta. Reads `key_insight_zh` defensively (`to_jsonb`) so it degrades to NULL until migration 0009 is live
 - **feat(worker)**: YouTube Insights — bilingual digest summaries. LLM now writes a 2–4 sentence news-digest paragraph in both English (`key_insight`) and Mandarin (`key_insight_zh`); migration 0009 adds `key_insight_zh`; insert is now an upsert so pre-upgrade rows get backfilled on re-analysis
 
 ## 2026-06-16

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import type { Route } from 'next';
-import { Activity, ArrowRight, ArrowUpRight, Boxes, Flame, Radio, Sparkles, Youtube } from 'lucide-react';
+import { Activity, ArrowRight, Boxes, Flame, Radio, Sparkles, Youtube } from 'lucide-react';
 import type { PlatformTopItem, ProjectListItem, VideoInsight } from '@/lib/db';
 import { cleanOneLiner, fmtCount } from '@/lib/format';
 import { useI18n } from '@/lib/i18n-context';
@@ -131,15 +131,20 @@ function LatestCard({ project }: { project: ProjectListItem }) {
   );
 }
 
-/** Relevance pill colour: 8–10 green, 5–7 amber, else neutral (mirrors the insights page). */
-function relevanceClass(score: number | null): string {
-  if (score == null) return 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300';
-  if (score >= 8) return 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300';
-  if (score >= 5) return 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300';
-  return 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300';
-}
+/** Sentiment → coloured dot (mirrors the /youtube-insights digest). */
+const SENTIMENT_DOT: Record<string, string> = {
+  positive: '🟢',
+  neutral: '🟡',
+  negative: '🔴',
+};
 
+/** Compact, text-only bilingual insight card: English takeaway over its Chinese
+ * translation, no thumbnail/title/channel. The whole card links to the video. */
 function InsightCard({ insight }: { insight: VideoInsight }) {
+  const { t } = useI18n();
+  const dot = SENTIMENT_DOT[insight.sentiment?.toLowerCase() ?? ''];
+  const hot = (insight.relevance_score ?? 0) >= 7;
+
   return (
     <a
       href={insight.video_url}
@@ -147,25 +152,24 @@ function InsightCard({ insight }: { insight: VideoInsight }) {
       rel="noreferrer"
       className="flex w-72 shrink-0 flex-col rounded-xl border border-neutral-200 bg-white p-4 transition-colors hover:border-neutral-400 dark:border-neutral-800 dark:bg-neutral-950 dark:hover:border-neutral-600"
     >
-      <div className="flex items-center justify-between gap-2">
-        {insight.relevance_score != null && (
-          <span
-            className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-semibold tabular-nums ${relevanceClass(insight.relevance_score)}`}
-          >
-            {insight.relevance_score}/10
-          </span>
-        )}
-        <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-neutral-400" />
-      </div>
-      <div className="mt-2 line-clamp-2 text-sm font-medium text-neutral-900 dark:text-neutral-50">
-        {insight.video_title}
-      </div>
-      <div className="mt-1 truncate text-xs text-neutral-500">{insight.channel_title}</div>
       {insight.key_insight && (
-        <p className="mt-2 line-clamp-3 text-xs leading-relaxed text-neutral-500">
+        <p className="line-clamp-4 text-sm leading-relaxed text-neutral-900 dark:text-neutral-100">
+          {hot && <span className="mr-1" aria-hidden>🔥</span>}
           {insight.key_insight}
         </p>
       )}
+      {insight.key_insight_zh && (
+        <p className="mt-2 line-clamp-4 border-t border-neutral-100 pt-2 text-sm leading-relaxed text-neutral-500 dark:border-neutral-800/80 dark:text-neutral-400">
+          {insight.key_insight_zh}
+        </p>
+      )}
+      <div className="mt-auto flex items-center gap-1.5 pt-3 text-xs text-neutral-400">
+        {dot && <span aria-hidden>{dot}</span>}
+        <span className="inline-flex items-center gap-1">
+          <span aria-hidden>▶</span>
+          {t('insights.watchOn')}
+        </span>
+      </div>
     </a>
   );
 }

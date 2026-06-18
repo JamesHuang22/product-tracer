@@ -479,14 +479,16 @@ export interface VideoInsight {
   topics: string[];
   tools_mentioned: string[];
   sentiment: string | null; // positive | neutral | negative
-  key_insight: string | null;
+  key_insight: string | null; // English summary paragraph (2–4 sentences)
+  key_insight_zh: string | null; // Chinese summary paragraph (migration 0009)
   relevance_score: number | null; // 1–10
 }
 
 /**
- * A page of video insights, newest first. `limit`/`offset` drive the
- * server-side pager on /youtube-insights. Videos without a published date sort
- * last so the freshest analysed content leads.
+ * Video insights, newest first. The /youtube-insights digest pulls the whole
+ * set in one request (no pagination); `limit`/`offset` stay available for
+ * bounded callers. Videos without a published date sort last so the freshest
+ * analysed content leads.
  */
 export async function getVideoInsights(limit: number, offset = 0): Promise<VideoInsight[]> {
   return await sql<VideoInsight[]>`
@@ -503,18 +505,16 @@ export async function getVideoInsights(limit: number, offset = 0): Promise<Video
       coalesce(vi.tools_mentioned, '[]'::jsonb) as tools_mentioned,
       vi.sentiment,
       vi.key_insight,
+      -- Read via to_jsonb so the query is resilient to migration 0009 not yet
+      -- being applied: a missing column yields NULL instead of erroring (which
+      -- would otherwise 500 the home page, since getTopVideoInsights runs there).
+      (to_jsonb(vi) ->> 'key_insight_zh') as key_insight_zh,
       vi.relevance_score
     from app.video_insight vi
     order by vi.published_at desc nulls last, vi.created_at desc
     limit ${limit}
     offset ${offset}
   `;
-}
-
-/** Total number of analysed videos (drives the /youtube-insights pager). */
-export async function getVideoInsightCount(): Promise<number> {
-  const [row] = await sql<{ n: number }[]>`select count(*)::int as n from app.video_insight`;
-  return row?.n ?? 0;
 }
 
 /**
@@ -536,6 +536,10 @@ export async function getTopVideoInsights(limit: number): Promise<VideoInsight[]
       coalesce(vi.tools_mentioned, '[]'::jsonb) as tools_mentioned,
       vi.sentiment,
       vi.key_insight,
+      -- Read via to_jsonb so the query is resilient to migration 0009 not yet
+      -- being applied: a missing column yields NULL instead of erroring (which
+      -- would otherwise 500 the home page, since getTopVideoInsights runs there).
+      (to_jsonb(vi) ->> 'key_insight_zh') as key_insight_zh,
       vi.relevance_score
     from app.video_insight vi
     where vi.relevance_score >= 7
