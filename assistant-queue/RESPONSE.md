@@ -1,47 +1,61 @@
-# Response: "Remove preamble" request — already shipped (no-op) ✅
+# Response: Insight content categories ✅
 
-This `REQUEST.md` ("Remove 'This video' / '本视频' preamble from LLM output") was **already
-completed earlier** as **PR #24** (`fix/youtube-insights-no-preamble`), merged to main as
-commit `fc3ccc9`. No new PR was opened — the work is done and live.
+Done — shipped as **PR #26** (merged to main, `c303988`). Production verified **HTTP/2 200**.
 
-## Why it re-appeared
+## What changed
 
-`origin/main` was rewritten between my last push and this poll (the frontend agent's
-queue pushes — `d1d296a`, `4ece283`, `85bdffe`). That rewrite **resurrected this stale
-`REQUEST.md`** and reverted my PR #24 `RESPONSE.md` back to the bilingual-summaries one.
-The underlying code change, however, survived — `fc3ccc9` is in `origin/main` history.
+| File | What |
+|------|------|
+| `packages/db/migrations/0010_insight_category.sql` | **New.** `category text` + filtering index (idempotent). |
+| `apps/worker/src/scripts/youtube-insights.ts` | Category in schema, prompt, and upsert. |
+| `CHANGELOG.md`, `DECISIONS.md` | New entries. |
 
-I reset my local `main` to `origin/main` (my only local-ahead commits were queue files —
-a `RESPONSE.md` edit and the `REQUEST.md` deletion — no code was lost) and re-verified.
+Untouched, as instructed: `apps/web/`, `assistant-queue/` (other files).
 
-## Proof it's already in main
+## How it works
 
-`apps/worker/src/scripts/youtube-insights.ts` on current `main` already contains:
+- The same DeepSeek call now also returns a **`category`** — one of `ai_ml`,
+  `developer_tools`, `startup_business`, `tech_news`, `hardware`, `security`,
+  `design`, `other` — classified from the **summary content**, not the video title
+  (the system prompt says so explicitly). No extra model call.
+- Schema validation is tolerant: an unknown or missing category collapses to
+  `other` (`z.enum(CATEGORIES).catch('other')`), so a sloppy model response never
+  fails the whole analysis.
+- `category` is written in the INSERT and the `on conflict (video_id) do update set`.
 
-- System prompt: *"Write each paragraph as a news digest, not a video description: never
-  start with 'This video', 'The video', 'In this video', '本视频', '这个视频', '本期视频' or
-  any similar preamble…"*
-- English rule: *"Open directly with the substance. NEVER start with 'This video'…"*
-- Chinese rule: *"同样直接进入主题。切勿以「本视频」「这个视频」「本期视频」「视频中」等开头。"*
+## ⚠️ One adaptation (same as the bilingual upgrade)
 
-```
-$ git merge-base --is-ancestor fc3ccc9 origin/main  →  fix is merged on main ✅
-```
+The request said the upsert alone would backfill existing rows on the next run. It
+wouldn't: the pipeline **dedupes already-seen videos before analysis**, so a
+conflicting row never reaches the insert. I widened the dedupe predicate so a row
+counts as "done" only when it has **both `key_insight_zh` and `category`**. Pre-category
+rows within the latest-N fetch window are therefore re-analysed and upserted with a
+category, bounded by `MAX_INSIGHTS_PER_RUN` (no cost spike). Documented in DECISIONS.
 
-## State
+## Manual step for James (required before next run)
 
-- No code change needed; no PR created (would have been an exact duplicate of #24).
-- Production `https://product-tracer.vercel.app/` → **HTTP/2 200** (verified).
-- Deleted this stale `REQUEST.md`.
+Apply the migration: Supabase → SQL Editor → paste `0010_insight_category.sql` → Run.
+The INSERT references `category`, so the column must exist first. After applying, the
+next **YouTube Insights** run (daily 05:00 UTC, or manual dispatch) populates
+`category` for new + in-window rows.
 
-## Note on the queue
+## Verification
 
-Heads up: rewriting `main`'s history (force-push / reset) can resurrect already-consumed
-`REQUEST.md` files and revert `RESPONSE.md`, which makes a finished task look pending. If
-this keeps happening, prefer fast-forward merges on `main` so consumed queue files stay
-deleted.
+- `pnpm --filter @product-tracer/worker typecheck` ✅ (CI + local)
+- `prettier --check` ✅
+- After migration:
+  ```sql
+  select category, count(*) from app.video_insight
+  where category is not null group by 1 order by 2 desc;
+  ```
+
+## Cross-cutting
+
+`app.video_insight` gained `category` — the frontend will want it as a filter. That's a
+separate `FRONTEND_REQUEST.md` (out of my scope). Category vocabulary is the 8 values
+listed above.
 
 ---
 
-Ready for the next (real) task. Until a new `REQUEST.md` appears I'll keep polling every
-30 min and shut down after 6 empty polls.
+Ready for the next task. Until a new `REQUEST.md` appears I'll keep polling every 30 min
+and shut down after 6 empty polls.
