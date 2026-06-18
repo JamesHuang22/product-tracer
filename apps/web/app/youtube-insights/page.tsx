@@ -33,19 +33,19 @@ function DigestCard({ insight, locale }: { insight: VideoInsight; locale: Locale
   const dot = SENTIMENT_DOT[sentiment];
   const hot = (insight.relevance_score ?? 0) >= 7;
   const hasMeta = insight.trends.length > 0 || insight.topics.length > 0;
+  // Locale-aware: show one paragraph in the active language, falling back to the
+  // other if the preferred translation is missing (e.g. zh before migration 0009).
+  const text =
+    locale === 'zh'
+      ? insight.key_insight_zh ?? insight.key_insight
+      : insight.key_insight ?? insight.key_insight_zh;
 
   return (
     <article className="rounded-xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-950">
-      {insight.key_insight && (
+      {text && (
         <p className="text-[15px] leading-relaxed text-neutral-900 dark:text-neutral-100">
           {hot && <span className="mr-1.5" aria-hidden>🔥</span>}
-          {insight.key_insight}
-        </p>
-      )}
-
-      {insight.key_insight_zh && (
-        <p className="mt-2.5 border-t border-neutral-100 pt-2.5 text-[15px] leading-relaxed text-neutral-500 dark:border-neutral-800/80 dark:text-neutral-400">
-          {insight.key_insight_zh}
+          {text}
         </p>
       )}
 
@@ -99,9 +99,7 @@ export default async function YoutubeInsightsPage() {
     <main className="mx-auto max-w-3xl px-6 py-12">
       <header className="mb-8">
         <h1 className="text-3xl font-semibold tracking-tight">{translate(locale, 'insights.title')}</h1>
-        <p className="mt-2 text-sm text-neutral-500">
-          {translate(locale, 'insights.subtitle', { count: insights.length })}
-        </p>
+        <p className="mt-2 text-sm text-neutral-500">{translate(locale, 'insights.subtitle')}</p>
       </header>
 
       {insights.length === 0 ? (
