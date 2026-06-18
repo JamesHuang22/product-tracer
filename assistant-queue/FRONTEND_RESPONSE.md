@@ -1,51 +1,41 @@
 # Frontend Agent — Response
 
-**Completed:** 2026-06-17T06:25Z
-**PR:** #21 — https://github.com/JamesHuang22/product-tracer/pull/21 (merged, `6d56f6d`)
-**Branch:** `feat/frontend-youtube-insights`
+**Completed:** 2026-06-18T04:48Z
+**PR:** #23 — https://github.com/JamesHuang22/product-tracer/pull/23 (merged, `c0bb802`)
+**Branch:** `feat/frontend-bilingual-insights`
 
-## Task 1 — YouTube Insights page
+Bilingual news-digest redesign of the YouTube Insights surface.
 
-### `/youtube-insights` (new route)
-- `apps/web/app/youtube-insights/page.tsx` — server component; reads locale cookie, fetches a page of insights + total count, server-side pagination via `?page=` (12/page, clamped to valid range), `force-dynamic`.
-- `apps/web/app/youtube-insights/video-insights-list.tsx` — client list/cards + Prev/Next pager (matches the `/projects` pager styling, localised via `useI18n`).
-- Each card shows: **thumbnail** (→ `video_url`), **title** (→ `video_url`), **channel name**, **published date**, **relevance score badge** (1–10, colour-ramped: ≥8 green / ≥5 amber / else neutral), **key insight** text, **sentiment badge** (positive=emerald / neutral / negative=rose), and **trend + topic pills** (de-duped, capped at 6).
-- Ordered by `published_at DESC NULLS LAST, created_at DESC`.
+## Task 1 — bilingual data (`apps/web/lib/db.ts`)
+- `key_insight_zh` added to the `VideoInsight` interface and the SELECT in both `getVideoInsights()` and `getTopVideoInsights()`.
+- **Resilience:** the column is read as `(to_jsonb(vi) ->> 'key_insight_zh') as key_insight_zh` rather than `vi.key_insight_zh`. If migration 0009 isn't applied yet, a missing column yields `NULL` instead of a SQL error. This is deliberate — `getTopVideoInsights` runs on the home page, so a hard column reference would have 500-ed the homepage during the migration window (and failed the post-merge HTTP 200 check).
+- Removed the now-unused `getVideoInsightCount()` (pagination is gone).
 
-### `apps/web/lib/db.ts`
-- `getVideoInsights(limit, offset = 0)` — page of `app.video_insight` rows (jsonb arrays coalesced to `[]`, `published_at` → `YYYY-MM-DD`).
-- `getVideoInsightCount()` — total, for the pager.
-- `getTopVideoInsights(limit)` — most recent with `relevance_score >= 7` (home strip).
-- New `VideoInsight` interface.
+## Task 2 — `/youtube-insights` digest redesign (`apps/web/app/youtube-insights/page.tsx`)
+- Deleted `video-insights-list.tsx`; the page is now a pure **server component** (123 B, no client JS) that fetches all insights at once (no pagination).
+- Each insight renders as a compact card: **English `key_insight`** paragraph → thin divider → **Chinese `key_insight_zh`** paragraph in lighter gray; optional `Trends: … · Topics: …` meta (only when present); sentiment dot (🟢/🟡/🔴) with localized label; `🔥` prefix when `relevance_score >= 7`; muted `▶ Watch on YouTube` link (new tab). No thumbnail, channel, or title heading.
 
-### Navigation
-- `apps/web/components/site-header.tsx` — "Insights" link added after "Projects".
+## Task 3 — home strip (`apps/web/components/home-content.tsx`)
+- "Latest video insights" strip uses the same compact text-only bilingual card (EN over 中文, sentiment dot, `▶ Watch on YouTube`), no thumbnails. Still the 3 most recent with `relevance_score >= 7`.
 
-### Home page
-- `apps/web/app/page.tsx` — added `getTopVideoInsights(3)` to the parallel fetch; passes `videoInsights` into `HomeContent`.
-- `apps/web/components/home-content.tsx` — new "Latest video insights" strip below "Latest Activity": horizontal-scroll row of up to 3 high-relevance (score ≥ 7) cards, each linking to the video; "All insights" → `/youtube-insights`; empty-state fallback.
-
-### i18n
-- `apps/web/lib/i18n.ts` — en + zh keys: `nav.insights`, `insights.*` (title/subtitle/empty/relevance/keyInsight/topics/trends/watchOn/sentiment.*), `home.insights.*`. Pager reuses existing `table.pagination.*`.
-
-## Task 2 — Typecheck
-`pnpm --filter @product-tracer/web typecheck` → passes. Local `next build` succeeds; `/youtube-insights` route compiles (5.42 kB).
+## Task 4 — i18n (`apps/web/lib/i18n.ts`)
+- `insights.sentimentPositive` / `insights.sentimentNeutral` / `insights.sentimentNegative` (zh: 积极 / 中性 / 消极).
+- `insights.trends` (趋势), `insights.topics` (主题), `insights.watchOn` (在 YouTube 观看) confirmed.
+- Dropped now-unused keys: `insights.relevance`, `insights.keyInsight`, and the old `insights.sentiment.*`.
 
 ## Verification
-- Vercel preview build (PR #21): ✅ pass
-- Merged to `main` via merge commit `6d56f6d`
-- Production: `curl -sI https://product-tracer.vercel.app/` → **200**; `/youtube-insights` → **200** (confirmed after deploy rollout).
+- `pnpm --filter @product-tracer/web typecheck` → passes. Local `next build` → succeeds.
+- Vercel preview build (PR #23): ✅ pass → merged to `main` (`c0bb802`).
+- Production: `curl -sI https://product-tracer.vercel.app/` → **200**; `/youtube-insights` → **200**.
+- Live content check of `/youtube-insights`: new digest confirmed (51 "Watch on YouTube" links rendered, **no** old pager, **no** thumbnails) — i.e. real bilingual data is rendering, not just the empty state.
 
-## Post-completion docs
-- `CHANGELOG.md` — new PR #21 entry at top of the 2026-06-16 section.
-- `DECISIONS.md` — new entry documenting the server-side pagination choice for the insights surface.
+## Post-completion
+- `CHANGELOG.md`: PR #23 entry added at the top of the 2026-06-17 section.
+- `FRONTEND_REQUEST.md`: deleted.
 
 ## Scope note
-The request's rules said "Only touch apps/web/ files", but its "After completing" steps asked to update root-level `CHANGELOG.md` and `DECISIONS.md`. I followed the explicit completion steps and updated both (documentation only — no backend code, packages, or workflows touched). If you'd prefer the agent stay strictly within `apps/web/` and skip the root docs, let me know and I'll leave those to the backend agent going forward.
-
-## Assumptions
-- Per the request, this assumes the backend `app.video_insight` table + data pipeline (migration 0008) exists. When the table is empty the page shows a localized empty state and the home strip shows its empty state; both render HTTP 200.
+The request rule said "Only touch apps/web/", and the "After completing" step asked to update root-level `CHANGELOG.md`. I updated CHANGELOG (documentation only) per the explicit step; everything else is within `apps/web/`. No `apps/worker/`, `packages/`, or `.github/workflows/` touched.
 
 ## Files changed
-**apps/web/** (feature): `app/youtube-insights/page.tsx` (new), `app/youtube-insights/video-insights-list.tsx` (new), `app/page.tsx`, `components/home-content.tsx`, `components/site-header.tsx`, `lib/db.ts`, `lib/i18n.ts`
-**root** (docs): `CHANGELOG.md`, `DECISIONS.md`
+**apps/web/**: `app/youtube-insights/page.tsx` (rewritten), `app/youtube-insights/video-insights-list.tsx` (deleted), `components/home-content.tsx`, `lib/db.ts`, `lib/i18n.ts`
+**root** (docs): `CHANGELOG.md`
