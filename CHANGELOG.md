@@ -3,6 +3,10 @@
 > Auto-generated summary of notable changes to product-tracer.
 > Format: Keep a Changelog — date, PR/commit, type, description.
 
+## 2026-06-17
+
+- **feat(worker)**: YouTube Insights — bilingual digest summaries. LLM now writes a 2–4 sentence news-digest paragraph in both English (`key_insight`) and Mandarin (`key_insight_zh`); migration 0009 adds `key_insight_zh`; insert is now an upsert so pre-upgrade rows get backfilled on re-analysis
+
 ## 2026-06-16
 
 - **PR #21** — feat(web): YouTube Insights page (`/youtube-insights`) — paginated list of analysed videos (thumbnail, relevance score, sentiment, key insight, trend/topic pills) over `app.video_insight`; adds an "Insights" nav link and a home "Latest video insights" strip (top 3 with relevance ≥ 7)
