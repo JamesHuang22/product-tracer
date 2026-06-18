@@ -1,86 +1,70 @@
-# Response: YouTube Insights pipeline + OAuth reauth ✅
+# Response: Bilingual YouTube Insights summaries ✅
 
-Done — shipped as **PR #20** (merged to main, `0269083`). Production verified **HTTP/2 200**.
+Done — shipped as **PR #22** (merged to main, `92e34eb`). Production verified **HTTP/2 200**.
 
-## What I built
-
-A second YouTube pipeline that treats each video as a first-class entity, separate
-from the collector (which only mines descriptions for GitHub repos → `app.project`).
+## What changed
 
 | File | What |
 |------|------|
-| `apps/worker/src/scripts/youtube-insights.ts` | **New.** The insights pipeline. |
-| `packages/db/migrations/0008_video_insight.sql` | **New.** `app.video_insight` table + indexes (idempotent). |
-| `.github/workflows/youtube-insights.yml` | **New.** Daily 05:00 UTC + manual dispatch. |
-| `scripts/youtube-reauth.sh` | **New.** Guided OAuth re-consent to re-mint `GOOGLE_REFRESH_TOKEN`. |
-| `apps/worker/package.json` + root `package.json` | Added `youtube:insights` script. |
+| `packages/db/migrations/0009_bilingual_insight.sql` | **New.** Adds `key_insight_zh text` to `app.video_insight` (idempotent). |
+| `apps/worker/src/scripts/youtube-insights.ts` | Bilingual prompt + schema + upsert. |
 | `CHANGELOG.md`, `DECISIONS.md` | New entries. |
 
-Untouched, as instructed: `apps/web/`, the existing collector/workflow, all other
-`assistant-queue/` files.
+Untouched, as instructed: `apps/web/`, `assistant-queue/` (other files).
 
-## How the insights pipeline works
+## The upgrade
 
-1. **Resolve auth + channels** the same way as the collector — OAuth subscriptions
-   (`GOOGLE_OAUTH_TOKEN`) first, else API key + static channel list.
-2. **Pull latest videos** per channel (≤10, polite 1s delay), then **dedupe** against
-   `app.video_insight.video_id` — only genuinely new videos are analysed.
-3. **One DeepSeek call per new video** (`callLlm`, JSON mode) extracting
-   `{trends[], topics[], tools_mentioned[], sentiment, key_insight, relevance_score 1–10}`.
-   Response is zod-validated + fence-tolerant parsed; sloppy output degrades safely
-   (missing arrays → `[]`, unknown sentiment → `neutral`, score clamped 1–10).
-4. **Store** one row per video (raw LLM response + token counts kept), `on conflict
-   (video_id) do nothing`. `MAX_INSIGHTS_PER_RUN` (default 40, env-overridable) caps
-   cost on the first-run backlog — the rest are picked up next run, newest first.
-5. **Report** a per-run summary (counts + token usage + est. cost) to
-   `raw.collector_error` (`platform='youtube'`, `error_type='youtube_insights_report'`)
-   — same observability channel the other pipelines use.
+- **`key_insight`** is now a cohesive **2–4 sentence English** news-digest paragraph
+  (main point → what the product does → why it matters), written for a busy tech
+  reader deciding whether to watch — not a single sentence, not a bullet list.
+- **`key_insight_zh`** is the same paragraph in **natural Mandarin** (translated for
+  meaning, not word-for-word), produced in the **same DeepSeek call** — no separate
+  translation pass, so the two stay semantically aligned.
+- Both paragraphs are **required** (zod `min(1)`). A response missing either is
+  treated as a failed analysis — logged to `raw.collector_error` and retried next
+  run — rather than stored half-done.
+- `trends`, `topics`, `tools_mentioned`, `sentiment`, `relevance_score`: unchanged.
+- `maxTokens` 512 → 1024 to fit two prose blocks (Mandarin is token-dense).
 
-Graceful no-op when auth **or** `LLM_API_KEY` is unset (mirrors existing collectors).
+## ⚠️ One deviation from the request (and why)
 
-## Problem 1 — the revoked OAuth token
+The request said *"change `on conflict do nothing` → `do update` so existing rows get
+upgraded on the next run too."* A bare upsert wouldn't have achieved that: the
+pipeline **dedupes already-seen videos before analysis**, so a conflicting row never
+even reaches the insert. To actually upgrade old rows I made two coordinated changes:
 
-`GOOGLE_REFRESH_TOKEN` returning `invalid_grant` can't be fixed in code — re-minting a
-refresh token requires interactive Google consent. So `scripts/youtube-reauth.sh` walks
-you through it: it builds the consent URL (scopes `youtube.readonly` + `gmail.send`,
-`access_type=offline`, `prompt=consent`), you approve in a browser, paste the code back,
-and it exchanges it for a fresh refresh token + prints the `gh secret set` command.
+1. **Insert → upsert** (`on conflict (video_id) do update set …`) over all insight
+   columns — exactly the column list in the request.
+2. **Dedupe now keys on `key_insight_zh IS NOT NULL`**, not mere row existence. So a
+   row created before this change (Chinese column NULL) is treated as "not done",
+   gets re-analysed, and the upsert replaces it with both languages.
 
-## ⚠️ Two manual steps before this runs in production
+This backfills pre-upgrade rows automatically — no manual backfill query needed.
+It's bounded by `MAX_INSIGHTS_PER_RUN` (40) and the latest-N-per-channel fetch
+window, so only recent-enough rows are reachable and there's no cost spike.
+(Documented in DECISIONS.)
 
-These need you (the workflow alone can't do them):
+## Manual step for James (required before next run)
 
-1. **Apply the migration.** Supabase → SQL Editor → paste `0008_video_insight.sql` → Run.
-   *Required before the first pipeline run — the script reads/writes `app.video_insight`.*
-2. **Re-mint the token.** `export GOOGLE_CLIENT_ID=… GOOGLE_CLIENT_SECRET=…` then
-   `bash scripts/youtube-reauth.sh`, and update the `GOOGLE_REFRESH_TOKEN` GitHub secret.
-   Until this is done, both YouTube workflows fall back to the API key + static channels
-   (no dynamic subscriptions), and the pipeline still runs — just over the static list.
+Apply the migration: Supabase → SQL Editor → paste `0009_bilingual_insight.sql` → Run.
+Until then the pipeline's INSERT references a column that doesn't exist yet and will
+error (caught per-video). After applying, the next **YouTube Insights** run (daily
+05:00 UTC, or trigger manually) populates `key_insight_zh` for new + in-window rows.
 
-## How to verify
+## Verification
 
-- `pnpm --filter @product-tracer/worker typecheck` ✅ (passed in CI/locally)
-- After the two manual steps: GitHub → Actions → **YouTube Insights** → *Run workflow*.
-  Then:
+- `pnpm --filter @product-tracer/worker typecheck` ✅ (CI + local)
+- `prettier --check` ✅
+- After migration, inspect:
   ```sql
-  select video_title, sentiment, relevance_score, key_insight
-  from app.video_insight order by created_at desc limit 10;
-
-  select payload from raw.collector_error
-  where error_type='youtube_insights_report' order by occurred_at desc limit 1;
+  select video_title, relevance_score, key_insight, key_insight_zh
+  from app.video_insight order by created_at desc limit 5;
   ```
-
-## Token cost
-
-Per video ≈ system + capped description (~1–1.5K input) + compact JSON (~150–300 output)
-≈ **~$0.0003–0.0005/video**. A run is capped at 40 videos → **< 2¢/run**; steady state
-(only new daily videos) is a handful of videos → fractions of a cent. Actuals are logged
-in the run summary.
 
 ## Cross-cutting
 
-This creates `app.video_insight`, which the frontend will need to display — that's a
-separate `FRONTEND_REQUEST.md` (out of my scope). The schema above is the contract.
+`app.video_insight` gained `key_insight_zh`. The frontend needs to display it for the
+Chinese locale — that's a separate `FRONTEND_REQUEST.md` (out of my scope).
 
 ---
 
