@@ -125,6 +125,17 @@ const en: Messages = {
   'insights.sentimentPositive': 'Positive',
   'insights.sentimentNeutral': 'Neutral',
   'insights.sentimentNegative': 'Negative',
+  'insights.categoryAll': 'All categories',
+  'insights.categoryAiMl': 'AI/ML',
+  'insights.categoryDevTools': 'Developer Tools',
+  'insights.categoryStartup': 'Startup/Business',
+  'insights.categoryTechNews': 'Tech News',
+  'insights.categoryHardware': 'Hardware',
+  'insights.categorySecurity': 'Security',
+  'insights.categoryDesign': 'Design',
+  'insights.categoryOther': 'Other',
+  'insights.viewList': 'List',
+  'insights.viewGrid': 'Grid',
 };
 
 const zh: Messages = {
@@ -229,6 +240,17 @@ const zh: Messages = {
   'insights.sentimentPositive': '积极',
   'insights.sentimentNeutral': '中性',
   'insights.sentimentNegative': '消极',
+  'insights.categoryAll': '全部分类',
+  'insights.categoryAiMl': 'AI/ML',
+  'insights.categoryDevTools': '开发工具',
+  'insights.categoryStartup': '创业/商业',
+  'insights.categoryTechNews': '科技新闻',
+  'insights.categoryHardware': '硬件',
+  'insights.categorySecurity': '安全',
+  'insights.categoryDesign': '设计',
+  'insights.categoryOther': '其他',
+  'insights.viewList': '列表',
+  'insights.viewGrid': '网格',
 };
 
 const MESSAGES: Record<Locale, Messages> = { en, zh };

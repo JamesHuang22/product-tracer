@@ -482,6 +482,7 @@ export interface VideoInsight {
   key_insight: string | null; // English summary paragraph (2–4 sentences)
   key_insight_zh: string | null; // Chinese summary paragraph (migration 0009)
   relevance_score: number | null; // 1–10
+  category: string | null; // ai_ml | developer_tools | … (migration 0010)
 }
 
 /**
@@ -509,7 +510,9 @@ export async function getVideoInsights(limit: number, offset = 0): Promise<Video
       -- being applied: a missing column yields NULL instead of erroring (which
       -- would otherwise 500 the home page, since getTopVideoInsights runs there).
       (to_jsonb(vi) ->> 'key_insight_zh') as key_insight_zh,
-      vi.relevance_score
+      vi.relevance_score,
+      -- category column likewise read defensively (migration 0010): NULL until applied.
+      (to_jsonb(vi) ->> 'category') as category
     from app.video_insight vi
     order by vi.published_at desc nulls last, vi.created_at desc
     limit ${limit}
@@ -540,10 +543,80 @@ export async function getTopVideoInsights(limit: number): Promise<VideoInsight[]
       -- being applied: a missing column yields NULL instead of erroring (which
       -- would otherwise 500 the home page, since getTopVideoInsights runs there).
       (to_jsonb(vi) ->> 'key_insight_zh') as key_insight_zh,
-      vi.relevance_score
+      vi.relevance_score,
+      -- category column likewise read defensively (migration 0010): NULL until applied.
+      (to_jsonb(vi) ->> 'category') as category
     from app.video_insight vi
     where vi.relevance_score >= 7
     order by vi.published_at desc nulls last, vi.created_at desc
     limit ${limit}
+  `;
+}
+
+/**
+ * A page of video insights restricted to one `category`, newest first. Like
+ * getVideoInsights but with a category filter. The filter is applied through
+ * to_jsonb so it can't error if migration 0010 isn't applied yet (it simply
+ * matches nothing — the `category` json key is absent — until the column lands).
+ */
+export async function getVideoInsightsByCategory(
+  category: string,
+  limit: number,
+  offset = 0,
+): Promise<VideoInsight[]> {
+  return await sql<VideoInsight[]>`
+    select
+      vi.id,
+      vi.video_id,
+      vi.channel_title,
+      vi.video_title,
+      vi.video_url,
+      vi.thumbnail_url,
+      to_char(vi.published_at, 'YYYY-MM-DD') as published_at,
+      coalesce(vi.trends, '[]'::jsonb) as trends,
+      coalesce(vi.topics, '[]'::jsonb) as topics,
+      coalesce(vi.tools_mentioned, '[]'::jsonb) as tools_mentioned,
+      vi.sentiment,
+      vi.key_insight,
+      (to_jsonb(vi) ->> 'key_insight_zh') as key_insight_zh,
+      vi.relevance_score,
+      (to_jsonb(vi) ->> 'category') as category
+    from app.video_insight vi
+    where (to_jsonb(vi) ->> 'category') = ${category}
+    order by vi.published_at desc nulls last, vi.created_at desc
+    limit ${limit}
+    offset ${offset}
+  `;
+}
+
+/**
+ * Total number of analysed videos, optionally restricted to one `category`
+ * (drives the /youtube-insights pager). Category filter is to_jsonb-based for
+ * migration-0010 resilience.
+ */
+export async function getVideoInsightCount(category?: string): Promise<number> {
+  const [row] = category
+    ? await sql<{ n: number }[]>`
+        select count(*)::int as n
+        from app.video_insight vi
+        where (to_jsonb(vi) ->> 'category') = ${category}
+      `
+    : await sql<{ n: number }[]>`select count(*)::int as n from app.video_insight`;
+  return row?.n ?? 0;
+}
+
+/**
+ * Distinct insight categories with their counts, busiest first. Read via
+ * to_jsonb so it returns a single NULL-category bucket (instead of erroring)
+ * until migration 0010 adds the column.
+ */
+export async function getVideoInsightCategories(): Promise<
+  { category: string | null; cnt: number }[]
+> {
+  return await sql<{ category: string | null; cnt: number }[]>`
+    select (to_jsonb(vi) ->> 'category') as category, count(*)::int as cnt
+    from app.video_insight vi
+    group by 1
+    order by cnt desc
   `;
 }
