@@ -119,14 +119,12 @@ const en: Messages = {
   'insights.title': 'YouTube Insights',
   'insights.subtitle': '{count} videos analysed for indie-dev & AI signal.',
   'insights.empty': 'No video insights yet — check back once the analysis pipeline has run.',
-  'insights.relevance': 'Relevance {score}/10',
-  'insights.keyInsight': 'Key insight',
   'insights.topics': 'Topics',
   'insights.trends': 'Trends',
   'insights.watchOn': 'Watch on YouTube',
-  'insights.sentiment.positive': 'Positive',
-  'insights.sentiment.neutral': 'Neutral',
-  'insights.sentiment.negative': 'Negative',
+  'insights.sentimentPositive': 'Positive',
+  'insights.sentimentNeutral': 'Neutral',
+  'insights.sentimentNegative': 'Negative',
 };
 
 const zh: Messages = {
@@ -225,14 +223,12 @@ const zh: Messages = {
   'insights.title': 'YouTube 洞察',
   'insights.subtitle': '已分析 {count} 个视频，提炼独立开发与 AI 信号。',
   'insights.empty': '暂无视频洞察 —— 分析流程运行后再来查看。',
-  'insights.relevance': '相关度 {score}/10',
-  'insights.keyInsight': '核心洞察',
   'insights.topics': '主题',
   'insights.trends': '趋势',
   'insights.watchOn': '在 YouTube 观看',
-  'insights.sentiment.positive': '正面',
-  'insights.sentiment.neutral': '中性',
-  'insights.sentiment.negative': '负面',
+  'insights.sentimentPositive': '积极',
+  'insights.sentimentNeutral': '中性',
+  'insights.sentimentNegative': '消极',
 };
 
 const MESSAGES: Record<Locale, Messages> = { en, zh };
