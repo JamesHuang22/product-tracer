@@ -162,7 +162,11 @@ const SYSTEM_PROMPT =
   'summaries for busy tech readers deciding whether a video is worth their time. From a ' +
   "single video's metadata you extract the trends and topics it covers, the concrete " +
   'tools/products it names, its overall tone toward those tools, a relevance score, and ' +
-  'two summary paragraphs — one in English and one in natural Mandarin Chinese.';
+  'two summary paragraphs — one in English and one in natural Mandarin Chinese. ' +
+  'Write each paragraph as a news digest, not a video description: never start with ' +
+  '"This video", "The video", "In this video", "本视频", "这个视频", "本期视频" or any ' +
+  'similar preamble. The reader already knows it comes from a video — open directly ' +
+  'with the substance.';
 
 const JSON_INSTRUCTION =
   'Respond ONLY with a single valid JSON object. No prose, no markdown code fences.';
@@ -188,9 +192,12 @@ function buildPrompt(video: YoutubeVideo): string {
     "- Cover the video's main point, what the product/tool does, and why it matters.",
     '- Write for a busy tech reader deciding whether the video is worth watching.',
     '- Substantive but readable; avoid deep jargon.',
+    '- Open directly with the substance. NEVER start with "This video", "The video",',
+    '  "In this video", "This episode" or similar — just state what the content is.',
     'Rules for key_insight_zh (Chinese):',
     '- The same paragraph in fluent, natural Mandarin for Chinese indie devs / tech readers.',
     '- Translate the meaning, not word-for-word; do not read like machine translation.',
+    '- 同样直接进入主题。切勿以「本视频」「这个视频」「本期视频」「视频中」等开头。',
     '',
     'Use [] for arrays with nothing to report. Do not invent tools that are not implied.',
     '',
