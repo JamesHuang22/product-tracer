@@ -127,6 +127,16 @@ async function resolveSource(): Promise<{ auth: YtAuth; channels: YoutubeChannel
 // ---------------------------------------------------------------------------
 
 const SENTIMENTS = ['positive', 'neutral', 'negative'] as const;
+const CATEGORIES = [
+  'ai_ml',
+  'developer_tools',
+  'startup_business',
+  'tech_news',
+  'hardware',
+  'security',
+  'design',
+  'other',
+] as const;
 
 /**
  * The shape we ask DeepSeek for, made tolerant of the model's natural sloppiness:
@@ -152,6 +162,13 @@ const Insight = z.object({
   key_insight: z.string().trim().min(1),
   key_insight_zh: z.string().trim().min(1),
   relevance_score: z.coerce.number().int().min(1).max(10).catch(5).default(5),
+  // Content-type bucket. Unknown / missing values collapse to 'other'.
+  category: z
+    .string()
+    .transform((c) => c.trim().toLowerCase())
+    .pipe(z.enum(CATEGORIES).catch('other'))
+    .catch('other')
+    .default('other'),
 });
 type Insight = z.infer<typeof Insight>;
 
@@ -166,7 +183,12 @@ const SYSTEM_PROMPT =
   'Write each paragraph as a news digest, not a video description: never start with ' +
   '"This video", "The video", "In this video", "本视频", "这个视频", "本期视频" or any ' +
   'similar preamble. The reader already knows it comes from a video — open directly ' +
-  'with the substance.';
+  'with the substance. You also classify the content into exactly one category: ' +
+  'ai_ml (AI and machine learning), developer_tools (developer tools, frameworks, ' +
+  'platforms), startup_business (startups, business strategy, funding), tech_news ' +
+  '(general tech news and commentary), hardware (hardware, chips, devices), security ' +
+  '(security, privacy, cryptography), design (UI/UX, product design), or other ' +
+  '(anything else). Classify by the actual content of your summary, not the video title.';
 
 const JSON_INSTRUCTION =
   'Respond ONLY with a single valid JSON object. No prose, no markdown code fences.';
@@ -184,7 +206,9 @@ function buildPrompt(video: YoutubeVideo): string {
     '  "sentiment": "positive" | "neutral" | "negative",  // overall tone toward the tools/AI',
     '  "key_insight": string,         // ENGLISH digest paragraph, 2-4 sentences (see rules)',
     '  "key_insight_zh": string,      // the SAME paragraph in natural Mandarin Chinese',
-    '  "relevance_score": integer     // 1-10, how relevant to an indie-dev / AI-builder audience',
+    '  "relevance_score": integer,    // 1-10, how relevant to an indie-dev / AI-builder audience',
+    '  "category": string             // one of: ai_ml, developer_tools, startup_business,',
+    '                                 //   tech_news, hardware, security, design, other',
     '}',
     '',
     'Rules for key_insight (English):',
@@ -253,13 +277,13 @@ async function storeInsight(
     insert into app.video_insight (
       video_id, channel_id, channel_title, video_title, video_url, thumbnail_url,
       published_at, trends, topics, tools_mentioned, sentiment, key_insight,
-      key_insight_zh, relevance_score, raw_llm_response, llm_prompt_tokens, llm_completion_tokens
+      key_insight_zh, relevance_score, category, raw_llm_response, llm_prompt_tokens, llm_completion_tokens
     ) values (
       ${video.id}, ${video.channelId}, ${video.channelTitle}, ${video.title},
       ${video.videoUrl}, ${video.thumbnailUrl}, ${video.publishedAt || null},
       ${sql.json(insight.trends)}, ${sql.json(insight.topics)}, ${sql.json(insight.tools_mentioned)},
       ${insight.sentiment}, ${insight.key_insight}, ${insight.key_insight_zh}, ${insight.relevance_score},
-      ${sql.json(raw as never)}, ${usage?.promptTokens ?? 0}, ${usage?.completionTokens ?? 0}
+      ${insight.category}, ${sql.json(raw as never)}, ${usage?.promptTokens ?? 0}, ${usage?.completionTokens ?? 0}
     )
     on conflict (video_id) do update set
       trends                = excluded.trends,
@@ -269,6 +293,7 @@ async function storeInsight(
       key_insight           = excluded.key_insight,
       key_insight_zh        = excluded.key_insight_zh,
       relevance_score       = excluded.relevance_score,
+      category              = excluded.category,
       raw_llm_response      = excluded.raw_llm_response,
       llm_prompt_tokens     = excluded.llm_prompt_tokens,
       llm_completion_tokens = excluded.llm_completion_tokens
@@ -276,17 +301,20 @@ async function storeInsight(
 }
 
 /**
- * Of the given video ids, which already have a *complete bilingual* insight (so
- * we skip them). Treating a row as done only when key_insight_zh is present means
- * rows from before the bilingual upgrade — key_insight_zh IS NULL — are re-analysed
- * and upserted with both languages (bounded by MAX_INSIGHTS_PER_RUN and the
- * latest-N fetch window, so it backfills gradually without a cost spike).
+ * Of the given video ids, which already have a *fully populated* insight under the
+ * current schema (so we skip them). A row counts as done only when both the Chinese
+ * summary AND the category are present; rows from before either upgrade
+ * (key_insight_zh IS NULL or category IS NULL) are re-analysed and upserted with the
+ * missing fields (bounded by MAX_INSIGHTS_PER_RUN and the latest-N fetch window, so
+ * it backfills gradually without a cost spike).
  */
 async function analysedVideoIds(ids: string[]): Promise<Set<string>> {
   if (ids.length === 0) return new Set();
   const rows = await sql<{ video_id: string }[]>`
     select video_id from app.video_insight
-    where video_id = any(${ids}) and key_insight_zh is not null
+    where video_id = any(${ids})
+      and key_insight_zh is not null
+      and category is not null
   `;
   return new Set(rows.map((r) => r.video_id));
 }

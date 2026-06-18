@@ -3,6 +3,16 @@
 > Permanent record of architectural, process, and product decisions.
 > Each entry: date, decision, rationale, alternatives considered.
 
+## 2026-06-18 — Content category on video insights
+
+**Decision**: The YouTube Insights LLM now also classifies each video into exactly one of a fixed 8-category set — `ai_ml`, `developer_tools`, `startup_business`, `tech_news`, `hardware`, `security`, `design`, `other` — stored in `app.video_insight.category` (migration 0010). It's part of the same DeepSeek call as the rest of the insight (no extra request), classified from the generated summary content rather than the video title. Unknown/missing values collapse to `other` (zod `enum().catch('other')`).
+
+**Rationale**: A flat list of insights isn't browsable; a small, fixed category vocabulary gives the frontend a cheap, reliable filter without a second model call or a separate classification pass. Reusing the snake_case enum convention from the classification pipeline keeps category values consistent across the app.
+
+**Backfill**: the insert is already an upsert, but the pipeline dedupes "done" videos before analysis — so the dedupe predicate was widened from "has `key_insight_zh`" to "has `key_insight_zh` AND `category`". Pre-category rows within the latest-N fetch window are thus re-analysed and upserted with a category, bounded by `MAX_INSIGHTS_PER_RUN`. (Same adaptation as the bilingual upgrade — a bare upsert alone wouldn't reach already-seen rows.)
+
+---
+
 ## 2026-06-17 — Bilingual video insights + upsert on re-analysis
 
 **Decision**: The YouTube Insights LLM now returns a 2–4 sentence news-digest paragraph in both English (`key_insight`) and Mandarin (`key_insight_zh`) per video. The `app.video_insight` insert became an **upsert** (`on conflict (video_id) do update`), and the dedupe key changed from "row exists" to "row has `key_insight_zh`".
