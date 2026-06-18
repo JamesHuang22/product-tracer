@@ -18,6 +18,14 @@ The YouTube Insights page was recently redesigned as a text-only news digest. Ho
 
 **`apps/web/lib/db.ts`** — the `VideoInsight` type must already have `key_insight_zh` from the previous PR. No changes needed unless it was missed.
 
+### Task 2: Home page label fix
+
+**`apps/web/lib/i18n.ts`** — change the home page insights title key:
+- English: "Latest video insights" → **"Latest insights"**
+- Chinese: "最新视频洞察" → **"最新洞察"**
+
+(It's the `home.insights.title` key — find and update both languages.)
+
 ### Rules
 - PR → wait for Vercel preview ✅ → merge to main → verify production
 - Only touch apps/web/ files
