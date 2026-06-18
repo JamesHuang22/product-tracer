@@ -3,6 +3,10 @@
 > Auto-generated summary of notable changes to product-tracer.
 > Format: Keep a Changelog — date, PR/commit, type, description.
 
+## 2026-06-18
+
+- **PR #25** — feat(web): YouTube Insights are now locale-aware — `/youtube-insights` and the home strip show a single paragraph in the active language (en→`key_insight`, zh→`key_insight_zh`) instead of both, with fallback to the other language. Renames the page + home headings to "Latest insights" (最新洞察) and the subtitle to "Insights come from up to date trends." (洞察来自最新趋势。)
+
 ## 2026-06-17
 
 - **fix(worker)**: YouTube Insights prompt — summaries now open with the substance; the LLM is told never to start with "This video"/"本视频"-style preamble (reads as a news digest, not a video description)

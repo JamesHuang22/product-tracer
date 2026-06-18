@@ -141,9 +141,15 @@ const SENTIMENT_DOT: Record<string, string> = {
 /** Compact, text-only bilingual insight card: English takeaway over its Chinese
  * translation, no thumbnail/title/channel. The whole card links to the video. */
 function InsightCard({ insight }: { insight: VideoInsight }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const dot = SENTIMENT_DOT[insight.sentiment?.toLowerCase() ?? ''];
   const hot = (insight.relevance_score ?? 0) >= 7;
+  // Locale-aware single paragraph, falling back to the other language if the
+  // preferred translation is missing.
+  const text =
+    locale === 'zh'
+      ? insight.key_insight_zh ?? insight.key_insight
+      : insight.key_insight ?? insight.key_insight_zh;
 
   return (
     <a
@@ -152,15 +158,10 @@ function InsightCard({ insight }: { insight: VideoInsight }) {
       rel="noreferrer"
       className="flex w-72 shrink-0 flex-col rounded-xl border border-neutral-200 bg-white p-4 transition-colors hover:border-neutral-400 dark:border-neutral-800 dark:bg-neutral-950 dark:hover:border-neutral-600"
     >
-      {insight.key_insight && (
-        <p className="line-clamp-4 text-sm leading-relaxed text-neutral-900 dark:text-neutral-100">
+      {text && (
+        <p className="line-clamp-5 text-sm leading-relaxed text-neutral-900 dark:text-neutral-100">
           {hot && <span className="mr-1" aria-hidden>🔥</span>}
-          {insight.key_insight}
-        </p>
-      )}
-      {insight.key_insight_zh && (
-        <p className="mt-2 line-clamp-4 border-t border-neutral-100 pt-2 text-sm leading-relaxed text-neutral-500 dark:border-neutral-800/80 dark:text-neutral-400">
-          {insight.key_insight_zh}
+          {text}
         </p>
       )}
       <div className="mt-auto flex items-center gap-1.5 pt-3 text-xs text-neutral-400">
