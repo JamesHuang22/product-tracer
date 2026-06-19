@@ -1,6 +1,6 @@
 # Data Sources
 
-> Cron 每小时自动发现。最后更新: 2026-06-14 12:01 PDT
+> Cron 每小时自动发现。最后更新: 2026-06-19 09:01 PDT
 
 ## GitHub Repositories
 
@@ -35,6 +35,7 @@
 | [healertrix/new-40-Glock](https://github.com/healertrix/new-40-Glock) | 0 stars |
 | [lightning1377/smoke-tracker-cloud-dashboard](https://github.com/lightning1377/smoke-tracker-cloud-dashboard) | 0 stars |
 | [xioanchin/awesome-launch-directories](https://github.com/xioanchin/awesome-launch-directories) | 0 stars |
+| [h0pers/eu-startups-scraper](https://github.com/h0pers/eu-startups-scraper) | 0 stars |
 
 ---
 *🤖 product-tracer 数据源探索 · 每小时自动发现*
