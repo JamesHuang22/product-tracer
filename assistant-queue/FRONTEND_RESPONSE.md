@@ -1,46 +1,49 @@
 # Frontend Agent — Response
 
-**Completed:** 2026-06-18T15:57Z
-**PR:** #27 — https://github.com/JamesHuang22/product-tracer/pull/27 (merged, `5a48540`)
-**Branch:** `feat/frontend-insights-views-filter`
+**Completed:** 2026-06-19T03:?? (investigation)
+**Result:** No code change — the reported bug is not present. Locale-aware display already works correctly in the current code and in production.
 
-List/Grid views, pagination, and a category filter for the YouTube Insights digest.
+## TL;DR
+EN locale renders **only** `key_insight` (English); ZH locale renders **only** `key_insight_zh` (Chinese); never both. This is already true on `/youtube-insights` and the home "Latest insights" strip, in production right now. No PR was opened because there is nothing to change. (This was implemented in PR #25 and preserved in PR #27.)
 
-## Task 1 — declutter cards
-Removed the trends/topics line. Each card now shows: 🔥 (relevance ≥ 7) + sentiment dot + summary paragraph + a muted **category badge** (only when `category` is present) + `▶ Watch on YouTube`.
+## What the current code does
+- `apps/web/app/youtube-insights/page.tsx` → `DigestCard` renders a single paragraph:
+  ```
+  const text = locale === 'zh'
+    ? insight.key_insight_zh ?? insight.key_insight
+    : insight.key_insight ?? insight.key_insight_zh;
+  ...
+  {text && <p ...>{hot && '🔥'}{text}</p>}
+  ```
+  There is exactly one summary `<p>` per card — no second `key_insight_zh` block.
+- `apps/web/components/home-content.tsx` → `InsightCard` has the identical single-paragraph, locale-aware logic.
+- `apps/web/lib/db.ts` → both `key_insight` and `key_insight_zh` are in the SELECTs (the latter read via `to_jsonb` for migration-0009 resilience). Both fields are fetched so the locale switch + fallback can work — but only one is rendered.
 
-## Task 2 — List/Grid toggle + pagination
-- `?view=list|grid` (default `list`). List = full-width cards; Grid = 2-column compact cards with `line-clamp-4`.
-- 20-per-page pagination via `?page=` with Prev/Next, fetching only the current page server-side via `getVideoInsights(limit, offset)`. Page is clamped to `[1, pageCount]`.
+## Production evidence (verified today)
+I fetched production and stripped `<script>` blocks to measure the **rendered DOM** (what the browser shows), not the raw source:
 
-## Task 3 — category filter
-- Category dropdown (`?category=`): "All categories" + the 8 canonical values, each annotated with a live count (e.g. "All categories (68)"). Filtering uses `getVideoInsightsByCategory(category, limit, offset)`.
-- `view` + `category` + `page` compose in the URL (e.g. `?view=grid&category=developer_tools&page=2`). Changing the filter or view resets to page 1; the pager preserves both.
-- New client component `app/youtube-insights/insights-controls.tsx` drives the dropdown + toggle; the cards and pager stay server-rendered.
+| Page / locale | Cards | Summary `<p>` rendered | First card language |
+|---|---|---|---|
+| `/youtube-insights` EN | 20 | 20 (one each) | English only ("Bryant Chou, co-founder of Webflow …") |
+| `/youtube-insights` ZH | 20 | 20 (one each) | Chinese only ("Webflow 联合创始人 Bryant Chou …") |
+| home strip EN | 3 | 3 (one each) | English |
+| home strip ZH | 3 | 3 (one each) | Chinese ("Webflow 联合创始人 …") |
 
-### db.ts
-- `category` added to `VideoInsight` and every select. Read via `to_jsonb(vi) ->> 'category'` (the category filter and count too), so the page **does not 500 if migration 0010 isn't applied yet** — it degrades to NULL / matches nothing until the column lands. `getTopVideoInsights` is covered as well, protecting the home page.
-- New functions: `getVideoInsightsByCategory()`, `getVideoInsightCount(category?)`, `getVideoInsightCategories()`.
+One paragraph per card, correct language per locale, with fallback to the other language only when the preferred field is null (so a card is never blank).
 
-## Task 4 — i18n
-`insights.categoryAll` + `insights.category{AiMl,DevTools,Startup,TechNews,Hardware,Security,Design,Other}` and `insights.viewList` / `insights.viewGrid` (en/zh).
+## Why it *looks* like both are shown (the likely source of the report)
+Viewing the page **source** (e.g. "View Page Source" / `curl` of the raw HTML) shows both English and Chinese strings, because Next.js embeds its **RSC flight payload** inside `<script>self.__next_f.push(...)</script>` tags. That payload carries the server-render data (and, for the home page, the full insight objects which include both `key_insight` and `key_insight_zh`). It is not the rendered DOM. In the actual page the browser paints, only one language appears per card.
 
-## Verification
-- `pnpm --filter @product-tracer/web typecheck` → passes. Local `next build` → succeeds (`/youtube-insights` 4.4 kB).
-- Vercel preview (PR #27): ✅ pass → merged to `main` (`5a48540`).
-- Production: `/` → **200**, `/youtube-insights` → **200**, `?view=grid&category=ai_ml` → **200**.
-- Live HTML check: category `<select>` renders all 9 options with counts (`All categories (68)`, AI/ML, Developer Tools, Startup/Business, Tech News, Hardware, Security, Design, Other); category badges present on cards; old `Trends:` meta gone.
+How to confirm in a browser: open the page, toggle EN/中文 in the header — the visible cards switch language and never show both. ("Inspect Element" on a card shows a single `<p>`; "View Source" shows both because of the flight payload.)
 
-## Notes
-- Migration 0010 (`category`) is already noted as shipped in CHANGELOG (backend), and the production data confirms it — 68 insights, AI/ML and other categories populated. The `to_jsonb` guard remains as defensive insurance.
-- Category dropdown options are a fixed canonical list (so every category is always selectable); `getVideoInsightCategories()` supplies the live counts shown beside each.
+## Optional follow-up (not done — would you like it?)
+If the goal is to keep the *other* language out of the page **source** too (not just the rendered DOM), I could have the home page resolve the single locale paragraph server-side before passing data to the client `HomeContent` component, so the unused translation isn't serialized into the flight payload. This is a payload/cleanliness optimization, not a rendering fix — the visible behavior is already correct. Say the word and I'll ship it as a PR.
 
-## Post-completion
-- `CHANGELOG.md`: PR #27 entry at top of the 2026-06-18 section (merged as part of the PR).
-- `FRONTEND_REQUEST.md`: deleted.
+## Tasks
+- Task 1 (fix locale-aware display): already correct — no change needed.
+- Task 2 (test EN/中文 toggle): verified in production per the table above.
+- CHANGELOG: no entry added (no code change).
+- `FRONTEND_REQUEST.md`: deleted (request processed).
 
 ## Scope
-Only `apps/web/` (+ CHANGELOG.md docs). No `apps/worker/`, `packages/`, or `.github/workflows/`.
-
-## Files changed
-`apps/web/app/youtube-insights/page.tsx`, `apps/web/app/youtube-insights/insights-controls.tsx` (new), `apps/web/lib/db.ts`, `apps/web/lib/i18n.ts`, `CHANGELOG.md`
+No files modified (investigation only). Queue files updated per protocol.
