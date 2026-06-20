@@ -34,6 +34,7 @@ const en: Messages = {
 
   'nav.projects': 'Projects',
   'nav.insights': 'Insights',
+  'nav.trends': 'Trends',
 
   'byPlatform.title': 'By platform',
   'byPlatform.summary': '{live} active sources',
@@ -136,6 +137,16 @@ const en: Messages = {
   'insights.categoryOther': 'Other',
   'insights.viewList': 'List',
   'insights.viewGrid': 'Grid',
+
+  'trends.title': 'Weekly Hot Trends',
+  'trends.subtitle': "What's hot in the indie dev space this week",
+  'trends.weekOf': 'Week of {start} – {end}',
+  'trends.summary': 'Summary',
+  'trends.topProducts': 'Top Products',
+  'trends.emergingThemes': 'Emerging Themes',
+  'trends.videoHighlights': 'Video Highlights',
+  'trends.stats': '{projects} projects scanned · {signals} signals · {insights} insights',
+  'trends.noTrendsYet': 'No trends yet. Check back after the weekly analysis runs.',
 };
 
 const zh: Messages = {
@@ -151,6 +162,7 @@ const zh: Messages = {
 
   'nav.projects': '项目',
   'nav.insights': '洞察',
+  'nav.trends': '趋势',
 
   'byPlatform.title': '按平台',
   'byPlatform.summary': '{live} 个活跃来源',
@@ -251,6 +263,16 @@ const zh: Messages = {
   'insights.categoryOther': '其他',
   'insights.viewList': '列表',
   'insights.viewGrid': '网格',
+
+  'trends.title': '本周热门趋势',
+  'trends.subtitle': '本周独立开发者圈的热点',
+  'trends.weekOf': '{start} – {end} 当周',
+  'trends.summary': '概要',
+  'trends.topProducts': '热门产品',
+  'trends.emergingThemes': '新兴主题',
+  'trends.videoHighlights': '视频亮点',
+  'trends.stats': '扫描 {projects} 个项目 · {signals} 个信号 · {insights} 条洞察',
+  'trends.noTrendsYet': '暂无趋势数据。请等待每周分析完成后查看。',
 };
 
 const MESSAGES: Record<Locale, Messages> = { en, zh };

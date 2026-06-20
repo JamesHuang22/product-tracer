@@ -620,3 +620,65 @@ export async function getVideoInsightCategories(): Promise<
     order by cnt desc
   `;
 }
+
+// ---------------------------------------------------------------------------
+// Weekly hot trends (/trends)
+// ---------------------------------------------------------------------------
+
+export interface WeeklyTrendProduct {
+  name: string;
+  slug: string;
+  platform: string;
+  description: string;
+  score: number;
+}
+
+/** One weekly trend report (app.weekly_trend, migration 0012). */
+export interface WeeklyTrend {
+  id: string;
+  week_start: string; // YYYY-MM-DD
+  week_end: string; // YYYY-MM-DD
+  summary_en: string;
+  summary_zh: string;
+  top_products: WeeklyTrendProduct[];
+  emerging_themes: string[];
+  video_highlights: string;
+  total_projects_scanned: number;
+  total_signals_generated: number;
+  total_insights_collected: number;
+  created_at: string; // YYYY-MM-DD
+}
+
+/**
+ * The most recent weekly trend report, or null when none exists yet. Wrapped in
+ * a try/catch so the /trends page degrades to its empty state (instead of
+ * 500-ing) before migration 0012 creates app.weekly_trend — 42P01 is
+ * "undefined_table", 42703 "undefined_column" during a partial rollout.
+ */
+export async function getLatestWeeklyTrend(): Promise<WeeklyTrend | null> {
+  try {
+    const rows = await sql<WeeklyTrend[]>`
+      select
+        id::text,
+        to_char(week_start, 'YYYY-MM-DD') as week_start,
+        to_char(week_end, 'YYYY-MM-DD') as week_end,
+        summary_en,
+        summary_zh,
+        coalesce(top_products, '[]'::jsonb) as top_products,
+        coalesce(emerging_themes, '[]'::jsonb) as emerging_themes,
+        video_highlights,
+        total_projects_scanned,
+        total_signals_generated,
+        total_insights_collected,
+        to_char(created_at, 'YYYY-MM-DD') as created_at
+      from app.weekly_trend
+      order by created_at desc
+      limit 1
+    `;
+    return rows[0] ?? null;
+  } catch (err) {
+    const code = (err as { code?: string }).code;
+    if (code === '42P01' || code === '42703') return null;
+    throw err;
+  }
+}
