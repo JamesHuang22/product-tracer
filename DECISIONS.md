@@ -3,6 +3,18 @@
 > Permanent record of architectural, process, and product decisions.
 > Each entry: date, decision, rationale, alternatives considered.
 
+## 2026-06-19 — LLM-based dedup with cheap candidate generation
+
+**Decision**: Dedup runs in two stages — cheap deterministic _candidate generation_ (group active rows by normalised primary_url / name key for projects, normalised video_title key for insights, pair within each group) followed by an _LLM confirmation_ (one DeepSeek call per pair → `{is_duplicate, confidence, reason}`). Confirmed pairs (confidence ≥ 0.8) are merged; 0.5–0.8 are flagged `dedup_status='duplicate_candidate'` for human review; below that, left alone. Migration 0011 adds `merged_into_id` + `dedup_status` to both `app.project` and `app.video_insight`. Daily at 03:00 UTC.
+
+**Rationale**: Sending every O(n²) pair to the LLM is wasteful and unbounded. Normalised-key grouping turns it into a handful of genuine candidates, and the LLM only adjudicates the ambiguous ones a string-compare can't (same product, different name/URL). Soft-delete via `dedup_status='merged'` + `merged_into_id` (rather than a hard DELETE) keeps the merge auditable and reversible, and the project merge re-points `identity_link` + `raw.snapshot` to the keeper so no cross-platform evidence or engagement history is lost. The global `unique(platform, external_id)` on `identity_link` guarantees the two projects never share a link, so re-pointing is a plain UPDATE with no collision handling.
+
+**Keeper choice**: the project with more `identity_link` rows wins (more cross-platform corroboration), tie-broken by the older `created_at`; insights keep the older row. A `DEDUP_MAX_PAIRS` cap (default 80) bounds LLM cost (~$0.001/pair → cents/day).
+
+**Alternatives considered**: (1) embedding similarity + threshold — more infra (pgvector queries, tuning) for what a keyed group + one cheap LLM call already covers at this scale; (2) hard-delete duplicates — rejected, irreversible and loses history.
+
+---
+
 ## 2026-06-18 — Content category on video insights
 
 **Decision**: The YouTube Insights LLM now also classifies each video into exactly one of a fixed 8-category set — `ai_ml`, `developer_tools`, `startup_business`, `tech_news`, `hardware`, `security`, `design`, `other` — stored in `app.video_insight.category` (migration 0010). It's part of the same DeepSeek call as the rest of the insight (no extra request), classified from the generated summary content rather than the video title. Unknown/missing values collapse to `other` (zod `enum().catch('other')`).

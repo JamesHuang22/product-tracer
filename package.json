@@ -18,6 +18,7 @@
     "collect:reddit": "pnpm --filter @product-tracer/worker exec tsx src/scripts/collect-reddit.ts",
     "collect:youtube": "pnpm --filter @product-tracer/worker exec tsx src/scripts/collect-youtube.ts",
     "youtube:insights": "pnpm --filter @product-tracer/worker exec tsx src/scripts/youtube-insights.ts",
+    "dedup": "pnpm --filter @product-tracer/worker exec tsx src/scripts/dedup.ts",
     "typecheck": "pnpm -r typecheck",
     "format": "prettier --write \"**/*.{ts,tsx,js,mjs,json,md,yml,yaml}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,mjs,json,md,yml,yaml}\""

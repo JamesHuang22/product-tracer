@@ -9,6 +9,7 @@
     "quality:check": "tsx src/scripts/run-quality-check.ts",
     "llm:classify": "tsx src/scripts/llm-classify.ts",
     "youtube:insights": "tsx src/scripts/youtube-insights.ts",
+    "dedup": "tsx src/scripts/dedup.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

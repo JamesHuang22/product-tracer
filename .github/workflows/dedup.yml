@@ -1,0 +1,40 @@
+name: Dedup
+
+# Daily LLM-powered dedup: finds near-duplicate projects and video insights,
+# confirms each candidate pair with DeepSeek, and merges the confirmed ones into
+# a single keeper (re-pointing identity_links + snapshots). Runs at 03:00 UTC,
+# clear of the collectors and the 05:00/06:00 insight/quality passes. Also a
+# manual trigger. No-ops cleanly when LLM_API_KEY is unset.
+
+on:
+  schedule:
+    - cron: '0 3 * * *' # daily 03:00 UTC
+  workflow_dispatch: {}
+
+concurrency:
+  group: dedup
+  cancel-in-progress: false
+
+jobs:
+  dedup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Run dedup
+        run: pnpm dedup
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          # Optional overrides — defaults: deepseek-chat @ api.deepseek.com
+          LLM_MODEL: ${{ secrets.LLM_MODEL }}
+          LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
