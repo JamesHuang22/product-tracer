@@ -3,6 +3,10 @@
 > Auto-generated summary of notable changes to product-tracer.
 > Format: Keep a Changelog — date, PR/commit, type, description.
 
+## 2026-06-19
+
+- **feat(worker)**: dedup pipeline — daily LLM (DeepSeek) pass that finds near-duplicate projects and video insights, confirms each candidate pair, and merges confirmed ones into a keeper (re-pointing identity_links + snapshots); medium-confidence pairs are flagged `duplicate_candidate`. Migration 0011 adds `merged_into_id` / `dedup_status`; new `Dedup` workflow at 03:00 UTC
+
 ## 2026-06-18
 
 - **PR #27** — feat(web): YouTube Insights gains a List/Grid view toggle (`?view=`), 20-per-page pagination (`?page=`), and a category filter dropdown (`?category=`, the 8 `category` values with live counts); insight cards drop the trends/topics line and gain a muted category badge. Reads `category` defensively (`to_jsonb`) so it degrades to NULL until migration 0010 is live
