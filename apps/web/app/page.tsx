@@ -8,6 +8,8 @@ import {
   getTotalProjectCount,
 } from '@/lib/db';
 import { HomeContent } from '@/components/home-content';
+import { cookies } from 'next/headers';
+import { DEFAULT_LOCALE, isLocale, LOCALE_COOKIE, type Locale } from '@/lib/i18n';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,6 +48,21 @@ export default async function HomePage() {
 
   const totalLive = ghCount + hnCount + phCount + ytCount;
 
+  // Resolve each insight to the active locale's summary and drop the other
+  // language before handing data to the client <HomeContent>. The rendered card
+  // was already single-locale; this also keeps the unused translation out of the
+  // serialized RSC payload, so the page *source* carries one language per card.
+  const cookieStore = await cookies();
+  const rawLocale = cookieStore.get(LOCALE_COOKIE)?.value;
+  const locale: Locale = isLocale(rawLocale) ? (rawLocale as Locale) : DEFAULT_LOCALE;
+  const localizedInsights = videoInsights.map((vi) => {
+    const resolved =
+      locale === 'zh' ? vi.key_insight_zh ?? vi.key_insight : vi.key_insight ?? vi.key_insight_zh;
+    return locale === 'zh'
+      ? { ...vi, key_insight: null, key_insight_zh: resolved }
+      : { ...vi, key_insight: resolved, key_insight_zh: null };
+  });
+
   return (
     <HomeContent
       data={{
@@ -55,7 +72,7 @@ export default async function HomePage() {
         newThisWeek,
         hotSignals,
         latest,
-        videoInsights,
+        videoInsights: localizedInsights,
         github: { count: ghCount, items: ghTop },
         hackerNews: { count: hnCount, items: hnTop },
         productHunt: { count: phCount, items: phTop },
