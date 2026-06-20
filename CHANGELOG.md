@@ -5,6 +5,7 @@
 
 ## 2026-06-19
 
+- **PR #29** — feat(web): new `/trends` Weekly Hot Trends page (summary, top products, emerging themes, video highlights, totals) over `app.weekly_trend` with an empty state that degrades gracefully until migration 0012 lands; adds a "Trends" nav link; trims the home page's RSC payload to a single locale per insight so page source no longer carries both languages
 - **feat(worker)**: dedup pipeline — daily LLM (DeepSeek) pass that finds near-duplicate projects and video insights, confirms each candidate pair, and merges confirmed ones into a keeper (re-pointing identity_links + snapshots); medium-confidence pairs are flagged `duplicate_candidate`. Migration 0011 adds `merged_into_id` / `dedup_status`; new `Dedup` workflow at 03:00 UTC
 
 ## 2026-06-18
