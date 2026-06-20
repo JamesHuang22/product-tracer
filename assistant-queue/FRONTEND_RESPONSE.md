@@ -1,49 +1,40 @@
 # Frontend Agent — Response
 
-**Completed:** 2026-06-19T03:?? (investigation)
-**Result:** No code change — the reported bug is not present. Locale-aware display already works correctly in the current code and in production.
+**Completed:** 2026-06-20T07:07Z
+**PR:** #29 — https://github.com/JamesHuang22/product-tracer/pull/29 (merged, `6802973`)
+**Branch:** `feat/frontend-weekly-trends`
 
-## TL;DR
-EN locale renders **only** `key_insight` (English); ZH locale renders **only** `key_insight_zh` (Chinese); never both. This is already true on `/youtube-insights` and the home "Latest insights" strip, in production right now. No PR was opened because there is nothing to change. (This was implemented in PR #25 and preserved in PR #27.)
+Weekly Hot Trends page + nav, and a real fix for the "both languages in source" report.
 
-## What the current code does
-- `apps/web/app/youtube-insights/page.tsx` → `DigestCard` renders a single paragraph:
-  ```
-  const text = locale === 'zh'
-    ? insight.key_insight_zh ?? insight.key_insight
-    : insight.key_insight ?? insight.key_insight_zh;
-  ...
-  {text && <p ...>{hot && '🔥'}{text}</p>}
-  ```
-  There is exactly one summary `<p>` per card — no second `key_insight_zh` block.
-- `apps/web/components/home-content.tsx` → `InsightCard` has the identical single-paragraph, locale-aware logic.
-- `apps/web/lib/db.ts` → both `key_insight` and `key_insight_zh` are in the SELECTs (the latter read via `to_jsonb` for migration-0009 resilience). Both fields are fetched so the locale switch + fallback can work — but only one is rendered.
+## Task 2 — Weekly Hot Trends page (`/trends`, new)
+- `apps/web/app/trends/page.tsx` — server component, `force-dynamic`. Sections: **Summary** (locale-aware `summary_en`/`summary_zh`), **Top Products** (cards → `/projects/[slug]`, platform badge, description, score), **Emerging Themes** (pills), **Video Highlights**, and a totals line (projects scanned / signals / insights). Empty state when no report exists.
+- `apps/web/lib/db.ts` — `WeeklyTrend` + `WeeklyTrendProduct` types and `getLatestWeeklyTrend()`.
+  - **Resilience:** the query is wrapped in try/catch on Postgres `42P01` (undefined_table) / `42703` (undefined_column), returning `null` → empty state. The repo's latest migration is **0011**, so `app.weekly_trend` (migration 0012) isn't in production yet; without this guard `/trends` would 500. Verified live: `/trends` returns **200** with the empty state today.
 
-## Production evidence (verified today)
-I fetched production and stripped `<script>` blocks to measure the **rendered DOM** (what the browser shows), not the raw source:
+## Task 3 — navigation
+- `apps/web/components/site-header.tsx` — "Trends" link added after "Insights" (`Insights | Trends | Projects`).
 
-| Page / locale | Cards | Summary `<p>` rendered | First card language |
-|---|---|---|---|
-| `/youtube-insights` EN | 20 | 20 (one each) | English only ("Bryant Chou, co-founder of Webflow …") |
-| `/youtube-insights` ZH | 20 | 20 (one each) | Chinese only ("Webflow 联合创始人 Bryant Chou …") |
-| home strip EN | 3 | 3 (one each) | English |
-| home strip ZH | 3 | 3 (one each) | Chinese ("Webflow 联合创始人 …") |
+## Task 1 — locale display
+The requested `const text = locale === 'zh' ? (key_insight_zh ?? key_insight) : (key_insight ?? key_insight_zh)` was **already present** and rendering exactly one `<p>` per card in both `youtube-insights/page.tsx` (line 74-90) and `home-content.tsx`. So the *rendered DOM* has never shown both languages — confirmed again here.
 
-One paragraph per card, correct language per locale, with fallback to the other language only when the preferred field is null (so a card is never blank).
+The one place both languages still appeared was the **page source** of the home page: `HomeContent` is a client component, so the full insight objects (both `key_insight` and `key_insight_zh`) were serialized into Next.js's RSC flight payload. This PR resolves each insight to the active locale **server-side** in `apps/web/app/page.tsx` and nulls the other language before passing data to the client — so the home page source now carries one language per card too. (`/youtube-insights` is a server component and its payload was already single-language.)
 
-## Why it *looks* like both are shown (the likely source of the report)
-Viewing the page **source** (e.g. "View Page Source" / `curl` of the raw HTML) shows both English and Chinese strings, because Next.js embeds its **RSC flight payload** inside `<script>self.__next_f.push(...)</script>` tags. That payload carries the server-render data (and, for the home page, the full insight objects which include both `key_insight` and `key_insight_zh`). It is not the rendered DOM. In the actual page the browser paints, only one language appears per card.
+Verified: on the EN home page, Chinese insight text is gone from source except where a card has **no** English `key_insight` and correctly falls back to Chinese (a single card today) — never both languages on the same card.
 
-How to confirm in a browser: open the page, toggle EN/中文 in the header — the visible cards switch language and never show both. ("Inspect Element" on a card shows a single `<p>`; "View Source" shows both because of the flight payload.)
+## i18n
+`trends.*` (title/subtitle/weekOf/summary/topProducts/emergingThemes/videoHighlights/stats/noTrendsYet) + `nav.trends`, en/zh. Note: the request's i18n snippet used nested objects, but this codebase uses **flat keys in separate `en`/`zh` dicts** — adapted accordingly.
 
-## Optional follow-up (not done — would you like it?)
-If the goal is to keep the *other* language out of the page **source** too (not just the rendered DOM), I could have the home page resolve the single locale paragraph server-side before passing data to the client `HomeContent` component, so the unused translation isn't serialized into the flight payload. This is a payload/cleanliness optimization, not a rendering fix — the visible behavior is already correct. Say the word and I'll ship it as a PR.
+## Verification
+- `pnpm --filter @product-tracer/web typecheck` → passes. Local `next build` → succeeds (`/trends` builds).
+- Vercel preview (PR #29): ✅ pass → merged to `main` (`6802973`).
+- Production: `/` → **200**, `/youtube-insights` → **200**, `/trends` → **200** (empty state + nav link confirmed).
 
-## Tasks
-- Task 1 (fix locale-aware display): already correct — no change needed.
-- Task 2 (test EN/中文 toggle): verified in production per the table above.
-- CHANGELOG: no entry added (no code change).
-- `FRONTEND_REQUEST.md`: deleted (request processed).
+## Post-completion
+- `CHANGELOG.md`: PR #29 entry at top of the 2026-06-19 section (merged with the PR).
+- `FRONTEND_REQUEST.md`: deleted.
 
 ## Scope
-No files modified (investigation only). Queue files updated per protocol.
+Only `apps/web/` (+ CHANGELOG.md docs). No `apps/worker/`, `packages/`, or `.github/workflows/`.
+
+## Files changed
+`apps/web/app/trends/page.tsx` (new), `apps/web/app/page.tsx`, `apps/web/components/site-header.tsx`, `apps/web/lib/db.ts`, `apps/web/lib/i18n.ts`, `CHANGELOG.md`
