@@ -182,12 +182,25 @@ In `apps/worker/package.json`:
 pnpm --filter @product-tracer/worker typecheck
 ```
 
-### After completing
+### After completing merge → apply migration locally
 1. Create PR → wait for all CI checks ✅ → merge to main
-2. Verify: curl -sI https://product-tracer.vercel.app/ returns HTTP 200
-3. Update CHANGELOG.md (new entry at top)
-4. Update DECISIONS.md (weekly trend pipeline, migration 0012)
-5. Write summary to assistant-queue/RESPONSE.md
+2. **Apply migration locally using psql** — you have Supabase MCP connected. Run:
+   ```bash
+   psql "$DATABASE_URL" -f packages/db/migrations/0012_weekly_trend.sql
+   ```
+   Then verify: `psql "$DATABASE_URL" -c "select id from app.weekly_trend limit 1;"`
+3. Verify Vercel production: `curl -sI https://product-tracer.vercel.app/` returns HTTP 200
+4. **Test the weekly trend script** (optional but recommended):
+   ```bash
+   pnpm --filter @product-tracer/worker weekly:trend
+   ```
+   Then verify data exists:
+   ```bash
+   psql "$DATABASE_URL" -c "select week_start, week_end, summary_en from app.weekly_trend order by created_at desc limit 1;"
+   ```
+5. Update CHANGELOG.md (new entry at top)
+6. Update DECISIONS.md (weekly trend pipeline, migration 0012)
+7. Write summary to assistant-queue/RESPONSE.md
 
 ---
 
