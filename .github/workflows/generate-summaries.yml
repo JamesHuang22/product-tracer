@@ -1,0 +1,26 @@
+name: Generate AI Summaries
+
+on:
+  schedule:
+    - cron: '0 4 * * *' # daily UTC 04:00
+  workflow_dispatch:
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @product-tracer/worker summaries:generate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          # Optional overrides — defaults: deepseek-chat @ api.deepseek.com, batch 50
+          LLM_MODEL: ${{ secrets.LLM_MODEL }}
+          LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
