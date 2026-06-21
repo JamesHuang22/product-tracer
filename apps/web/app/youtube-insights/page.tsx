@@ -173,7 +173,9 @@ export default async function YoutubeInsightsPage({
   const rangeEnd = Math.min(offset + PAGE_SIZE, total);
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-12">
+    // Grid view needs room for four columns, so it gets a wider container; the
+    // list view stays at a comfortable reading width.
+    <main className={`mx-auto px-6 py-12 ${view === 'grid' ? 'max-w-6xl' : 'max-w-3xl'}`}>
       <header className="mb-6">
         <h1 className="text-3xl font-semibold tracking-tight">{translate(locale, 'insights.title')}</h1>
         <p className="mt-2 text-sm text-neutral-500">{translate(locale, 'insights.subtitle')}</p>
@@ -193,7 +195,11 @@ export default async function YoutubeInsightsPage({
         </div>
       ) : (
         <div
-          className={view === 'grid' ? 'grid grid-cols-1 gap-4 sm:grid-cols-2' : 'flex flex-col gap-4'}
+          className={
+            view === 'grid'
+              ? 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4'
+              : 'flex flex-col gap-4'
+          }
         >
           {insights.map((insight) => (
             <DigestCard
