@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { LanguageSwitcher } from '@/components/language-switcher';
+import { ThemeToggle } from '@/components/theme-toggle';
 import { useI18n } from '@/lib/i18n-context';
 
 export function SiteHeader() {
@@ -34,6 +35,7 @@ export function SiteHeader() {
             {t('nav.trends')}
           </Link>
           <LanguageSwitcher />
+          <ThemeToggle />
         </nav>
       </div>
     </header>

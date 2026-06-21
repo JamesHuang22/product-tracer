@@ -1,5 +1,10 @@
 @import 'tailwindcss';
 
+/* Class-based dark mode: `dark:` utilities apply under a `.dark` ancestor
+   (toggled on <html> by the theme switcher / the no-flash script in layout),
+   rather than the Tailwind v4 default of `prefers-color-scheme`. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
   --font-mono: ui-monospace, 'SF Mono', Menlo, monospace;
@@ -10,11 +15,12 @@
   --foreground: #0a0a0a;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Page background/foreground follow the same `.dark` class so the toggle drives
+   them in lockstep with the `dark:` utilities. The no-flash script applies the
+   class (from localStorage or the system preference) before first paint. */
+.dark {
+  --background: #0a0a0a;
+  --foreground: #ededed;
 }
 
 html {

@@ -20,9 +20,18 @@ import type { ProjectListItem } from '@/lib/db';
 import { LLM_CATEGORIES, formatCategory } from '@/lib/categories';
 import { fmtCount, cleanOneLiner, localizedText } from '@/lib/format';
 import { useI18n } from '@/lib/i18n-context';
+import type { MessageKey } from '@/lib/i18n';
 import { CategoryBadge } from '@/components/category-badge';
 
 const ch = createColumnHelper<ProjectListItem>();
+
+/** Sort dropdown options → the tanstack sorting state each one applies. */
+const SORT_OPTIONS: { value: string; key: MessageKey; sorting: SortingState }[] = [
+  { value: 'stars-desc', key: 'sort.starsDesc', sorting: [{ id: 'github_stars', desc: true }] },
+  { value: 'stars-asc', key: 'sort.starsAsc', sorting: [{ id: 'github_stars', desc: false }] },
+  { value: 'newest', key: 'sort.newest', sorting: [{ id: 'created_at', desc: true }] },
+  { value: 'name-asc', key: 'sort.nameAsc', sorting: [{ id: 'name', desc: false }] },
+];
 
 // Short, colour-coded source chips for the platforms a project lives on.
 const PLATFORM_BADGE: Record<string, { label: string; cls: string }> = {
@@ -74,8 +83,15 @@ function projectHref(p: ProjectListItem): { href: string; external: boolean } {
 export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
   const { t, locale } = useI18n();
   const [sorting, setSorting] = useState<SortingState>([{ id: 'github_stars', desc: true }]);
+  const [sortValue, setSortValue] = useState('stars-desc');
   const [filter, setFilter] = useState('');
   const [category, setCategory] = useState('');
+
+  const onSortChange = (value: string) => {
+    setSortValue(value);
+    const opt = SORT_OPTIONS.find((o) => o.value === value);
+    if (opt) setSorting(opt.sorting);
+  };
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 50 });
 
   // Category dropdown drives an exact-match column filter on `llm_category`.
@@ -157,6 +173,12 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
           </div>
         ),
       }),
+      // Hidden column — exists only so the "Newest first" sort option has a
+      // created_at accessor to order by (ISO strings sort chronologically).
+      ch.accessor('created_at', {
+        header: '',
+        sortDescFirst: true,
+      }),
     ],
     [t, locale],
   );
@@ -164,6 +186,7 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
   const table = useReactTable({
     data: projects,
     columns,
+    initialState: { columnVisibility: { created_at: false } },
     state: { sorting, globalFilter: filter, columnFilters, pagination },
     onSortingChange: setSorting,
     onGlobalFilterChange: setFilter,
@@ -227,6 +250,18 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
             {LLM_CATEGORIES.map((c) => (
               <option key={c} value={c}>
                 {formatCategory(c)}
+              </option>
+            ))}
+          </select>
+          <select
+            value={sortValue}
+            onChange={(e) => onSortChange(e.target.value)}
+            aria-label={t('sort.label')}
+            className="shrink-0 rounded-md border border-neutral-300 bg-white px-2.5 py-1.5 text-sm focus:border-neutral-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900"
+          >
+            {SORT_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {t(o.key)}
               </option>
             ))}
           </select>
