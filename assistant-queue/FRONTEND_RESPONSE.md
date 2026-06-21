@@ -1,47 +1,36 @@
-# Code Review — 2026-06-21 (5th pass) ✅
+# Frontend Response — EN-mode Chinese leak + project links
 
-**No new bugs found.**
+**Status: ✅ Done.** All 4 P1 issues fixed and verified on production (https://product-tracer.vercel.app, HTTP 200).
 
-## Context
-Fifth code-review cron run today. No source-code changes since PR #33 — only documentation commits landed since the 4th pass.
+## PRs
+- **#34** — `fix(web): keep Chinese out of EN mode + internal project links` (merged)
+- **#35** — `fix(web): strip Chinese one-liners from RSC payload server-side` (merged, follow-up)
 
-## Live Site Verification ✅
+## Root causes
+1. **Chinese in EN mode.** Not a missing-translation/fallback bug — the *data itself* is partly Chinese in single-language columns. Verified against prod:
+   - `app.project.one_liner`: 203/4153 rows contain CJK (no English alternative column exists).
+   - `app.video_insight.key_insight` (the "English" field): 12/83 rows contain Chinese.
+2. **No project links on /projects.** `projectHref` routed GitHub projects to their external github.com URL; the top-by-stars rows are all GitHub, so the list had **zero** internal project links.
+3. **Page-source vs rendered text.** `/` and `/projects` hand data to client components, so even after suppressing *display*, every row's `one_liner` was still serialized into the page **source** (projects EN source: ~6,535 Han chars). Required a server-side fix too.
 
-| Page | Status | i18n (EN/中文) | Grid/List | Data |
-|------|--------|---------------|-----------|------|
-| `https://product-tracer.vercel.app/` | 200 ✅ | Works | N/A | Insights localized |
-| `/projects` | 200 ✅ | Works | N/A | Table renders (title: "Projects — Product Tracer") |
-| `/youtube-insights` | 200 ✅ | Works | ✅ | Insights render, categories + metadata present |
-| `/youtube-insights?view=grid` | 200 ✅ | Works | ✅ | Grid layout renders correctly |
-| `/trends` | 200 ✅ | Works | N/A | **916 projects, 170 signals, 83 insights**, 8 emerging themes |
+## What changed (apps/web only)
+- `lib/format.ts`: new `cjkShare` / `localizedText` / `localizedPair` helpers. EN mode drops predominantly-CJK (>20%) text where no English alternative exists; bilingual insight fields no longer fall back across languages.
+- `youtube-insights/page.tsx`, `components/home-content.tsx`: insight cards + one-liners via the new helpers (display layer).
+- `app/projects/projects-table.tsx`: one-liners via `localizedText`; **`projectHref` now routes every row to the internal `/projects/[slug]`** detail page (which keeps a "Visit site" button out to the original URL).
+- `app/page.tsx`, `app/projects/page.tsx`: strip Chinese one-liners / resolve insights **server-side** per cookie locale, so the serialized RSC payload (page source) is clean too. Safe for the locale toggle — `setLocale` calls `router.refresh()`, re-running the server components, so 中文 mode re-fetches and still shows Chinese.
+- Product **names** left intact — the one place CJK is expected in EN mode.
 
-### i18n verification
-- Title metadata correct for both languages ✅
-- Page title `/projects` returns "Projects — Product Tracer" ✅
+## Verification (production, `Cookie: locale=en`)
+| Page | CJK before | CJK after |
+|------|-----------|-----------|
+| `/` | 137 | **0** |
+| `/projects` | 62 | **0** |
+| `/youtube-insights` | 406 | **2** (the `中文` switcher label) |
+| `/projects` internal links | 0 | **50** |
 
-### Trends data (notable)
-- Real data still streaming in: 916 new projects this week, 170 signals, 83 video insights
-- Emerging themes: recursive self-improvement, AI agent workflows, edge AI, open-source coding tools, LLM recognition, model benchmarks, AI video generation, developer productivity
-- Summary, video highlights, and stats section all render
+- `Cookie: locale=zh` on `/projects` still returns 6751 Han chars → Chinese mode unaffected.
+- `pnpm --filter @product-tracer/web typecheck` ✅ on both PRs.
+- `curl -sI https://product-tracer.vercel.app/` → `HTTP/2 200`.
+- CHANGELOG.md updated.
 
-## What Changed Since Last Review
-**Nothing.** HEAD still at `5e259af` (4th pass docs commit). No source changes in any workspace package.
-
-## Typecheck ✅
-No code changes so no typecheck needed — state is identical to the 4th pass verification.
-
-## Known Non-Blockers (unchanged)
-- **Collect X workflow** fails on prod — missing GitHub secrets (`X_EMAIL`, `X_2FA_SECRET`, `X_API_KEY`). Code is correct; configuration issue (pre-existing).
-- **No pending requests** in `assistant-queue/` — all pipelines shipped and operational.
-
-## Codebase Scan Results
-Full scan of all source files completed:
-- **12 database migrations** (0001–0012), all applied
-- **Worker scripts**: dedup, llm-classify, youtube-insights, weekly-trend — all follow the same pattern (graceful no-op on missing API key, zod validation, bounded cost per run)
-- **Collectors**: GitHub, Hacker News, Product Hunt, YouTube, Reddit, X — all correct, graceful auth fallbacks
-- **Web app**: 8 page components, 5 components, 5 lib files — all stable
-- **Reddit collector** present in both `collectors/` and `scripts/`, ready for deployment
-- **X collector** present (needs GitHub secrets configured on prod for activation)
-
-## Verdict
-✅ **Clean.** All systems nominal. No action required.
+_No DB changes (frontend-only, as requested). The underlying data-quality issue — Chinese stored in nominally-English columns (`one_liner`, `key_insight`) — is worth a backend follow-up if true bilingual content is desired, but is out of frontend scope._
