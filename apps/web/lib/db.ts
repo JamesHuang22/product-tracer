@@ -32,6 +32,8 @@ export interface ProjectListItem {
   slug: string;
   name: string;
   one_liner: string | null;
+  /** AI-generated project summary (app.project.ai_summary, migration 0013); null until generated. */
+  ai_summary: string | null;
   category: string | null;
   /** AI-classified category (app.project.llm_category); null until classified. */
   llm_category: string | null;
@@ -50,6 +52,8 @@ export async function getAllProjects(): Promise<ProjectListItem[]> {
       p.slug,
       p.name,
       p.one_liner,
+      -- Defensive read via to_jsonb: resilient if the column is ever absent.
+      (to_jsonb(p) ->> 'ai_summary') as ai_summary,
       p.category,
       p.llm_category,
       p.primary_url,
@@ -89,6 +93,8 @@ export async function getProjectsByCategory(
       p.slug,
       p.name,
       p.one_liner,
+      -- Defensive read via to_jsonb: resilient if the column is ever absent.
+      (to_jsonb(p) ->> 'ai_summary') as ai_summary,
       p.category,
       p.llm_category,
       p.primary_url,
@@ -150,6 +156,8 @@ export async function getLatestProjects(limit: number): Promise<ProjectListItem[
       p.slug,
       p.name,
       p.one_liner,
+      -- Defensive read via to_jsonb: resilient if the column is ever absent.
+      (to_jsonb(p) ->> 'ai_summary') as ai_summary,
       p.category,
       p.llm_category,
       p.primary_url,
@@ -304,6 +312,8 @@ export async function getPlatformProjects(platform: string): Promise<ProjectList
       p.slug,
       p.name,
       p.one_liner,
+      -- Defensive read via to_jsonb: resilient if the column is ever absent.
+      (to_jsonb(p) ->> 'ai_summary') as ai_summary,
       p.category,
       p.llm_category,
       p.primary_url,
@@ -379,6 +389,8 @@ export interface ProjectDetail {
   slug: string;
   name: string;
   one_liner: string | null;
+  /** AI-generated project summary (app.project.ai_summary, migration 0013); null until generated. */
+  ai_summary: string | null;
   category: string | null;
   llm_category: string | null;
   primary_url: string | null;
@@ -400,6 +412,7 @@ export async function getProjectBySlug(slug: string): Promise<ProjectDetail | nu
       slug: string;
       name: string;
       one_liner: string | null;
+      ai_summary: string | null;
       category: string | null;
       llm_category: string | null;
       primary_url: string | null;
@@ -407,7 +420,9 @@ export async function getProjectBySlug(slug: string): Promise<ProjectDetail | nu
     }[]
   >`
     select
-      p.id, p.slug, p.name, p.one_liner, p.category, p.llm_category, p.primary_url,
+      p.id, p.slug, p.name, p.one_liner,
+      (to_jsonb(p) ->> 'ai_summary') as ai_summary,
+      p.category, p.llm_category, p.primary_url,
       to_char(p.created_at, 'YYYY-MM-DD') as created_at
     from app.project p
     where p.slug = ${slug}

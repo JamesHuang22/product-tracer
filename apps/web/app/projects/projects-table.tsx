@@ -25,6 +25,12 @@ import { CategoryBadge } from '@/components/category-badge';
 
 const ch = createColumnHelper<ProjectListItem>();
 
+/** Trim to `max` characters (unicode-safe), appending an ellipsis when cut. */
+function truncateChars(s: string, max: number): string {
+  const chars = [...s];
+  return chars.length > max ? chars.slice(0, max).join('').trimEnd() + '…' : s;
+}
+
 /** Sort dropdown options → the tanstack sorting state each one applies. */
 const SORT_OPTIONS: { value: string; key: MessageKey; sorting: SortingState }[] = [
   { value: 'stars-desc', key: 'sort.starsDesc', sorting: [{ id: 'github_stars', desc: true }] },
@@ -110,6 +116,7 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
         cell: (info) => {
           const p = info.row.original;
           const oneLiner = localizedText(locale, cleanOneLiner(p.one_liner));
+          const aiSummary = localizedText(locale, p.ai_summary);
           const content = (
             <>
               <div className="truncate font-medium text-neutral-900 dark:text-neutral-50">
@@ -117,6 +124,15 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
               </div>
               {oneLiner && (
                 <div className="mt-0.5 line-clamp-1 text-sm text-neutral-500">{oneLiner}</div>
+              )}
+              {aiSummary && (
+                <div
+                  title={aiSummary}
+                  className="mt-0.5 line-clamp-1 text-xs italic text-neutral-400"
+                >
+                  <span aria-hidden>✨ </span>
+                  {truncateChars(aiSummary, 80)}
+                </div>
               )}
             </>
           );
@@ -337,6 +353,7 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
             'block rounded-lg border border-neutral-200 p-4 transition-colors hover:border-neutral-400 dark:border-neutral-800 dark:hover:border-neutral-600';
           const { href, external } = projectHref(p);
           const oneLiner = localizedText(locale, cleanOneLiner(p.one_liner));
+          const aiSummary = localizedText(locale, p.ai_summary);
           const inner = (
             <>
               <div className="min-w-0">
@@ -346,6 +363,12 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
                 </div>
                 {oneLiner && (
                   <div className="mt-1 line-clamp-2 text-sm text-neutral-500">{oneLiner}</div>
+                )}
+                {aiSummary && (
+                  <div className="mt-1 line-clamp-2 text-xs italic text-neutral-400">
+                    <span aria-hidden>✨ </span>
+                    {aiSummary}
+                  </div>
                 )}
               </div>
               <div className="mt-3 flex items-center gap-4 text-xs">

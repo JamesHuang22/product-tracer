@@ -5,6 +5,8 @@
 
 ## 2026-06-21
 
+- **feat(web)**: display AI-generated project summaries (backend migration 0013, `app.project.ai_summary`). The `/projects` table shows a truncated ✨ italic summary under the one-liner with a `title` tooltip for the full text; the `/projects/[slug]` detail page shows the full summary in a subtle "AI Summary" block above the cross-platform signals. Read defensively via `to_jsonb` (resilient if the column is absent), suppressed in EN mode when the summary is Chinese (same rule as one-liners, incl. server-side strip on `/projects`). New i18n key `detail.aiSummary` (EN/ZH)
+
 - **feat(worker)**: AI project summaries — new `generate-summaries.ts` writes a 2-3 sentence DeepSeek summary per project into `app.project.ai_summary` (migration 0013). `ai_summary IS NULL` is both the work queue and the done-marker, so the daily job (`Generate AI Summaries`, 04:00 UTC) is idempotent/resumable and chews through the ~4k backlog in batches of 50 (`SUMMARY_BATCH` overridable). Graceful no-op when `LLM_API_KEY` is unset
 - **fix(web)**: no more horizontal scroll on narrow mobile viewports (e.g. 375px). Added `overflow-x-clip` to `<body>` so a stray full-bleed strip or wide child can't push the page sideways. Used `clip` rather than `hidden` deliberately — it doesn't create a scroll container, so the sticky header and the home page's inner `overflow-x-auto` card strips keep working. Fixes `/`, `/projects`, and `/youtube-insights` in one place
 

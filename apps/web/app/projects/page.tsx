@@ -26,6 +26,7 @@ export default async function ProjectsPage() {
   const localizedProjects = projects.map((p) => ({
     ...p,
     one_liner: localizedText(locale, p.one_liner),
+    ai_summary: localizedText(locale, p.ai_summary),
   }));
 
   return (

@@ -2,14 +2,14 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { cookies } from 'next/headers';
-import { ArrowLeft, ArrowUpRight } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, Sparkles } from 'lucide-react';
 import {
   getProjectBySlug,
   type ProjectDetail,
   type ProjectMetricPoint,
   type ProjectPlatformSnapshot,
 } from '@/lib/db';
-import { fmtCount, cleanOneLiner } from '@/lib/format';
+import { fmtCount, cleanOneLiner, localizedText } from '@/lib/format';
 import { translate, DEFAULT_LOCALE, isLocale, LOCALE_COOKIE } from '@/lib/i18n';
 import { CategoryBadge } from '@/components/category-badge';
 
@@ -279,6 +279,10 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   const raw = cookieStore.get(LOCALE_COOKIE)?.value;
   const locale = isLocale(raw) ? (raw as 'en' | 'zh') : DEFAULT_LOCALE;
 
+  // AI summary, suppressed in EN mode if it happens to be Chinese (same rule as
+  // one-liners). Null until migration 0013 + the generate-summaries run populate it.
+  const aiSummary = localizedText(locale, project.ai_summary);
+
   return (
     <main className="mx-auto max-w-4xl px-6 py-12">
       <Link
@@ -311,6 +315,20 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           </span>
         </div>
       </header>
+
+      {aiSummary && (
+        <section className="mt-8">
+          <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-5 dark:border-neutral-800 dark:bg-neutral-900/40">
+            <div className="mb-1.5 inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-neutral-500">
+              <Sparkles className="h-3.5 w-3.5" aria-hidden />
+              {translate(locale, 'detail.aiSummary')}
+            </div>
+            <p className="text-sm leading-relaxed text-neutral-700 dark:text-neutral-300">
+              {aiSummary}
+            </p>
+          </div>
+        </section>
+      )}
 
       <section className="mt-10">
         <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-neutral-500">
