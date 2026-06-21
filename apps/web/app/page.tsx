@@ -10,6 +10,7 @@ import {
 import { HomeContent } from '@/components/home-content';
 import { cookies } from 'next/headers';
 import { DEFAULT_LOCALE, isLocale, LOCALE_COOKIE, type Locale } from '@/lib/i18n';
+import { localizedPair, localizedText } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,16 +53,26 @@ export default async function HomePage() {
   // language before handing data to the client <HomeContent>. The rendered card
   // was already single-locale; this also keeps the unused translation out of the
   // serialized RSC payload, so the page *source* carries one language per card.
+  // `localizedPair` additionally guards the English case where the "English"
+  // column itself holds Chinese (returning null rather than leaking it).
   const cookieStore = await cookies();
   const rawLocale = cookieStore.get(LOCALE_COOKIE)?.value;
   const locale: Locale = isLocale(rawLocale) ? (rawLocale as Locale) : DEFAULT_LOCALE;
   const localizedInsights = videoInsights.map((vi) => {
-    const resolved =
-      locale === 'zh' ? vi.key_insight_zh ?? vi.key_insight : vi.key_insight ?? vi.key_insight_zh;
+    const resolved = localizedPair(locale, vi.key_insight, vi.key_insight_zh);
     return locale === 'zh'
       ? { ...vi, key_insight: null, key_insight_zh: resolved }
       : { ...vi, key_insight: resolved, key_insight_zh: null };
   });
+
+  // One-liners live in a single column that is occasionally Chinese. In English
+  // mode, null out predominantly-CJK text *here* (server-side) so it never
+  // reaches the client component's serialized props — keeping the page source,
+  // not just the rendered text, free of stray Chinese. Applies to the latest
+  // feed and every platform top-list (whose one-liners ride along in the payload
+  // even though only the name is shown).
+  const stripOneLiners = <T extends { one_liner: string | null }>(rows: T[]): T[] =>
+    rows.map((r) => ({ ...r, one_liner: localizedText(locale, r.one_liner) }));
 
   return (
     <HomeContent
@@ -71,12 +82,12 @@ export default async function HomePage() {
         totalProjects,
         newThisWeek,
         hotSignals,
-        latest,
+        latest: stripOneLiners(latest),
         videoInsights: localizedInsights,
-        github: { count: ghCount, items: ghTop },
-        hackerNews: { count: hnCount, items: hnTop },
-        productHunt: { count: phCount, items: phTop },
-        youtube: { count: ytCount, items: ytTop },
+        github: { count: ghCount, items: stripOneLiners(ghTop) },
+        hackerNews: { count: hnCount, items: stripOneLiners(hnTop) },
+        productHunt: { count: phCount, items: stripOneLiners(phTop) },
+        youtube: { count: ytCount, items: stripOneLiners(ytTop) },
       }}
     />
   );
