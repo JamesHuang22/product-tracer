@@ -39,7 +39,12 @@ export default async function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
-      <body className="min-h-dvh font-sans antialiased">
+      {/* overflow-x-clip prevents stray horizontal scroll on narrow viewports
+          (e.g. 375px mobile) from any full-bleed strip or wide child. `clip`
+          (not `hidden`) is used deliberately: it doesn't create a scroll
+          container, so the sticky header and the inner overflow-x-auto card
+          strips keep working. */}
+      <body className="min-h-dvh overflow-x-clip font-sans antialiased">
         <I18nProvider initialLocale={locale}>
           <SiteHeader />
           {children}

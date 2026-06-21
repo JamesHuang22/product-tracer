@@ -5,6 +5,8 @@
 
 ## 2026-06-21
 
+- **fix(web)**: no more horizontal scroll on narrow mobile viewports (e.g. 375px). Added `overflow-x-clip` to `<body>` so a stray full-bleed strip or wide child can't push the page sideways. Used `clip` rather than `hidden` deliberately — it doesn't create a scroll container, so the sticky header and the home page's inner `overflow-x-auto` card strips keep working. Fixes `/`, `/projects`, and `/youtube-insights` in one place
+
 - **feat(web)**: four UX additions — (1) **first-visit language auto-detection**: when no locale cookie is set and `navigator.language` is Chinese, switch to 中文 (runs in a mount effect, so no hydration mismatch; an explicit prior choice is always respected); (2) **dark-mode toggle** in the header (sun/moon), persisted to `localStorage.theme`, with an inline no-flash script in `layout.tsx` applying the theme before first paint — Tailwind v4 `dark:` is now class-based via `@custom-variant`; (3) **sort dropdown on `/projects`** (Stars ↓/↑, Newest, Name A–Z) driving the existing client-side table sort (added a hidden `created_at` column for "Newest"); (4) **RSS 2.0 feeds** at `/feed/projects.xml` and `/feed/youtube-insights.xml`, with `<link rel="alternate">` autodiscovery in the document head
 
 - **fix(web)**: tighten EN-mode CJK suppression to catch mixed-language one-liners. The earlier 20%-CJK threshold let mostly-English one-liners with a few Chinese tokens through, leaking ~19 stray CJK chars into `/projects` EN. `localizedText`/`localizedPair` now drop a one-liner / English-column value on *any* CJK character (replacing `cjkShare` with a simple `hasCjk`), so the only CJK left in EN mode is genuine product names
