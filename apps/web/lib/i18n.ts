@@ -102,6 +102,7 @@ const en: Messages = {
   'theme.toDark': 'Switch to dark mode',
   'theme.toLight': 'Switch to light mode',
 
+  'detail.aiSummary': 'AI Summary',
   'detail.visitSite': 'Visit site',
   'detail.stars': 'stars',
   'detail.forks': 'forks',
@@ -237,6 +238,7 @@ const zh: Messages = {
   'theme.toDark': '切换到深色模式',
   'theme.toLight': '切换到浅色模式',
 
+  'detail.aiSummary': 'AI 概述',
   'detail.visitSite': '访问网站',
   'detail.stars': '星标',
   'detail.forks': '复刻',
