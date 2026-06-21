@@ -3,6 +3,18 @@
 > Permanent record of architectural, process, and product decisions.
 > Each entry: date, decision, rationale, alternatives considered.
 
+## 2026-06-21 — AI project summaries: NULL column as work queue
+
+**Decision**: `app.project.ai_summary` (migration 0013, nullable text) holds an LLM-written 2-3 sentence summary per project. The backfill script (`generate-summaries.ts`) selects `where ai_summary is null limit 50` each run, summarises with one plain `callLlm` per project (prose, not JSON; `maxTokens: 150`), and updates the row. Daily cron at 04:00 UTC; batch size overridable via `SUMMARY_BATCH`.
+
+**Rationale**: With ~4k projects, summarising everything in one shot is slow and costly and risks the workflow timeout. Using the `ai_summary IS NULL` predicate as *both* the work queue and the done-marker makes the job idempotent and resumable with zero extra bookkeeping — each daily run advances the frontier, re-running is safe, and new projects are picked up automatically once collected. No separate status column or job table needed.
+
+**Convention divergence from the request**: the requested workflow used `npm i -g pnpm` + `pnpm build` + `pnpm worker generate-summaries`. Followed the repo's established pattern instead (`pnpm/action-setup`, `pnpm install --frozen-lockfile`, `pnpm --filter @product-tracer/worker summaries:generate`) — there is no root `pnpm worker` command, and `tsx` runs the script directly without a build step.
+
+**Alternatives considered**: (1) summarise inline during collection — rejected, couples LLM cost/latency to every collector run and can't backfill existing rows; (2) a dedicated job-queue table — rejected, the NULL predicate already gives queue semantics for free.
+
+---
+
 ## 2026-06-20 — Weekly Hot Trends pipeline (one upserted row per ISO week)
 
 **Decision**: A new worker script (`weekly-trend.ts`, migration 0012 → `app.weekly_trend`) aggregates the trailing 7 days — new projects, the top-10 projects by signal activity, and the top-20 video insights with `relevance_score ≥ 6` — into a compact prompt, then asks DeepSeek for `{summary_en, summary_zh, emerging_themes[], video_highlights}`. The result is **upserted keyed on `week_start = date_trunc('week', now())`** so a re-run for the same week overwrites in place rather than duplicating. Corpus totals (`total_*`) come from separate `count(*)` queries, independent of the LIMITed prompt slices. Runs Mondays 04:00 UTC + on-demand `workflow_dispatch`.
