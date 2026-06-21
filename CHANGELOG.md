@@ -5,6 +5,7 @@
 
 ## 2026-06-20
 
+- **fix(worker)**: weekly-trend `top_products` now matches the `/trends` page contract (`{name, slug, platform, description, score}`). It previously wrote `{slug, name, one_liner, primary_url, signal_count}`, so once a row existed the page 500'd in `PlatformBadge` (`platform.slice` on `undefined`). `platform` is now the snake_case badge key (`github`/`hacker_news`/…)
 - **PR #30** — feat(worker): Weekly Hot Trends pipeline — backs the `/trends` page (PR #29). Migration 0012 adds `app.weekly_trend`; `weekly-trend.ts` scans the trailing 7 days (new projects, per-project signal activity, video insights ≥ relevance 6), asks DeepSeek for a bilingual EN+ZH overview + emerging themes + video highlights, and upserts one row per ISO week (keyed on `week_start`). New `Weekly Hot Trends` workflow at 04:00 UTC Mondays + manual dispatch. Token usage stored via raw `callLlm` (not `callLlmJson`, which drops `usage`)
 - **fix(web)**: `/trends` no longer 500s once migration 0012 lands — `getLatestWeeklyTrend()` coalesced `emerging_themes` (a `text[]`) against `'[]'::jsonb`, a `42804` type mismatch the empty-state try/catch didn't cover (it only caught `42P01`/`42703`). Coalesce against the `text[]` empty literal `'{}'` instead
 
