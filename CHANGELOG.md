@@ -3,6 +3,11 @@
 > Auto-generated summary of notable changes to product-tracer.
 > Format: Keep a Changelog — date, PR/commit, type, description.
 
+## 2026-06-20
+
+- **PR #30** — feat(worker): Weekly Hot Trends pipeline — backs the `/trends` page (PR #29). Migration 0012 adds `app.weekly_trend`; `weekly-trend.ts` scans the trailing 7 days (new projects, per-project signal activity, video insights ≥ relevance 6), asks DeepSeek for a bilingual EN+ZH overview + emerging themes + video highlights, and upserts one row per ISO week (keyed on `week_start`). New `Weekly Hot Trends` workflow at 04:00 UTC Mondays + manual dispatch. Token usage stored via raw `callLlm` (not `callLlmJson`, which drops `usage`)
+- **fix(web)**: `/trends` no longer 500s once migration 0012 lands — `getLatestWeeklyTrend()` coalesced `emerging_themes` (a `text[]`) against `'[]'::jsonb`, a `42804` type mismatch the empty-state try/catch didn't cover (it only caught `42P01`/`42703`). Coalesce against the `text[]` empty literal `'{}'` instead
+
 ## 2026-06-19
 
 - **PR #29** — feat(web): new `/trends` Weekly Hot Trends page (summary, top products, emerging themes, video highlights, totals) over `app.weekly_trend` with an empty state that degrades gracefully until migration 0012 lands; adds a "Trends" nav link; trims the home page's RSC payload to a single locale per insight so page source no longer carries both languages

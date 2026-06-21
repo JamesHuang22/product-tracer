@@ -3,6 +3,18 @@
 > Permanent record of architectural, process, and product decisions.
 > Each entry: date, decision, rationale, alternatives considered.
 
+## 2026-06-20 — Weekly Hot Trends pipeline (one upserted row per ISO week)
+
+**Decision**: A new worker script (`weekly-trend.ts`, migration 0012 → `app.weekly_trend`) aggregates the trailing 7 days — new projects, the top-10 projects by signal activity, and the top-20 video insights with `relevance_score ≥ 6` — into a compact prompt, then asks DeepSeek for `{summary_en, summary_zh, emerging_themes[], video_highlights}`. The result is **upserted keyed on `week_start = date_trunc('week', now())`** so a re-run for the same week overwrites in place rather than duplicating. Corpus totals (`total_*`) come from separate `count(*)` queries, independent of the LIMITed prompt slices. Runs Mondays 04:00 UTC + on-demand `workflow_dispatch`.
+
+**Rationale**: The `/trends` page (PR #29) shipped with no data source. One row per week with a stable unique key makes the page a trivial "latest row" read and makes the job safely idempotent/re-runnable. Used the raw `callLlm` + manual zod-parse (the `youtube-insights.ts` pattern) rather than `callLlmJson`, because the latter discards `usage` and we want `llm_prompt_tokens`/`llm_completion_tokens` persisted for cost accounting. Graceful no-op when `LLM_API_KEY` is unset, mirroring the collectors and `llm-classify.ts`.
+
+**Type-mismatch fix**: applying 0012 exposed a latent bug in `getLatestWeeklyTrend()` — it coalesced `emerging_themes` (`text[]`) against `'[]'::jsonb`, which Postgres rejects with `42804`. That code isn't `42P01`/`42703`, so the empty-state try/catch let it 500. Fixed by coalescing against the `text[]` empty literal `'{}'`, which postgres.js parses into a JS `string[]`.
+
+**Alternatives considered**: (1) append-only history table — rejected, the page only needs the latest and an upsert keeps re-runs clean while still allowing a future history read by `week_start`; (2) `callLlmJson` — rejected, drops token usage.
+
+---
+
 ## 2026-06-19 — LLM-based dedup with cheap candidate generation
 
 **Decision**: Dedup runs in two stages — cheap deterministic _candidate generation_ (group active rows by normalised primary_url / name key for projects, normalised video_title key for insights, pair within each group) followed by an _LLM confirmation_ (one DeepSeek call per pair → `{is_duplicate, confidence, reason}`). Confirmed pairs (confidence ≥ 0.8) are merged; 0.5–0.8 are flagged `dedup_status='duplicate_candidate'` for human review; below that, left alone. Migration 0011 adds `merged_into_id` + `dedup_status` to both `app.project` and `app.video_insight`. Daily at 03:00 UTC.
