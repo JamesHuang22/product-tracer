@@ -1,6 +1,6 @@
 # Product Tracer — Feature Status
 
-*Last updated: 2026-06-21 00:30 PDT*
+*Last updated: 2026-06-21 14:15 PDT*
 
 ## ✅ Done & Merged
 
@@ -18,6 +18,14 @@ Status: `/trends` renders real data, all prod-verified (HTTP 200).
 - `apps/web/lib/format.ts` — Emoji-safe truncation via spread operator
 
 Merged, no migration needed.
+
+## ✅ Done Since Last Check
+
+### PR #39 — Mobile horizontal scroll fix
+- **Issue**: Full-bleed strips caused overflow on 375px viewports
+- **Fix**: `overflow-x-clip` on `<body>` (not `hidden`, which breaks sticky header + inner scroll containers)
+- **Scope**: `app/layout.tsx` only, covers `/`, `/projects`, `/youtube-insights`
+- **Status**: Merged → prod verified (HTTP 200)
 
 ## ⏳ Queued
 
