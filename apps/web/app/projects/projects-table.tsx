@@ -18,7 +18,7 @@ import {
 import { ArrowDown, ArrowUp, ArrowUpDown, GitFork, Star } from 'lucide-react';
 import type { ProjectListItem } from '@/lib/db';
 import { LLM_CATEGORIES, formatCategory } from '@/lib/categories';
-import { fmtCount, cleanOneLiner } from '@/lib/format';
+import { fmtCount, cleanOneLiner, localizedText } from '@/lib/format';
 import { useI18n } from '@/lib/i18n-context';
 import { CategoryBadge } from '@/components/category-badge';
 
@@ -61,18 +61,18 @@ function PlatformBadges({ platforms }: { platforms: string[] }) {
 }
 
 /**
- * Where a row click goes. GitHub projects keep the original behaviour (open
- * their external URL in a new tab); everything else (HN / PH / Reddit) links
- * to its internal cross-platform detail page.
+ * Where a row click goes. Every project links to its internal cross-platform
+ * detail page (which carries a "Visit site" button out to the original URL).
+ * Routing internally — rather than sending GitHub rows straight to github.com —
+ * means the list always exposes real project links to crawlers and keyboard
+ * users, and keeps navigation consistent across platforms.
  */
 function projectHref(p: ProjectListItem): { href: string; external: boolean } {
-  const hasGithub = p.platforms?.includes('github');
-  if (hasGithub && p.primary_url) return { href: p.primary_url, external: true };
   return { href: `/projects/${p.slug}`, external: false };
 }
 
 export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [sorting, setSorting] = useState<SortingState>([{ id: 'github_stars', desc: true }]);
   const [filter, setFilter] = useState('');
   const [category, setCategory] = useState('');
@@ -93,15 +93,14 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
         header: t('table.header.project'),
         cell: (info) => {
           const p = info.row.original;
+          const oneLiner = localizedText(locale, cleanOneLiner(p.one_liner));
           const content = (
             <>
               <div className="truncate font-medium text-neutral-900 dark:text-neutral-50">
                 {p.name}
               </div>
-              {cleanOneLiner(p.one_liner) && (
-                <div className="mt-0.5 line-clamp-1 text-sm text-neutral-500">
-                  {cleanOneLiner(p.one_liner)}
-                </div>
+              {oneLiner && (
+                <div className="mt-0.5 line-clamp-1 text-sm text-neutral-500">{oneLiner}</div>
               )}
             </>
           );
@@ -159,7 +158,7 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
         ),
       }),
     ],
-    [t],
+    [t, locale],
   );
 
   const table = useReactTable({
@@ -302,6 +301,7 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
           const cardClass =
             'block rounded-lg border border-neutral-200 p-4 transition-colors hover:border-neutral-400 dark:border-neutral-800 dark:hover:border-neutral-600';
           const { href, external } = projectHref(p);
+          const oneLiner = localizedText(locale, cleanOneLiner(p.one_liner));
           const inner = (
             <>
               <div className="min-w-0">
@@ -309,10 +309,8 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
                   <span className="truncate font-medium">{p.name}</span>
                   <PlatformBadges platforms={p.platforms ?? []} />
                 </div>
-                {cleanOneLiner(p.one_liner) && (
-                  <div className="mt-1 line-clamp-2 text-sm text-neutral-500">
-                    {cleanOneLiner(p.one_liner)}
-                  </div>
+                {oneLiner && (
+                  <div className="mt-1 line-clamp-2 text-sm text-neutral-500">{oneLiner}</div>
                 )}
               </div>
               <div className="mt-3 flex items-center gap-4 text-xs">

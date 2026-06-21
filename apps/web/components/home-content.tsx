@@ -4,7 +4,7 @@ import Link from 'next/link';
 import type { Route } from 'next';
 import { Activity, ArrowRight, Boxes, Flame, Radio, Sparkles, Youtube } from 'lucide-react';
 import type { PlatformTopItem, ProjectListItem, VideoInsight } from '@/lib/db';
-import { cleanOneLiner, fmtCount } from '@/lib/format';
+import { cleanOneLiner, fmtCount, localizedPair, localizedText } from '@/lib/format';
 import { useI18n } from '@/lib/i18n-context';
 import type { MessageKey } from '@/lib/i18n';
 import { LivePlatformSection, Monogram, PLATFORM_VISUALS } from '@/components/platform-section';
@@ -100,8 +100,8 @@ function StatCard({
 }
 
 function LatestCard({ project }: { project: ProjectListItem }) {
-  const { t } = useI18n();
-  const oneLiner = cleanOneLiner(project.one_liner);
+  const { t, locale } = useI18n();
+  const oneLiner = localizedText(locale, cleanOneLiner(project.one_liner));
   return (
     <Link
       href={`/projects/${project.slug}` as Route}
@@ -144,12 +144,10 @@ function InsightCard({ insight }: { insight: VideoInsight }) {
   const { t, locale } = useI18n();
   const dot = SENTIMENT_DOT[insight.sentiment?.toLowerCase() ?? ''];
   const hot = (insight.relevance_score ?? 0) >= 7;
-  // Locale-aware single paragraph, falling back to the other language if the
-  // preferred translation is missing.
-  const text =
-    locale === 'zh'
-      ? insight.key_insight_zh ?? insight.key_insight
-      : insight.key_insight ?? insight.key_insight_zh;
+  // Locale-aware single paragraph. English mode never falls back to the Chinese
+  // column (and drops the English one if it actually holds Chinese), keeping the
+  // EN UI free of stray Chinese.
+  const text = localizedPair(locale, insight.key_insight, insight.key_insight_zh);
 
   return (
     <a

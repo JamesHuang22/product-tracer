@@ -3,6 +3,11 @@
 > Auto-generated summary of notable changes to product-tracer.
 > Format: Keep a Changelog — date, PR/commit, type, description.
 
+## 2026-06-21
+
+- **fix(web)**: English mode no longer leaks Chinese data content. Some single-column text fields hold Chinese even in EN — project `one_liner` (203 rows) and the nominally-English `key_insight` (12 rows) — which rendered verbatim regardless of locale. New `cjkShare`/`localizedText`/`localizedPair` helpers in `lib/format.ts` suppress predominantly-CJK text in EN mode (no English alternative exists) and stop the bilingual insight fields from falling back across languages. Applied to the home Latest-activity cards + insight strip, `/projects` table (desktop + mobile), and `/youtube-insights` digest cards. Product **names** (the one place CJK is expected in EN) are untouched
+- **fix(web)**: `/projects` rows now link to the internal `/projects/[slug]` detail page for every project instead of sending GitHub rows straight to github.com — the list had zero internal project links (top-by-stars rows are all GitHub). The detail page still carries a "Visit site" button out to the original URL, so external access is preserved
+
 ## 2026-06-20
 
 - **fix(worker)**: weekly-trend `top_products` now matches the `/trends` page contract (`{name, slug, platform, description, score}`). It previously wrote `{slug, name, one_liner, primary_url, signal_count}`, so once a row existed the page 500'd in `PlatformBadge` (`platform.slice` on `undefined`). `platform` is now the snake_case badge key (`github`/`hacker_news`/…)
