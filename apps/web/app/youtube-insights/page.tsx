@@ -17,6 +17,7 @@ import {
   type Locale,
   type MessageKey,
 } from '@/lib/i18n';
+import { localizedPair } from '@/lib/format';
 import { InsightsControls, type CategoryOption } from './insights-controls';
 
 export const metadata: Metadata = {
@@ -69,12 +70,10 @@ function DigestCard({
   const sentiment = insight.sentiment?.toLowerCase() ?? '';
   const dot = SENTIMENT_DOT[sentiment];
   const hot = (insight.relevance_score ?? 0) >= 7;
-  // Locale-aware: one paragraph in the active language, falling back to the
-  // other if the preferred translation is missing.
-  const text =
-    locale === 'zh'
-      ? insight.key_insight_zh ?? insight.key_insight
-      : insight.key_insight ?? insight.key_insight_zh;
+  // Locale-aware: one paragraph in the active language. In English mode we never
+  // fall back to the Chinese column (and drop the English one if it actually
+  // holds Chinese), so the EN UI stays free of stray Chinese.
+  const text = localizedPair(locale, insight.key_insight, insight.key_insight_zh);
 
   return (
     <article
