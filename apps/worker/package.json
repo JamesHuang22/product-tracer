@@ -10,6 +10,7 @@
     "llm:classify": "tsx src/scripts/llm-classify.ts",
     "youtube:insights": "tsx src/scripts/youtube-insights.ts",
     "dedup": "tsx src/scripts/dedup.ts",
+    "weekly:trend": "tsx src/scripts/weekly-trend.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
