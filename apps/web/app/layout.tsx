@@ -12,7 +12,20 @@ export const metadata: Metadata = {
   title: 'Product Tracer — Cross-platform indie product signals',
   description:
     'Daily intelligence on indie products gaining traction across GitHub, Hacker News, Product Hunt, and YouTube.',
+  alternates: {
+    types: {
+      'application/rss+xml': [
+        { url: '/feed/projects.xml', title: 'Product Tracer — New Projects' },
+        { url: '/feed/youtube-insights.xml', title: 'Product Tracer — YouTube Insights' },
+      ],
+    },
+  },
 };
+
+// Applies the persisted (or system) theme to <html> before first paint, so a
+// dark-mode visitor never sees a white flash. Mirrors the logic in ThemeToggle;
+// `theme` is 'dark' | 'light' | 'system' (or absent → system).
+const THEME_INIT_SCRIPT = `(function(){try{var t=localStorage.getItem('theme');var d=t==='dark'||((!t||t==='system')&&window.matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.classList.toggle('dark',d);}catch(e){}})();`;
 
 export default async function RootLayout({
   children,
@@ -22,7 +35,10 @@ export default async function RootLayout({
   const locale = isLocale(cookieLocale) ? cookieLocale : DEFAULT_LOCALE;
 
   return (
-    <html lang={locale} className={inter.variable}>
+    <html lang={locale} className={inter.variable} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
       <body className="min-h-dvh font-sans antialiased">
         <I18nProvider initialLocale={locale}>
           <SiteHeader />

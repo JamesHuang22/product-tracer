@@ -93,6 +93,15 @@ const en: Messages = {
   'table.pagination.perPage': '{count} per page',
   'table.pagination.showing': 'Showing {start}–{end} of {total}',
 
+  'sort.label': 'Sort',
+  'sort.starsDesc': 'Stars (high → low)',
+  'sort.starsAsc': 'Stars (low → high)',
+  'sort.newest': 'Newest first',
+  'sort.nameAsc': 'Name (A–Z)',
+
+  'theme.toDark': 'Switch to dark mode',
+  'theme.toLight': 'Switch to light mode',
+
   'detail.visitSite': 'Visit site',
   'detail.stars': 'stars',
   'detail.forks': 'forks',
@@ -218,6 +227,15 @@ const zh: Messages = {
   'table.pagination.next': '下一页',
   'table.pagination.perPage': '每页 {count} 条',
   'table.pagination.showing': '显示 {start}–{end}，共 {total} 条',
+
+  'sort.label': '排序',
+  'sort.starsDesc': 'Stars（高 → 低）',
+  'sort.starsAsc': 'Stars（低 → 高）',
+  'sort.newest': '最新优先',
+  'sort.nameAsc': '名称（A–Z）',
+
+  'theme.toDark': '切换到深色模式',
+  'theme.toLight': '切换到浅色模式',
 
   'detail.visitSite': '访问网站',
   'detail.stars': '星标',

@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   DEFAULT_LOCALE,
@@ -53,6 +53,27 @@ export function I18nProvider({
     },
     [router],
   );
+
+  // First-visit language auto-detection. Runs once after mount (so it can't
+  // cause an SSR/hydration mismatch — `navigator` is client-only): when the
+  // visitor has never chosen a language (no cookie) and the browser prefers
+  // Chinese, switch to zh and persist it. An explicit prior choice — any locale
+  // cookie — is always respected.
+  useEffect(() => {
+    if (typeof navigator === 'undefined' || typeof document === 'undefined') return;
+    const hasLocaleCookie = document.cookie
+      .split('; ')
+      .some((c) => c.startsWith(`${LOCALE_COOKIE}=`));
+    if (
+      !hasLocaleCookie &&
+      locale === DEFAULT_LOCALE &&
+      navigator.language.toLowerCase().startsWith('zh')
+    ) {
+      setLocale('zh');
+    }
+    // Mount-only: deliberately not reacting to later locale changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const value = useMemo<I18nContextValue>(
     () => ({
