@@ -665,7 +665,7 @@ export async function getLatestWeeklyTrend(): Promise<WeeklyTrend | null> {
         summary_en,
         summary_zh,
         coalesce(top_products, '[]'::jsonb) as top_products,
-        coalesce(emerging_themes, '{}') as emerging_themes,
+        coalesce(emerging_themes, '{}'::text[]) as emerging_themes,
         video_highlights,
         total_projects_scanned,
         total_signals_generated,

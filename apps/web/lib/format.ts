@@ -18,6 +18,7 @@ export function cleanOneLiner(text: string | null): string | null {
     .replace(/&#39;/g, "'")
     .trim();
   if (!decoded) return null;
-  if (decoded.length > 120) return decoded.slice(0, 120).trimEnd() + '…';
+  const chars = [...decoded];
+  if (chars.length > 120) return chars.slice(0, 120).join('').trimEnd() + '…';
   return decoded;
 }
