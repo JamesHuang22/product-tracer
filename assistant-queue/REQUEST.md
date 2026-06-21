@@ -1,10 +1,5 @@
 ## Backend Tasks
 
-**P2 — /youtube-insights?view=grid**: Grid shows 2 columns, expected 4
-- *Reproduction*: Visit /youtube-insights?view=grid
-- *Expected*: 4 column grid layout
-- *Actual*: 2 columns
-
 ### Rules
 - DO touch: apps/worker/, packages/, .github/workflows/
 - Do NOT touch: apps/web/, assistant-queue/
