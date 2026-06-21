@@ -1,19 +1,30 @@
-# Frontend Response — /projects EN mixed-language one-liners
+# Frontend Response — language auto-detect, dark mode, projects sort, RSS
 
-**Status: ✅ Done.** P1 fixed and verified on production (HTTP 200).
+**Status: ✅ Done.** All 4 features shipped and verified on production (HTTP 200).
 
 ## PR
-- **#37** — `fix(web): suppress mixed-language one-liners in EN mode` (merged)
+- **#38** — `feat(web): language auto-detect, dark mode, projects sort, RSS feeds` (merged)
 
-## Root cause
-`/projects` EN still showed 19 CJK chars. My earlier suppression dropped a one-liner only when it was *predominantly* CJK (>20%). Verified against prod: the visible first page (top-50 by stars) has **0 Chinese names** — all the leaked CJK came from **4 mixed-language one-liners** (mostly English with a few Chinese tokens, under the 20% threshold, so they slipped through).
+## What shipped (apps/web only)
 
-## What changed (apps/web only)
-- `lib/format.ts`: replaced `cjkShare` (+ 20% threshold) with a simple `hasCjk`. `localizedText` and `localizedPair` now drop a one-liner / English-column value on **any** CJK character. Only genuine product names keep CJK in EN mode.
+### 1. First-visit language auto-detection — `lib/i18n-context.tsx`
+When no locale cookie is set and `navigator.language` is Chinese, switch to 中文 and persist it. **Implemented as a mount `useEffect`, not the `useState` initializer in the sketch** — `navigator` is client-only, so the initializer would cause an SSR/hydration mismatch. An explicit prior choice (any locale cookie) is always respected.
+
+### 2. Dark-mode toggle — new `components/theme-toggle.tsx` + `site-header.tsx` + `layout.tsx` + `globals.css`
+Sun/moon button in the header; persists `localStorage.theme`. Inline no-flash script in `layout.tsx` applies the theme before first paint (`<html suppressHydrationWarning>`). Tailwind v4 `dark:` made class-based via `@custom-variant dark (&:where(.dark, .dark *))`, and bg/fg vars follow `.dark`.
+
+### 3. Sort dropdown on `/projects` — `projects-table.tsx`
+Stars ↓ (default) / Stars ↑ / Newest first / Name A–Z, beside the category filter. Drives the existing client-side tanstack sort (hidden `created_at` column powers "Newest"). **Done client-side, not via query params/SQL** — the `db.ts` functions don't actually take sort params (the request assumed they did) and the table already sorts in-browser, so no DB changes were needed.
+
+### 4. RSS feeds — new `app/feed/projects.xml/route.ts` + `app/feed/youtube-insights.xml/route.ts`
+RSS 2.0, `Content-Type: application/xml`, XML-escaped, `force-dynamic`, CDN-cached. `<link rel="alternate" type="application/rss+xml">` autodiscovery added via `metadata.alternates`.
+
+i18n: added `sort.*` + `theme.*` keys (EN + ZH).
 
 ## Verification (production)
-- `/projects` EN visible CJK (rendered text, excl. RSC script payload): 36 → **2** — and those 2 are the `中文` language-switcher label in the site header (chrome), not data. Well under the <10 target.
-- `Cookie: locale=zh` on `/projects` still renders 220 visible Han chars → Chinese mode unaffected (`router.refresh()` re-runs the server components on toggle).
-- `pnpm --filter @product-tracer/web typecheck` ✅.
-- `curl -sI https://product-tracer.vercel.app/` → `HTTP/2 200`.
+- `curl -sI /` → `HTTP/2 200`.
+- No-flash theme script + RSS autodiscovery `<link>` present in `/`; ThemeToggle button (`aria-label="Switch to dark mode"`) in header.
+- `/feed/projects.xml` & `/feed/youtube-insights.xml`: 200, `application/xml; charset=utf-8`, 50 `<item>`s each, **well-formed XML** (`xmllint --noout` passes).
+- `/projects` shows all four sort options (Stars high/low, Newest first, Name A–Z).
+- `pnpm --filter @product-tracer/web typecheck` ✅ and local `next build` ✅ (lint clean).
 - CHANGELOG.md updated.
