@@ -98,6 +98,30 @@ function platformOf(url: string | null): string {
   }
 }
 
+/**
+ * Snake_case platform key matching the /trends PlatformBadge map
+ * (github / hacker_news / product_hunt / youtube / reddit / x). The frontend
+ * indexes its badge colours by this exact key, so top_products must carry it —
+ * an unrecognised value still renders (badge falls back to the first 2 chars).
+ */
+function platformKey(url: string | null): string {
+  if (!url) return 'unknown';
+  try {
+    const host = new URL(url.includes('://') ? url : `https://${url}`).hostname
+      .replace(/^www\./, '')
+      .toLowerCase();
+    if (host.includes('github.com')) return 'github';
+    if (host.includes('producthunt.com')) return 'product_hunt';
+    if (host.includes('news.ycombinator') || host.includes('ycombinator')) return 'hacker_news';
+    if (host.includes('reddit.com')) return 'reddit';
+    if (host.includes('youtube.com') || host.includes('youtu.be')) return 'youtube';
+    if (host.includes('twitter.com') || host.includes('x.com')) return 'x';
+    return host;
+  } catch {
+    return 'unknown';
+  }
+}
+
 /** Format the trailing-7-day corpus into a single LLM prompt. */
 function buildPrompt(
   projectCount: number,
@@ -229,13 +253,16 @@ async function main(): Promise<void> {
   const promptTokens = res.usage?.promptTokens ?? 0;
   const completionTokens = res.usage?.completionTokens ?? 0;
 
-  // top_products: the signal-active leaderboard, stored verbatim for the page.
+  // top_products: the signal-active leaderboard. Shape MUST match the /trends
+  // page contract (apps/web/lib/db.ts WeeklyTrendProduct): name, slug, platform,
+  // description, score. The page reads product.platform/score directly, so a
+  // mismatched shape 500s it (PlatformBadge calls platform.slice).
   const topProductsJson = topProducts.map((p) => ({
-    slug: p.slug,
     name: p.name,
-    one_liner: p.one_liner,
-    primary_url: p.primary_url,
-    signal_count: p.signal_count,
+    slug: p.slug,
+    platform: platformKey(p.primary_url),
+    description: p.one_liner ?? '',
+    score: p.signal_count,
   }));
 
   // Step 4 — upsert keyed on the ISO-week start (Monday).
