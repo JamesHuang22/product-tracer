@@ -1,16 +1,16 @@
 # Feature Note — 2026-06-21
 
-## Browser Test Results
+## Code Review (6th pass) — Post-PR #34/#35
 
 ### Bugs Found
-- [P1] **/**: EN mode showing significant Chinese content (137 CJK chars)
-- [P1] **/projects**: EN mode showing significant Chinese content (62 CJK chars)
-- [P1] **/youtube-insights**: EN mode showing significant Chinese content (406 CJK chars)
-- [P2] **/youtube-insights?view=grid**: Grid shows 2 columns, expected 4
-- [P1] **/projects**: No project links found on /projects page
+- [P1] **/**, **/projects**, **/youtube-insights**: EN mode Chinese content — **FIXED** ✅ (PR #34, #35)
+- [P1] **/projects**: No internal project links — **FIXED** ✅ (PR #34)
+- [P2] **/youtube-insights?view=grid**: Grid shows 2 columns, expected 4 — **pending, re-routed to frontend**
 
-### Feature Gaps
-- None found
+### State
+- All P1 i18n bugs resolved by frontend agent (PRs #34, #35, deployed)
+- P2 grid layout bug filed to FRONTEND_REQUEST.md
+- REQUEST.md clear — no pending backend tasks
 
-### Errors
-- None
+### Known Non-Blockers
+- Collect X workflow — missing GitHub secrets (infra, not code)
