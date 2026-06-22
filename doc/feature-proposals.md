@@ -427,3 +427,124 @@ CREATE INDEX idx_weekly_snap_week ON app.weekly_snapshot_history(week_start);
 ---
 
 *Run #14 proposed by JBK (CTO) on 2026-06-21. /trends Focus E tour: core page structure is solid, lacks week-over-week context — feature turns snapshot into living dashboard.*
+
+---
+
+## 15. Detail Page Content Richness — Related Projects + Breadcrumb + Structured Sections
+
+**Status:** Proposed
+**Effort:** Medium (3-4 days)
+**Impact:** Very High — transforms content-desert detail pages into rich discovery hubs
+**Category:** UX / Discovery
+**Source:** Focus C tour — all 5 tested detail pages had < 300 chars total, 0 related links, no bookmarks, no description sections
+
+**Problem:** Project detail pages are content deserts. Across 5 tested pages:
+- 150-260 characters total content
+- 0 related project links on every page
+- No AI summaries rendered (despite backend having 50+ summaries populated)
+- No "About" / "Description" / structured sections
+- No breadcrumb navigation (2 of 5 pages)
+- ZH locale shows 0 Chinese characters (i18n not reaching detail page)
+- 2 of 5 slugs return 404 (stale/deleted projects in DB)
+
+Users click a project, get a bare page, and have no reason to stay or click further. Discovery ends at the detail page.
+
+**Solution — 4 layers of content richness:**
+
+### Layer 1: Fix fundamentals (Day 1)
+- **Verify AI summary rendering:** The ai_summary column has 50+ populated rows, and the frontend PR #41 was "merged", but NOTHING renders. Check the deployment, or the query doesn't include the column.
+- **Breadcrumb navigation:** `<nav><a href="/projects">Projects</a> / <span>{project.name}</span></nav>` — simple, semantic, zero data cost.
+- **Structured sections:** Add clear heading sections: Overview (one-liner), Data (platform stats), About (ai_summary or fallback), Links (GitHub, PH, HN).
+
+### Layer 2: Related Projects (Day 2-3)
+
+SQL query that runs alongside the main project fetch:
+
+```sql
+SELECT p.id, p.name, p.slug, p.one_liner, p.ai_summary, p.stars
+FROM app.project p
+WHERE p.llm_category = (
+  SELECT llm_category FROM app.project WHERE slug = :current_slug
+)
+AND p.slug != :current_slug
+AND p.stars IS NOT NULL
+ORDER BY p.stars DESC
+LIMIT 4;
+```
+
+Display as a horizontal row of mini cards below the main project info. Show name, one-liner (truncated), and a "View →" link. Title the section "More in [category]".
+
+**Why it works:**
+- Zero additional infra — llm_category already exists on every project
+- Every project with an llm_category gets instant related projects
+- Drives internal page views (users stay on site)
+- Creates discovery loops: Project A → Related → Project B → Related
+
+### Layer 3: External Links Section (Day 2)
+
+Show links to where the project lives:
+- GitHub repo (stars badge)
+- Product Hunt page (upvotes badge)
+- Hacker News thread (points badge)
+- Website (if available)
+
+Use existing `raw.snapshot` data and join to generate hyperlinks:
+- GitHub: `https://github.com/{owner}/{repo}`
+- Product Hunt: `https://www.producthunt.com/posts/{slug}`
+
+### Layer 4: 404 Handling (Day 1)
+
+Not all slugs in the DB have corresponding detail pages (2 of 5 tested returned 404). Either:
+- Graceful 404 with "This project is no longer tracked. Browse [all projects](/projects) instead." + search bar
+- OR add a reaper that soft-deletes projects whose slugs 404 in the detail page routing
+
+### Implementation Plan
+
+| Task | Files | Effort |
+|------|-------|--------|
+| 1. Debug AI summary rendering | `apps/web/lib/db.ts`, `apps/web/app/projects/[slug]/page.tsx` | 2h |
+| 2. Add breadcrumb | `apps/web/app/projects/[slug]/page.tsx` | 1h |
+| 3. Add structured sections | `apps/web/app/projects/[slug]/page.tsx`, i18n keys | 2h |
+| 4. Related projects query + card row | `apps/web/lib/db.ts`, new `RelatedProjects` component | 4h |
+| 5. External links section | Same page, use existing snapshot data | 2h |
+| 6. Graceful 404 | `apps/web/app/projects/[slug]/not-found.tsx` | 1h |
+| 7. ZH i18n for detail page | `apps/web/lib/i18n.ts` | 1h |
+
+**Total:** ~13h / 3-4 days
+
+### Impact
+- 📈 Average content per detail page: 200 chars → 800+ chars (4x increase)
+- 🧭 Discovery loop created (project → related project → related project)
+- 🔧 Fixes a shipped-but-broken feature (AI summaries)
+- 🌏 Fixes i18n hole (ZH locale on detail pages)
+- 🛡️ Graceful error handling for dead slugs
+- 🎯 Drives internal page views, reducing bounce rate
+
+### Design for non-engineer (Maggie's view)
+
+> When I click a project, I want to know what it does, see a few similar projects, and have clear links to check it out myself. Right now I get a name and a one-liner and nowhere to go. The breadcrumb at the top should say "Projects > {name}" and at the bottom there should be a row of 4 cards saying "More in AI/ML" or whatever category.
+
+---
+
+## Priority Matrix
+
+| # | Feature | Effort | Impact | Order |
+|---|---|---|---|---|
+| 1 | Browser language detection | Small | Medium | 🥇 |
+| 2 | Sort by stars/upvotes | Medium | High | 🥇 |
+| 3 | Fuzzy search | Medium | High | 🥇 |
+| 4 | AI recommendations | Med-Large | Very High | 🥈 |
+| 5 | AI summaries | Medium | High | 🥈 |
+| 6 | Smarter weekly digest | Medium | High | 🥈 |
+| 7 | Dark mode toggle | Small | Medium | 🥉 |
+| 8 | Bookmark/save | Medium | High | 🥉 |
+| 9 | RSS feeds | Small | Medium | 🥉 |
+| 10 | Sparkline charts | Med-Large | Very High | 🥈 |
+| 12 | Date range filter | Small | Medium | 🥉 |
+| 13 | Granular tags | Medium | Medium | 🥉 |
+| 14 | Trend score deltas | Medium | Very High | 🥈 |
+| **15** | **Detail Page Content Richness** | **Medium** | **Very High** | **🥇** |
+
+---
+
+*Run #15 proposed by JBK (CTO) on 2026-06-21. Focus C /projects/[slug] tour: detail pages are content deserts with 150-260 chars, no related projects, no AI summaries rendered, no breadcrumbs, broken i18n. Proposal fixes all layers.*
