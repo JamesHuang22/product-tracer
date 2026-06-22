@@ -548,3 +548,184 @@ Not all slugs in the DB have corresponding detail pages (2 of 5 tested returned 
 ---
 
 *Run #15 proposed by JBK (CTO) on 2026-06-21. Focus C /projects/[slug] tour: detail pages are content deserts with 150-260 chars, no related projects, no AI summaries rendered, no breadcrumbs, broken i18n. Proposal fixes all layers.*
+
+---
+
+## 16. Weekly Trends Dashboard — Visual Charts + Shareable Snapshot (Run #16)
+
+**Status:** Proposed
+**Effort:** Medium-Large (3-4 days)
+**Impact:** Very High — makes /trends the #1 reason to visit the site
+**Category:** Visual / Growth
+**Source:** Focus E /trends tour — 0 images, 0 charts, 0 star/upvote metrics, 400px mobile overflow, 2616 chars total text. Page is a text list when it should be a visual dashboard.
+
+**Problem:** The /trends page is currently a text-based report. From the actual product tour:
+- **0 images, 0 charts, 0 graphs** — all data is textual
+- **0 star mentions, 0 upvote mentions** — no quantitative metrics beyond a single `score`
+- **Score lacks context** — no growth %, no week-over-week delta, no historical trajectory
+- **Mobile overflows slightly** (400px > 375px viewport)
+- **14 links, 5 headings, 15 paragraphs** — reads like a blog post, not a dashboard
+- Content is only 2616 chars — thin for a full trends page
+
+The page title is "Weekly Hot Trends" and subtitle is "A weekly read on what is gaining traction" — positioning it as a 5-minute morning read. But the actual page provides no visual hook or data story. A user scanning this in their morning routine will skim text, not engage.
+
+**Solution — 3 layers of visualization:**
+
+### Layer 1: Category Distribution Donut Chart (Day 1)
+
+At the top of the page, render a simple server-side SVG donut chart showing the breakdown of trending products by category (AI/ML, DevTools, Design, etc.).
+
+**Data source:** Already exists in `trend.top_products` — group by `llm_category` and count.
+
+**Implementation:**
+```tsx
+// Simple inline SVG donut — no JS library needed
+function CategoryDonut({ products }: { products: WeeklyTrendProduct[] }) {
+  const counts: Record<string, number> = {};
+  for (const p of products) {
+    const cat = p.llm_category || 'Uncategorized';
+    counts[cat] = (counts[cat] || 0) + 1;
+  }
+  const total = products.length;
+  // SVG with stroke-dasharray for each segment
+  // ...
+}
+```
+
+Colors: use a predefined palette (8 categories, 8 distinct colors). Render a legend below the chart.
+
+### Layer 2: Platform Distribution Bar Chart (Day 1-2)
+
+Below the category donut, a horizontal bar chart showing how many products came from each platform:
+
+```
+GitHub    ████████████████  42%
+PH        ██████████        27%
+HN        ██████            16%
+Reddit    ███               8%
+YouTube   ██                5%
+X         █                 2%
+```
+
+**Data source:** Same `trend.top_products` — group by `platform` field.
+
+**Implementation:** Simple server-rendered divs with CSS width percentages. Zero JS, zero dependencies. Responsive: stacks to vertical on mobile.
+
+### Layer 3: Score Leaderboard with Mini Sparklines (Day 2-3)
+
+Replace the 2-column card grid with a sorted leaderboard that includes:
+- Rank (#1, #2, #3 with medal emoji for top 3)
+- Project name + platform badge
+- Score with sparkline bar (not SVG — just a colored bar width proportional to score)
+- Score delta (up/down arrow with color) if available from proposal #14
+
+```
+#1  🥇  87 ████████████████████  LangChain       +12 ▲  GH
+#2  🥈  82 ████████████████████  Supabase         -3 ▼  GH
+#3  🥉  79 ████████████████████  Bolt.new         +8 ▲  PH
+#4     72 ██████████████████     Windsurf               HN
+#5     68 ████████████████       Cursor AI             GH
+```
+
+This reads much faster than the current card grid. Users scan top-to-bottom.
+
+### Layer 4: Shareable Weekly Snapshot Image (Day 3-4)
+
+**Growth feature:** Add a "Share this week's trends" button that generates an OG-image-style PNG with:
+- "Weekly Hot Trends" header + date
+- Top 3 products with scores
+- Platform distribution mini-chart
+- QR code to /trends
+
+**Implementation:** Use `@vercel/og` (Vercel Edge OG Image Generation) — returns a PNG from an API route. The image can be:
+1. Downloaded as PNG
+2. Shared on social media via `?format=image` query param
+3. Used as the `/trends` Open Graph image when shared on X/LinkedIn
+
+```tsx
+// app/api/trends-og/route.tsx
+import { ImageResponse } from '@vercel/og';
+
+export async function GET() {
+  return new ImageResponse(
+    <div style={{...}}>
+      <h1>Weekly Hot Trends</h1>
+      <p>June 15–21, 2026</p>
+      {/* Top 3 products with mini bar charts */}
+    </div>,
+    { width: 1200, height: 630 }
+  );
+}
+```
+
+### Mobile Fix
+
+The current 400px overflow is likely caused by the `ProductCard` score badge or card padding at small screens. Fix: add `overflow-hidden` to card container or reduce padding at `max-w-sm` breakpoint:
+```css
+@media (max-width: 420px) {
+  .product-card { padding: 0.75rem; }
+  .score-badge { font-size: 0.7rem; padding: 0.125rem 0.5rem; }
+}
+```
+
+### Implementation Plan
+
+| Task | Files | Effort |
+|------|-------|--------|
+| Category donut chart (inline SVG) | `apps/web/app/trends/page.tsx` + new component | 3h |
+| Platform distribution bar chart | Same component file | 2h |
+| Score leaderboard replacing card grid | Same page, restructure render | 4h |
+| Mobile overflow fix | CSS tweak in page or global | 0.5h |
+| `/api/trends-og` image endpoint | New route handler | 3h |
+| Share button + download integration | Frontend button + download logic | 2h |
+| Update trends OG metadata | `metadata` export in page.tsx | 0.5h |
+
+**Total:** ~15h / 3-4 days
+
+### Impact
+- 📊 **Visual data is 10x faster to scan** than text — users get the story in 3 seconds
+- 📱 **Mobile readability** jumps — bar charts are more readable than card grids at 375px
+- 🔗 **Shareable images drive organic reach** — a weekly infographic is inherently shareable
+- 🏆 **Scores with visual bars** create competition psychology — users want to check who's #1
+- 📈 **Product Tracer becomes a "morning habit"** — visual weekly snapshot > text report
+- 🖼️ **Social media presence** — OG image on /trends shows the chart, driving click-through
+
+### Design for non-engineer (Maggie's view)
+
+> I want to see a colorful donut chart showing "This week's biggest categories" right at the top. Then a horizontal bar chart showing where these products live (GitHub, PH, etc.). Then a simple numbered list of the top products with score bars — like a music chart. Below that, a "Share" button that creates a pretty image I can post on LinkedIn or X.
+
+### Risk
+- `@vercel/og` has a 50ms cold start on Vercel serverless — acceptable for a share button
+- SVG donut chart is experimental — test on Safari/Firefox. Fallback: CSS-only bar version (already covered by Layer 2)
+- Weekly snapshot only has data when `getLatestWeeklyTrend()` returns a row — empty state remains as-is
+
+### Future Phase 2
+- **4-week trend line chart**: small SVG sparkline showing score trajectory for top 5 products over 4 weeks
+- **Export as PDF**: "Download Weekly Report" button
+- **Email subscription**: "Get this in your inbox every Monday"
+
+---
+
+## Priority Matrix
+
+| # | Feature | Effort | Impact | Order |
+|---|---|---|---|---|
+| 1 | Browser language detection | Small | Medium | 🥇 |
+| 2 | Sort by stars/upvotes | Medium | High | 🥇 |
+| 3 | Fuzzy search | Medium | High | 🥇 |
+| 4 | AI recommendations | Med-Large | Very High | 🥈 |
+| 5 | AI summaries | Medium | High | 🥈 |
+| 6 | Smarter weekly digest | Medium | High | 🥈 |
+| 7 | Dark mode toggle | Small | Medium | 🥉 |
+| 8 | Bookmark/save | Medium | High | 🥉 |
+| 9 | RSS feeds | Small | Medium | 🥉 |
+| 10 | Sparkline charts | Med-Large | Very High | 🥈 |
+| 12 | Date range filter | Small | Medium | 🥉 |
+| 13 | Granular tags | Medium | Medium | 🥉 |
+| 14 | Trend score deltas | Medium | Very High | 🥈 |
+| **15** | **Detail Page Content Richness** | **Medium** | **Very High** | **🥇** |
+| **16** | **Trends Visual Dashboard + Shareable Snapshot** | **Medium-Large** | **Very High** | **🥇** |
+
+---
+
+*Run #16 proposed by JBK (CTO) on 2026-06-21. Focus E /trends tour: page is text-only, no images/charts/metadata, 400px mobile overflow. Solution: category donut, platform bar chart, score leaderboard with bars, shareable OG image. Makes /trends a visual daily habit.* 
