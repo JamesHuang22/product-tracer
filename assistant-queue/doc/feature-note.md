@@ -1,6 +1,6 @@
 # Product Tracer — Feature Status
 
-*Last updated: 2026-06-21 14:15 PDT*
+*Last updated: 2026-06-21 17:15 PDT*
 
 ## ✅ Done & Merged
 
@@ -26,6 +26,21 @@ Merged, no migration needed.
 - **Fix**: `overflow-x-clip` on `<body>` (not `hidden`, which breaks sticky header + inner scroll containers)
 - **Scope**: `app/layout.tsx` only, covers `/`, `/projects`, `/youtube-insights`
 - **Status**: Merged → prod verified (HTTP 200)
+
+### PR #40 — Backend: AI-powered project summaries
+- **Migration**: `0013_ai_summary.sql` — additive, nullable `ai_summary` on `app.project`
+- **Worker**: `apps/worker/src/scripts/generate-summaries.ts` — LLM batch (50/project, daily cron)
+- **CI**: `.github/workflows/generate-summaries.yml` — daily 04:00 UTC + `workflow_dispatch`
+- **Design**: `ai_summary IS NULL` as work queue (idempotent, resumable, zero bookkeeping)
+- **Status**: PR merged, migration 0013 applied to prod. **50 summaries generated, 4126 pending** (daily cron)
+
+### PR #41 — Frontend: Display AI project summaries
+- `lib/db.ts`: `ai_summary` on `ProjectListItem` + `ProjectDetail` (defensive via `to_jsonb`)
+- `app/projects/projects-table.tsx`: truncated (80 char) ✨ italic summary with full-text tooltip
+- `app/projects/[slug]/page.tsx`: full "AI Summary" block (rounded, light-gray bg, sparkle icon)
+- `app/projects/page.tsx`: EN server-side stripping of `ai_summary` (same as one-liners)
+- `lib/i18n.ts`: keys `detail.aiSummary` (EN "AI Summary", ZH "AI 概述")
+- **Status**: PR merged, prod-verified (HTTP 200, 16 summaries on first EN page)
 
 ## ⏳ Queued
 
