@@ -287,4 +287,143 @@ Enable filtering via URL: `/projects?tag=saas-boilerplate`.
 
 ---
 
-*Proposed by JBK (CTO) during automated code review run on 2026-06-21.*
+*## 14. Weekly Trend Comparison & Score Direction (Run #14)
+
+**Status:** Proposed
+**Effort:** Medium (2 days)
+**Impact:** Very High — turns /trends from a snapshot into a narrative
+**Category:** Data
+
+**Problem:** The current /trends page shows a single week snapshot. A reader sees "Hyperscale is trending with score 87" but has no idea if that's up from 62 last week, down from 91, or flat. Without direction, scores lack context. The weekly report feels like a static PDF, not a living dashboard.
+
+**Solution:** Add week-over-week comparison to every trend data point. This makes the page the #1 reason to visit — it becomes a trend *tracker*, not just a trend *snapshot*.
+
+### 1. Backend: Store previous week's scores
+
+Add to the `weekly_trend` query (or a new helper `getTrendComparison`) that fetches both the current and previous week:
+
+```sql
+-- Get top products from previous week for comparison
+SELECT pt.slug, wts.score, wts.rank
+FROM weekly_trend_scores wts
+JOIN app.project pt ON pt.id = wts.project_id
+WHERE wts.week_start = $1 - INTERVAL '7 days'
+ORDER BY wts.rank ASC;
+```
+
+### 2. Score deltas on product cards
+
+Add a `Δ` (delta) indicator next to each score on the product card. Green arrow up if up ≥5, red arrow down if down ≥5, grey dash if within ±4.
+
+**ProductCard component changes:**
+```tsx
+// Add to product type
+interface WeeklyTrendProduct {
+  // existing fields...
+  score_delta?: number; // positive = up, negative = down, undefined = new this week
+  prev_score?: number;
+  prev_rank?: number;
+}
+
+// Badge rendering
+{Number.isFinite(product.score) && (
+  <span className="inline-flex items-center gap-1 shrink-0 rounded-md bg-emerald-50 px-1.5 py-0.5 text-xs font-semibold tabular-nums">
+    {product.score}
+    {product.score_delta !== undefined ? (
+      product.score_delta >= 5 ? (
+        <ArrowUp className="h-3 w-3 text-emerald-500" />
+      ) : product.score_delta <= -5 ? (
+        <ArrowDown className="h-3 w-3 text-red-500" />
+      ) : (
+        <Minus className="h-3 w-3 text-neutral-400" />
+      )
+    ) : (
+      <Sparkles className="h-3 w-3 text-amber-400" title="New this week" />
+    )}
+  </span>
+)}
+```
+
+### 3. Summary comparison block
+
+Add a section below the main summary that compares the themes with last week:
+
+> 🔄 **Shift from last week:** "AI Code Editors" replaced "Vector Databases" as the #1 emerging theme. 3 products from last week's top 10 fell off entirely.
+
+This gives the AI-generated weekly summary a dynamic, comparative angle instead of a static description.
+
+### 4. "Products on the Rise" section
+
+Add a new card section showing the 3 products with the biggest score increase this week. These are the breakout hits worth paying attention to:
+
+```sql
+SELECT *
+FROM weekly_trend_scores
+ORDER BY (score - prev_score) DESC
+LIMIT 3;
+```
+
+### 5. Charts — 4-week sparkline (future phase)
+
+Phase 2: store 4 weeks of scores and render a mini line chart in the product card. This is the visual that makes data irresistible.
+
+### DB Schema Changes
+
+```sql
+-- Store score history by product by week
+CREATE TABLE app.weekly_snapshot_history (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id UUID REFERENCES app.project(id) NOT NULL,
+  score NUMERIC(5,1),
+  rank INTEGER,
+  week_start DATE NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE (project_id, week_start)
+);
+
+CREATE INDEX idx_weekly_snap_project ON app.weekly_snapshot_history(project_id);
+CREATE INDEX idx_weekly_snap_week ON app.weekly_snapshot_history(week_start);
+```
+
+### Effort breakdown
+
+| Task | Hours |
+|------|-------|
+| DB migration + helper query | 3h |
+| Backend API change (`getLatestWeeklyTrend` → include deltas) | 2h |
+| Frontend ProductCard delta badges | 2h |
+| "Products on the Rise" section | 2h |
+| Summary comparison block (AI prompt change) | 3h |
+| 4-week sparkline (Phase 2) | 4h |
+
+**Total:** ~12h / 2 days (Phase 1 only)
+
+**Impact:** \
+- 📈 /trends becomes a living dashboard, not a static report \
+- 🏆 Readers visit weekly to see what *changed*, not what's listed \
+- 🔥 "Products on the Rise" is shareable social content \
+- 🧠 Data quality: score deltas surface validation issues (e.g., a product jumping 50 points → investigate)
+
+---
+
+## Priority Matrix
+
+| # | Feature | Effort | Impact | Order |
+|---|---|---|---|---|
+| 1 | Browser language detection | Small | Medium | 🥇 |
+| 2 | Sort by stars/upvotes | Medium | High | 🥇 |
+| 3 | Fuzzy search | Medium | High | 🥇 |
+| 4 | AI recommendations | Med-Large | Very High | 🥈 |
+| 5 | AI summaries | Medium | High | 🥈 |
+| 6 | Smarter weekly digest | Medium | High | 🥈 |
+| 7 | Dark mode toggle | Small | Medium | 🥉 |
+| 8 | Bookmark/save | Medium | High | 🥉 |
+| 9 | RSS feeds | Small | Medium | 🥉 |
+| 10 | Sparkline charts | Med-Large | Very High | 🥈 |
+| 12 | Date range filter | Small | Medium | 🥉 |
+| 13 | Granular tags | Medium | Medium | 🥉 |
+| 14 | Trend score deltas + "Products on the Rise" | Medium | Very High | 🥈 |
+
+---
+
+*Run #14 proposed by JBK (CTO) on 2026-06-21. /trends Focus E tour: core page structure is solid, lacks week-over-week context — feature turns snapshot into living dashboard.*
