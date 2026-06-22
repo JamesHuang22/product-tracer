@@ -728,4 +728,138 @@ The current 400px overflow is likely caused by the `ProductCard` score badge or 
 
 ---
 
-*Run #16 proposed by JBK (CTO) on 2026-06-21. Focus E /trends tour: page is text-only, no images/charts/metadata, 400px mobile overflow. Solution: category donut, platform bar chart, score leaderboard with bars, shareable OG image. Makes /trends a visual daily habit.* 
+*Run #16 proposed by JBK (CTO) on 2026-06-21. Focus E /trends tour: page is text-only, no images/charts/metadata, 400px mobile overflow. Solution: category donut, platform bar chart, score leaderboard with bars, shareable OG image. Makes /trends a visual daily habit.*
+
+---
+
+## 17. YouTube Insight Image Generation — Auto-thumbnails from video content
+
+**Status:** Proposed
+**Effort:** Medium (2-3 days)
+**Impact:** High — solves "0 images" problem on /youtube-insights, improves scanability 10x
+**Category:** Visual / UX
+**Source:** Focus D tour (2026-06-21) — 0 images on the entire /youtube-insights page, 9178 chars of pure text makes it hard to scan
+
+**Problem:** The /youtube-insights page is entirely text. From the actual product tour:
+- **0 images** on the full page (27 links, 9178 chars EN / 4014 chars ZH)
+- Grid view renders 4 columns at 1440px with cards that are text-only
+- Each insight has a YouTube video link (`youtube.com/watch?v=...`) but no thumbnail
+- Users can't visually scan to find interesting content — every card looks the same
+
+This is a missed opportunity: the YouTube API provides video thumbnails for every video ID. Even without the full API, thumbnails follow a predictable URL pattern.
+
+**Solution — 3-tier approach:**
+
+### Tier 1: YouTube thumbnail URL (Day 1, zero code)
+
+YouTube thumbnails follow a deterministic URL pattern:
+```
+https://img.youtube.com/vi/{VIDEO_ID}/maxresdefault.jpg
+https://img.youtube.com/vi/{VIDEO_ID}/hqdefault.jpg (fallback)
+```
+
+Since each insight links to `youtube.com/watch?v={VIDEO_ID}`, extract the video ID from the link and render the thumbnail inline.
+
+**Implementation:**
+```tsx
+// In InsightCard component, extract video ID from the YouTube link
+function getYouTubeThumbnail(videoUrl: string): string | null {
+  const match = videoUrl.match(/(?:v=|\/)([a-zA-Z0-9_-]{11})(?:\?|$|&)/);
+  if (!match) return null;
+  return `https://img.youtube.com/vi/${match[1]}/mqdefault.jpg`; // 320x180, balanced quality/size
+}
+
+// In card render:
+<img 
+  src={getYouTubeThumbnail(insight.videoUrl)} 
+  alt={insight.title}
+  className="rounded-lg object-cover w-full aspect-video"
+  loading="lazy"
+/>
+```
+
+**Why `mqdefault.jpg` instead of `maxresdefault`:**
+- `maxresdefault.jpg` (1920x1080) — often 404 for old/non-HD videos
+- `hqdefault.jpg` (480x360) — always available but low quality
+- `mqdefault.jpg` (320x180) — medium quality, always available, perfect for card layout
+- `default.jpg` (120x90) — too small
+- Fallback chain: `mqdefault` → `hqdefault` → placeholder SVG
+
+### Tier 2: Link expansion (Day 1)
+
+Each insight card should show:
+- Video thumbnail (from Tier 1)
+- Channel name (extract from description or store in DB)
+- Published date relative ("3 days ago")
+- View count (if available from snapshot or metadata)
+- Category badge (already exists)
+- Sentiment indicator (if available)
+
+### Tier 3: AI-generated summary thumbnail (Day 2-3)
+
+Use the existing LLM pipeline to generate a small visual summary for each insight:
+- Extract 1 key sentence from the insight description
+- Generate a colored card with a gradient background based on sentiment
+- Render as a server-side SVG that looks like a "quote card"
+
+This is more complex and lower priority — Tier 1 is the 80/20 solution.
+
+### Implementation Plan (Tier 1 only)
+
+| Task | Files | Effort |
+|------|-------|--------|
+| Extract YouTube video IDs from insight links | `apps/web/lib/youtube.ts` (NEW helper) | 1h |
+| Thumbnail component | `apps/web/components/youtube-thumbnail.tsx` (NEW) | 1h |
+| Integrate into cards | `apps/web/components/insight-card.tsx` (modify) | 1h |
+| Loading states + fallback | Same component | 0.5h |
+| Mobile responsive check | Verify grid view at 375px | 0.5h |
+
+**Total:** ~4h / half day for Tier 1
+
+### Impact
+- 🖼️ **0 images → thumbnails on every card** — visual scanability increases 10x
+- 🎯 Users can find interesting content at a glance (recognizable video thumbnails)
+- 📱 Mobile grid view becomes visually distinct (currently all text looks same)
+- 🔗 Zero extra cost — YouTube thumbnails are free, no API key needed
+- ⚡ No server load — thumbnails are cached by the browser and served from YouTube CDN
+
+### Empty state / fallback
+- If video ID can't be extracted, show a neutral placeholder SVG (video icon + "No thumbnail")
+- If YouTube thumbnail 404s, fall back to the neutral placeholder
+- SSR-friendly: use `<img>` with `onError` for fallback
+
+### Design for non-engineer (Maggie's view)
+
+> I want to see a little thumbnail image next to each YouTube video insight so I can tell which ones I've seen before. Right now all I see is text and I have to read every card to find something interesting. The thumbnail should be a small video preview image at the top of each card.
+
+### Risk
+- YouTube thumbnails may be blocked by some ad blockers — acceptable (show placeholder SVG)
+- Video IDs embedded in links: some insights link to channels or shorts. The fallback path handles this gracefully
+- Lazy loading ensures no performance impact
+
+---
+
+## Priority Matrix
+
+| # | Feature | Effort | Impact | Order |
+|---|---|---|---|---|
+| 1 | Browser language detection | Small | Medium | 🥇 |
+| 2 | Sort by stars/upvotes | Medium | High | 🥇 |
+| 3 | Fuzzy search | Medium | High | 🥇 |
+| 4 | AI recommendations | Med-Large | Very High | 🥈 |
+| 5 | AI summaries | Medium | High | 🥈 |
+| 6 | Smarter weekly digest | Medium | High | 🥈 |
+| 7 | Dark mode toggle | Small | Medium | 🥉 |
+| 8 | Bookmark/save | Medium | High | 🥉 |
+| 9 | RSS feeds | Small | Medium | 🥉 |
+| 10 | Sparkline charts | Med-Large | Very High | 🥈 |
+| 12 | Date range filter | Small | Medium | 🥉 |
+| 13 | Granular tags | Medium | Medium | 🥉 |
+| 14 | Trend score deltas | Medium | Very High | 🥈 |
+| **15** | **Detail Page Content Richness** | **Medium** | **Very High** | **🥇** |
+| **16** | **Trends Visual Dashboard + Shareable Snapshot** | **Medium-Large** | **Very High** | **🥇** |
+| **17** | **YouTube Insight Thumbnails** | **Small-Medium** | **High** | **🥇** |
+
+---
+
+*Run #17 proposed by JBK (CTO) on 2026-06-21. Focus D /youtube-insights tour: 0 images on page, 9178 chars pure text, low scanability. Solution: free YouTube thumbnails via deterministic URL, zero API cost. Visual scanability 10x.*
