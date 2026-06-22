@@ -16,6 +16,7 @@ import { loadRepoEnv } from '../lib/load-env.js';
 loadRepoEnv(import.meta.url);
 
 import { createSqlClient } from '@product-tracer/db';
+import { normalizeText, NAME_MAX_LEN } from '../lib/normalize.js';
 import {
   fetchFeaturedProducts,
   isNoiseProduct,
@@ -35,7 +36,7 @@ async function storeProduct(product: PHProduct): Promise<void> {
 
   const [row] = await sql<{ id: string }[]>`
     insert into app.project (slug, name, one_liner, category, primary_url, status)
-    values (${slug}, ${product.name}, ${product.tagline || null}, ${category}, ${primaryUrl}, 'active')
+    values (${slug}, ${normalizeText(product.name, NAME_MAX_LEN)}, ${normalizeText(product.tagline)}, ${category}, ${primaryUrl}, 'active')
     on conflict (slug) do update set
       name        = excluded.name,
       one_liner   = coalesce(app.project.one_liner, excluded.one_liner),

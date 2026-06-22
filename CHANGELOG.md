@@ -3,6 +3,10 @@
 > Auto-generated summary of notable changes to product-tracer.
 > Format: Keep a Changelog — date, PR/commit, type, description.
 
+## 2026-06-22
+
+- **fix(worker)**: normalize scraped text before it reaches the SSR payload — backend half of the mobile horizontal-scroll fix. New shared `normalizeText` helper (`apps/worker/src/lib/normalize.ts`) trims, collapses internal whitespace/newlines, strips layout-hostile control characters (C0/C1, zero-width, bidi overrides, BOM, line/para separators), and caps length (names ≤120, one-liners ≤280, truncating on a word boundary with an ellipsis). Applied uniformly to `name`/`one_liner` at ingestion across all six collectors (github, hacker_news, product_hunt, reddit, x, youtube), replacing the ad-hoc `.replace(/\s+/g,' ').slice(0,280)` snippets in the X/YouTube collectors. The visible scroll fix is CSS (`overflow-x-clip`, PR #39, web) — the backend cannot break an unbroken token without corrupting data, so this is defense-in-depth: it stops multi-kilobyte taglines, embedded newlines, and control chars from ever entering the serialized payload. Added `node:test` unit coverage + a `pnpm --filter @product-tracer/worker test` script (the repo's first worker test)
+
 ## 2026-06-21
 
 - **feat(web)**: display AI-generated project summaries (backend migration 0013, `app.project.ai_summary`). The `/projects` table shows a truncated ✨ italic summary under the one-liner with a `title` tooltip for the full text; the `/projects/[slug]` detail page shows the full summary in a subtle "AI Summary" block above the cross-platform signals. Read defensively via `to_jsonb` (resilient if the column is absent), suppressed in EN mode when the summary is Chinese (same rule as one-liners, incl. server-side strip on `/projects`). New i18n key `detail.aiSummary` (EN/ZH)

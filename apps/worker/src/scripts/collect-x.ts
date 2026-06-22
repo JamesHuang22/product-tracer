@@ -26,6 +26,7 @@ import { loadRepoEnv } from '../lib/load-env.js';
 loadRepoEnv(import.meta.url);
 
 import { createSqlClient } from '@product-tracer/db';
+import { normalizeText, NAME_MAX_LEN } from '../lib/normalize.js';
 import { extractGithubRepo } from '../collectors/hackernews.js';
 import {
   FounderList,
@@ -149,11 +150,11 @@ async function storePost(post: XPost): Promise<StoreResult | null> {
     } catch {
       name = `@${post.username}`;
     }
-    const oneLiner = post.text.replace(/\s+/g, ' ').trim().slice(0, 280);
+    const oneLiner = normalizeText(post.text);
     const slug = xPostSlug(post);
     const [row] = await sql<{ id: string }[]>`
       insert into app.project (slug, name, one_liner, category, primary_url, status)
-      values (${slug}, ${name}, ${oneLiner}, ${'x'}, ${primaryUrl}, 'active')
+      values (${slug}, ${normalizeText(name, NAME_MAX_LEN)}, ${oneLiner}, ${'x'}, ${primaryUrl}, 'active')
       on conflict (slug) do update set
         name        = excluded.name,
         one_liner   = coalesce(app.project.one_liner, excluded.one_liner),

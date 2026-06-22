@@ -19,6 +19,7 @@ import { loadRepoEnv } from '../lib/load-env.js';
 loadRepoEnv(import.meta.url);
 
 import { createSqlClient } from '@product-tracer/db';
+import { normalizeText, NAME_MAX_LEN } from '../lib/normalize.js';
 import { extractGithubRepo } from '../collectors/hackernews.js';
 import {
   DEFAULT_SUBREDDITS,
@@ -64,7 +65,7 @@ async function storePost(post: RedditPost): Promise<StoreResult> {
     const primaryUrl = post.url || `https://www.reddit.com${post.permalink}`;
     const [row] = await sql<{ id: string }[]>`
       insert into app.project (slug, name, one_liner, category, primary_url, status)
-      values (${slug}, ${post.title}, ${oneLiner}, ${post.subreddit}, ${primaryUrl}, 'active')
+      values (${slug}, ${normalizeText(post.title, NAME_MAX_LEN)}, ${normalizeText(oneLiner)}, ${post.subreddit}, ${primaryUrl}, 'active')
       on conflict (slug) do update set
         name        = excluded.name,
         one_liner   = coalesce(app.project.one_liner, excluded.one_liner),

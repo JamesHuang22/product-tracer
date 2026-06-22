@@ -16,6 +16,7 @@ import { loadRepoEnv } from '../lib/load-env.js';
 loadRepoEnv(import.meta.url);
 
 import { createSqlClient } from '@product-tracer/db';
+import { normalizeText, NAME_MAX_LEN } from '../lib/normalize.js';
 import {
   discoverRepos,
   fetchKnownReposByIds,
@@ -35,7 +36,7 @@ async function storeRepo(repo: GithubRepo): Promise<void> {
   // wrote — only fills it from GH description if it's still null.
   const [project] = await sql<{ id: string }[]>`
     insert into app.project (slug, name, one_liner, category, primary_url, status)
-    values (${slug}, ${repo.name}, ${repo.description}, ${category}, ${repo.html_url}, 'active')
+    values (${slug}, ${normalizeText(repo.name, NAME_MAX_LEN)}, ${normalizeText(repo.description)}, ${category}, ${repo.html_url}, 'active')
     on conflict (slug) do update set
       name        = excluded.name,
       one_liner   = coalesce(app.project.one_liner, excluded.one_liner),
@@ -103,7 +104,9 @@ async function main(): Promise<void> {
 
   // 4. Store everything
   const all = [...filtered, ...refreshed];
-  console.log(`→ Storing ${all.length} repos (${filtered.length} discovered + ${refreshed.length} refreshed)…`);
+  console.log(
+    `→ Storing ${all.length} repos (${filtered.length} discovered + ${refreshed.length} refreshed)…`,
+  );
   let stored = 0;
   let failed = 0;
   for (const repo of all) {

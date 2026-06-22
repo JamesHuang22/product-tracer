@@ -16,6 +16,7 @@ import { loadRepoEnv } from '../lib/load-env.js';
 loadRepoEnv(import.meta.url);
 
 import { createSqlClient } from '@product-tracer/db';
+import { normalizeText, NAME_MAX_LEN } from '../lib/normalize.js';
 import {
   fetchShowStoryIds,
   fetchStories,
@@ -58,7 +59,7 @@ async function storeStory(story: HNStory): Promise<StoreResult> {
     const oneLiner = story.text ? story.text.replace(/<[^>]+>/g, '').slice(0, 280) : null;
     const [row] = await sql<{ id: string }[]>`
       insert into app.project (slug, name, one_liner, category, primary_url, status)
-      values (${slug}, ${name}, ${oneLiner}, null, ${story.url ?? null}, 'active')
+      values (${slug}, ${normalizeText(name, NAME_MAX_LEN)}, ${normalizeText(oneLiner)}, null, ${story.url ?? null}, 'active')
       on conflict (slug) do update set
         name        = excluded.name,
         one_liner   = coalesce(app.project.one_liner, excluded.one_liner),
@@ -99,7 +100,9 @@ async function main(): Promise<void> {
 
   console.log('→ Fetching story details…');
   const stories = await fetchStories(ids);
-  console.log(`  ${stories.length} active stories (${ids.length - stories.length} skipped: deleted/non-story)`);
+  console.log(
+    `  ${stories.length} active stories (${ids.length - stories.length} skipped: deleted/non-story)`,
+  );
 
   let stored = 0;
   let matched = 0;

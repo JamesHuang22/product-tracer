@@ -34,6 +34,7 @@ import { loadRepoEnv } from '../lib/load-env.js';
 loadRepoEnv(import.meta.url);
 
 import { createSqlClient } from '@product-tracer/db';
+import { normalizeText, NAME_MAX_LEN } from '../lib/normalize.js';
 import { extractGithubRepo } from '../collectors/hackernews.js';
 import { repoSlug } from '../collectors/github.js';
 import {
@@ -99,10 +100,10 @@ async function storeVideoRepo(video: YoutubeVideo, ownerRepo: string): Promise<S
     const name = ownerRepo.split('/')[1] ?? ownerRepo;
     const slug = repoSlug(ownerRepo);
     // The video title is the best one-liner we have for a YouTube-discovered repo.
-    const oneLiner = video.title.replace(/\s+/g, ' ').trim().slice(0, 280) || null;
+    const oneLiner = normalizeText(video.title);
     const [row] = await sql<{ id: string }[]>`
       insert into app.project (slug, name, one_liner, category, primary_url, status)
-      values (${slug}, ${name}, ${oneLiner}, ${'youtube'}, ${primaryUrl}, 'active')
+      values (${slug}, ${normalizeText(name, NAME_MAX_LEN)}, ${oneLiner}, ${'youtube'}, ${primaryUrl}, 'active')
       on conflict (slug) do update set
         name        = excluded.name,
         one_liner   = coalesce(app.project.one_liner, excluded.one_liner),
@@ -146,7 +147,9 @@ async function resolveSource(): Promise<{ auth: YtAuth; channels: YoutubeChannel
       channels = await getSubscribedChannels(oauthToken, MAX_CHANNELS);
       console.log(`→ ${channels.length} subscribed channels (via OAuth).`);
     } catch (err) {
-      console.error(`  ✗ could not read subscriptions: ${err instanceof Error ? err.message : err}`);
+      console.error(
+        `  ✗ could not read subscriptions: ${err instanceof Error ? err.message : err}`,
+      );
     }
     if (channels.length > 0) return { auth: { kind: 'oauth', accessToken: oauthToken }, channels };
     // Subscriptions empty/unavailable — fall back to the static list. Prefer the
@@ -170,7 +173,9 @@ async function resolveSource(): Promise<{ auth: YtAuth; channels: YoutubeChannel
 
 async function main(): Promise<void> {
   if (!isAuthConfigured()) {
-    console.log('No GOOGLE_OAUTH_TOKEN or YOUTUBE_API_KEY configured. Skipping — nothing collected.');
+    console.log(
+      'No GOOGLE_OAUTH_TOKEN or YOUTUBE_API_KEY configured. Skipping — nothing collected.',
+    );
     return;
   }
 

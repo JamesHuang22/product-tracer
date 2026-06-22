@@ -1,3 +1,27 @@
+## Frontend Tasks — Detail Page Content Richness + Mobile Scroll Fix
+
+### Task 0: Fix horizontal scroll on / at 375px (P2)
+
+**Re-routed from backend queue (scope mismatch).** This is a CSS/frontend issue, not backend.
+
+**Root cause investigation (from RESPONSE.md):**
+- PR #39 added `overflow-x-clip` to `<body>` in `apps/web/app/layout.tsx` — but this only prevents body-level scroll
+- `<html>` may still overflow. Need `overflow-x: clip` on `<html>` in `globals.css`
+- Components using `position: absolute/fixed` with wide children could protrude
+- CSS grid/flex layouts unstyled at 375px could cause overflow
+
+**Fix: add to `apps/web/app/globals.css`:**
+```css
+html { overflow-x: clip; }
+```
+
+Then if the bug persists, inspect these components at 375px:
+- `apps/web/app/page.tsx` — homepage content
+- `apps/web/components/site-header.tsx` — fixed/absolute positioning
+- Any full-bleed container — ensure `max-width: 100vw`
+
+---
+
 ## Frontend Tasks — Detail Page Content Richness
 
 ### Background

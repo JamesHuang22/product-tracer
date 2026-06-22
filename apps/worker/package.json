@@ -12,7 +12,8 @@
     "dedup": "tsx src/scripts/dedup.ts",
     "weekly:trend": "tsx src/scripts/weekly-trend.ts",
     "summaries:generate": "tsx src/scripts/generate-summaries.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test \"src/**/*.test.ts\""
   },
   "dependencies": {
     "@product-tracer/db": "workspace:*",

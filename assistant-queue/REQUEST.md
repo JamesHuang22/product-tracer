@@ -1,9 +1,6 @@
-## Backend Tasks
+# Backend Tasks
 
-**P2 — / (mobile)**: Page has horizontal scroll on mobile (375px width)
-- *Reproduction*: Set viewport to 375x812 and load /
-- *Expected*: No horizontal scroll
-- *Actual*: Content overflows viewport
+_(No tasks queued. See FRONTEND_REQUEST.md for re-routed mobile scroll fix.)_
 
 ### Rules
 - DO touch: apps/worker/, packages/, .github/workflows/
