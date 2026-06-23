@@ -1,26 +1,33 @@
-# Frontend Response — Display AI project summaries
+# Frontend Response — Detail Page Content Richness (+ sprint frontend tasks)
 
-**Status: ✅ Done.** Shipped and verified on production with real data (HTTP 200).
+**Status: ✅ Done.** All frontend tasks shipped and verified on production (HTTP 200). PRs #44 (detail page + recommendations), #45 (search), #46 (heat), #47 (trends), #43 (mobile scroll).
 
-## PR
-- **#41** — `feat(web): display AI project summaries on list + detail` (merged)
+## Detail page (PR #44)
 
-## Dependency
-Waited for the backend's migration 0013 to land before merging (the column didn't exist initially). Confirmed live before shipping: `app.project.ai_summary` exists, **50 rows populated** (backend PR #40).
+1. **AI summary rendering** — *no fix needed.* The query (`getProjectBySlug` → `to_jsonb(p) ->> 'ai_summary'`) and the render block in `page.tsx` were already correct; verified live on `/projects/speakup`. The "content desert" tour hit summary-less pages — only **150 / 4344** projects have a summary so far (daily cron backfills 50/day).
+2. **Breadcrumb** — semantic `<nav><ol>` `Projects > {name}` at the top.
+3. **Structured sections** — Header → AI Summary → Cross-platform signals → Related Projects.
+4. **Related Projects** — new `components/related-projects.tsx` (async server component): up to 4 same-`llm_category` mini-cards, excludes current + dedup-merged, ordered by GitHub stars. Labeled **"You might also like" / "猜你喜欢"** (T6). New `getRelatedProjects()` + `RelatedProject` type in `lib/db.ts`.
+5. **Graceful 404** — new `app/projects/[slug]/not-found.tsx`, centered + localized, "Browse all projects" link.
+6. **ZH i18n** — `detail.relatedTitle`, `detail.relatedSubtitle`, `detail.notFound`, `detail.browseAll` (EN/ZH).
 
-## What shipped (apps/web only)
-- `lib/db.ts`: added `ai_summary` to `ProjectListItem` + `ProjectDetail` and their queries, read **defensively via `to_jsonb`** (resilient if the column is absent), following the repo's `key_insight_zh`/`category` pattern.
-- `app/projects/projects-table.tsx`: under the one-liner, a truncated (~80 char) **✨ italic** AI summary with a `title` tooltip for the full text (desktop + mobile cards).
-- `app/projects/[slug]/page.tsx`: full summary in a subtle **"AI Summary"** block (rounded, light-gray bg, sparkle label) above the cross-platform signals.
-- `app/projects/page.tsx`: `ai_summary` also stripped server-side in EN mode (same as one-liners) so a Chinese summary can't ride in the RSC payload.
-- `lib/i18n.ts`: new key `detail.aiSummary` — EN "AI Summary", ZH "AI 概述".
-- EN mode suppresses Chinese summaries via the existing `localizedText` rule.
+## Other frontend tasks
 
-_Note: `db.ts` is in this agent's allowed scope; the request's "files to touch" list omitted it, but the column must be selected somewhere to surface it._
+- **Fuzzy search (T2)** — `ProjectSearch` client component on `/projects`: 300ms debounce, Lucide `Search` icon, results dropdown linking to detail pages, backed by `GET /api/search` (pg_trgm).
+- **Heat indicator (T3)** — coloured left border on cards/rows by GitHub stars.
+- **Trends visuals (T4)** — CSS-only bar chart, Top-5 list, week-over-week card on `/trends`.
+- **Mobile scroll (T0)** — `overflow-x: clip` at `html` + `body`.
 
-## Verification (production)
-- `curl -sI /` → `HTTP/2 200`.
-- `/projects` (EN): **16 ✨ summary markers** rendered on the first page.
-- `/projects/skip-the-tourist-menu-eat-like-a-local`: "AI Summary" block present (EN); "AI 概述" with `locale=zh`.
-- `pnpm --filter @product-tracer/web typecheck` ✅; local `next build` ✅ on the earlier feature set.
-- CHANGELOG.md updated.
+## Acceptance criteria
+
+1. ✅ AI summaries render (already worked; verified)
+2. ✅ Breadcrumb `Projects > {name}`
+3. ✅ Related projects — 4 same-category cards, ordered by stars
+4. ✅ Graceful localized 404
+5. ✅ ZH locale shows Chinese labels
+6. ✅ `pnpm --filter @product-tracer/web typecheck` passes
+7. ✅ No mobile horizontal-scroll regression (hardened in T0)
+
+## Deviation
+
+The related-projects spec query used `p.stars`; `app.project` has no such column, so stars come from `raw.snapshot` (as the rest of `lib/db.ts` does). The T6 `stars*0.7 + quality_score*0.3` weighting collapses to stars (no `quality_score` column). See DECISIONS.md.
