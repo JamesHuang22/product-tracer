@@ -1,6 +1,7 @@
 import {
   getActiveSignalCount,
   getLatestProjects,
+  getLatestWeeklyTrend,
   getNewThisWeek,
   getPlatformProjectCount,
   getPlatformTop,
@@ -31,6 +32,7 @@ export default async function HomePage() {
     hotSignals,
     latest,
     videoInsights,
+    weeklyTrend,
   ] = await Promise.all([
     getPlatformTop('github', 5),
     getPlatformTop('hacker_news', 5),
@@ -45,6 +47,7 @@ export default async function HomePage() {
     getActiveSignalCount(),
     getLatestProjects(10),
     getTopVideoInsights(3),
+    getLatestWeeklyTrend(),
   ]);
 
   const totalLive = ghCount + hnCount + phCount + ytCount;
@@ -74,6 +77,23 @@ export default async function HomePage() {
   const stripOneLiners = <T extends { one_liner: string | null }>(rows: T[]): T[] =>
     rows.map((r) => ({ ...r, one_liner: localizedText(locale, r.one_liner) }));
 
+  // Collapse the weekly trend to a single-locale overview for the home preview:
+  // resolve the summary to the active language (drop the other column from the
+  // payload) and keep only the leading top products + themes. The full report
+  // lives on /trends. Null when no weekly analysis has run yet.
+  const trendOverview = weeklyTrend
+    ? {
+        weekStart: weeklyTrend.week_start,
+        weekEnd: weeklyTrend.week_end,
+        summary:
+          locale === 'zh'
+            ? weeklyTrend.summary_zh || weeklyTrend.summary_en
+            : weeklyTrend.summary_en || weeklyTrend.summary_zh,
+        topProducts: weeklyTrend.top_products.slice(0, 4),
+        emergingThemes: weeklyTrend.emerging_themes.slice(0, 8),
+      }
+    : null;
+
   return (
     <HomeContent
       data={{
@@ -88,6 +108,7 @@ export default async function HomePage() {
         hackerNews: { count: hnCount, items: stripOneLiners(hnTop) },
         productHunt: { count: phCount, items: stripOneLiners(phTop) },
         youtube: { count: ytCount, items: stripOneLiners(ytTop) },
+        trend: trendOverview,
       }}
     />
   );
