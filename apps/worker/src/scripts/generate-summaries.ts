@@ -13,7 +13,11 @@
  * One `callLlm` per project (plain completion, not JSON — the answer is prose).
  * Graceful no-op when LLM_API_KEY is unset (mirrors the collectors / llm-classify).
  *
- * Tunables (env): SUMMARY_BATCH — projects per run (default 50).
+ * Tunables (env):
+ *   SUMMARY_BATCH       — projects per run (default 50).
+ *   SUMMARY_CONCURRENCY — parallel LLM calls (default 1 = the original
+ *                         sequential behaviour). Raise it only for a one-off
+ *                         backfill: at 1 the ~4k backlog is ~3h of serial calls.
  *
  * Run from repo root: pnpm --filter @product-tracer/worker summaries:generate
  * Production cron: .github/workflows/generate-summaries.yml — daily 04:00 UTC.
@@ -29,6 +33,10 @@ const sql = createSqlClient();
 // How many projects to summarise per run. Bounded so a single run stays cheap
 // and well within the workflow timeout; the daily cron chews through the backlog.
 const BATCH_SIZE = Number(process.env.SUMMARY_BATCH) || 50;
+// Parallel LLM calls. Default 1 keeps the daily cron's exact serial behaviour;
+// a backfill dispatch raises it. Clamped to [1, 16] so a stray value can't
+// fan out unbounded. The DB pool (max 2) naturally serialises the UPDATEs.
+const CONCURRENCY = Math.min(16, Math.max(1, Number(process.env.SUMMARY_CONCURRENCY) || 1));
 // Cap completion length — a 2-3 sentence summary needs little headroom.
 const MAX_TOKENS = 150;
 // DeepSeek deepseek-chat list price (USD per 1M tokens, cache-miss).
@@ -76,25 +84,27 @@ async function main(): Promise<void> {
     limit ${BATCH_SIZE}
   `;
 
-  console.log(`[summaries] ${remaining} projects pending; summarising ${projects.length} this run.`);
+  console.log(
+    `[summaries] ${remaining} projects pending; summarising ${projects.length} this run` +
+      `${CONCURRENCY > 1 ? ` (concurrency ${CONCURRENCY})` : ''}.`,
+  );
 
   let done = 0;
   let failed = 0;
   let promptTokens = 0;
   let completionTokens = 0;
 
-  for (const p of projects) {
+  // Summarise one project. Counter mutations are safe to interleave: JS is
+  // single-threaded, so `+=` between awaits never races.
+  async function summarise(p: ProjectRow): Promise<void> {
     try {
       const res = await callLlm(buildPrompt(p), { maxTokens: MAX_TOKENS });
-      if (res === null) {
-        console.warn('[summaries] LLM returned null (unconfigured) — stopping.');
-        break;
-      }
+      if (res === null) return; // unconfigured — guarded above, treat as no-op
       const summary = res.content.trim();
       if (!summary) {
         failed++;
         console.warn(`[summaries] empty summary for ${p.id} (${p.name}) — skipping.`);
-        continue;
+        return;
       }
       promptTokens += res.usage?.promptTokens ?? 0;
       completionTokens += res.usage?.completionTokens ?? 0;
@@ -108,6 +118,19 @@ async function main(): Promise<void> {
       console.error(`[summaries] failed for ${p.id} (${p.name}): ${message}`);
     }
   }
+
+  // Worker-pool over a shared cursor: CONCURRENCY workers each pull the next
+  // project until the batch is drained. At CONCURRENCY=1 this is exactly the
+  // original serial loop.
+  let cursor = 0;
+  await Promise.all(
+    Array.from({ length: Math.min(CONCURRENCY, projects.length) }, async () => {
+      while (cursor < projects.length) {
+        const p = projects[cursor++];
+        if (p) await summarise(p);
+      }
+    }),
+  );
 
   const cost =
     (promptTokens / 1_000_000) * PRICE_IN_PER_1M +
