@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { getAllProjects } from '@/lib/db';
 import { ProjectsTable } from './projects-table';
+import { ProjectSearch } from '@/components/project-search';
 import { cookies } from 'next/headers';
 import { DEFAULT_LOCALE, isLocale, LOCALE_COOKIE, translate } from '@/lib/i18n';
 import { localizedText } from '@/lib/format';
@@ -36,6 +37,9 @@ export default async function ProjectsPage() {
         <p className="mt-2 text-sm text-neutral-500">
           {translate(locale, 'projects.subtitle', { count: projects.length })}
         </p>
+        <div className="mt-5">
+          <ProjectSearch />
+        </div>
       </header>
       <ProjectsTable projects={localizedProjects} />
     </main>

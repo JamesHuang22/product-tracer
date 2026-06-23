@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { cookies } from 'next/headers';
-import { ArrowLeft, ArrowUpRight, Sparkles } from 'lucide-react';
+import { ArrowUpRight, ChevronRight, Sparkles } from 'lucide-react';
 import {
   getProjectBySlug,
   type ProjectDetail,
@@ -12,6 +12,8 @@ import {
 import { fmtCount, cleanOneLiner, localizedText } from '@/lib/format';
 import { translate, DEFAULT_LOCALE, isLocale, LOCALE_COOKIE } from '@/lib/i18n';
 import { CategoryBadge } from '@/components/category-badge';
+import { RelatedProjects } from '@/components/related-projects';
+import { BookmarkButton } from '@/components/bookmark-button';
 
 // Live data — reflect the latest collector run on every request.
 export const dynamic = 'force-dynamic';
@@ -285,13 +287,22 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
 
   return (
     <main className="mx-auto max-w-4xl px-6 py-12">
-      <Link
-        href="/projects"
-        className="inline-flex items-center gap-1.5 text-sm text-neutral-500 transition-colors hover:text-neutral-900 dark:hover:text-neutral-100"
-      >
-        <ArrowLeft className="h-3.5 w-3.5" />
-        {translate(locale, 'nav.projects')}
-      </Link>
+      <nav aria-label="Breadcrumb">
+        <ol className="flex items-center gap-2 text-sm text-neutral-500">
+          <li>
+            <Link
+              href="/projects"
+              className="transition-colors hover:text-neutral-900 dark:hover:text-neutral-100"
+            >
+              {translate(locale, 'nav.projects')}
+            </Link>
+          </li>
+          <li className="flex min-w-0 items-center gap-2">
+            <ChevronRight className="h-3 w-3 shrink-0" aria-hidden />
+            <span className="truncate text-neutral-900 dark:text-neutral-100">{project.name}</span>
+          </li>
+        </ol>
+      </nav>
 
       <header className="mt-6">
         <div className="flex flex-wrap items-center gap-3">
@@ -310,6 +321,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
               <ArrowUpRight className="h-3.5 w-3.5" />
             </a>
           )}
+          <BookmarkButton slug={project.slug} variant="labeled" />
           <span className="text-neutral-400">
             {translate(locale, 'projects.trackedSince', { date: project.created_at })}
           </span>
@@ -352,6 +364,8 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           </div>
         )}
       </section>
+
+      <RelatedProjects currentSlug={project.slug} category={project.llm_category} locale={locale} />
     </main>
   );
 }

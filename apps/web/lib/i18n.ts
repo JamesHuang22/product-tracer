@@ -35,6 +35,10 @@ const en: Messages = {
   'nav.projects': 'Projects',
   'nav.insights': 'Insights',
   'nav.trends': 'Trends',
+  'nav.bookmarks': 'Bookmarks',
+
+  'bookmarks.title': 'Bookmarks',
+  'bookmarks.empty': 'No bookmarks yet. Save a project to find it here.',
 
   'byPlatform.title': 'By platform',
   'byPlatform.summary': '{live} active sources',
@@ -93,7 +97,9 @@ const en: Messages = {
   'table.header.category': 'Category',
   'table.header.stars': 'Stars',
   'table.header.forks': 'Forks',
-  'table.search': 'Search projects…',
+  'table.search': 'Filter the table…',
+  'search.placeholder': 'Search projects…',
+  'search.noResults': 'No projects match “{query}”.',
   'table.filter.category': 'Filter by category',
   'table.filter.allCategories': 'All categories',
   'table.count': '{shown} of {total}',
@@ -115,6 +121,8 @@ const en: Messages = {
   'theme.toLight': 'Switch to light mode',
 
   'detail.aiSummary': 'AI Summary',
+  'detail.bookmark': 'Bookmark',
+  'detail.bookmarked': 'Bookmarked',
   'detail.visitSite': 'Visit site',
   'detail.stars': 'stars',
   'detail.forks': 'forks',
@@ -129,6 +137,10 @@ const en: Messages = {
   'projects.trackedSince': 'Tracked since {date}',
   'detail.notEnoughHistory': 'Not enough history yet',
   'detail.noMetrics': 'No metrics recorded yet',
+  'detail.relatedTitle': 'You might also like',
+  'detail.relatedSubtitle': 'More in {category}',
+  'detail.notFound': 'This project is no longer tracked, or the link is broken.',
+  'detail.browseAll': 'Browse all projects',
 
   'platform.name.github': 'GitHub',
   'platform.name.hacker_news': 'Hacker News',
@@ -169,6 +181,17 @@ const en: Messages = {
   'trends.videoHighlights': 'Video Highlights',
   'trends.stats': '{projects} projects scanned · {signals} signals · {insights} insights',
   'trends.noTrendsYet': 'No trends yet. Check back after the weekly analysis runs.',
+  'trends.distribution': 'This week’s mix',
+  'trends.distributionSubtitle': 'Top products grouped by category or source',
+  'trends.wow': 'Week over week',
+  'trends.thisWeek': 'This week',
+  'trends.lastWeek': 'Last week',
+  'trends.topSource': 'Top source',
+  'trends.topProduct': 'Top product',
+  'trends.noPrevWeek': 'No prior week to compare yet — check back next week.',
+  'trends.sourceUnchanged': 'unchanged',
+  'trends.sourceShifted': 'shifted from {from}',
+  'platform.name.other': 'Other',
 };
 
 const zh: Messages = {
@@ -185,6 +208,10 @@ const zh: Messages = {
   'nav.projects': '项目',
   'nav.insights': '洞察',
   'nav.trends': '趋势',
+  'nav.bookmarks': '收藏',
+
+  'bookmarks.title': '收藏',
+  'bookmarks.empty': '还没有收藏。点击项目上的收藏按钮即可在此找到它。',
 
   'byPlatform.title': '按平台',
   'byPlatform.summary': '{live} 个活跃来源',
@@ -241,7 +268,9 @@ const zh: Messages = {
   'table.header.category': '分类',
   'table.header.stars': '星标',
   'table.header.forks': '复刻',
-  'table.search': '搜索项目…',
+  'table.search': '筛选当前表格…',
+  'search.placeholder': '搜索项目…',
+  'search.noResults': '没有匹配 “{query}” 的项目。',
   'table.filter.category': '按分类筛选',
   'table.filter.allCategories': '全部分类',
   'table.count': '{total} 个中显示 {shown} 个',
@@ -263,6 +292,8 @@ const zh: Messages = {
   'theme.toLight': '切换到浅色模式',
 
   'detail.aiSummary': 'AI 概述',
+  'detail.bookmark': '收藏',
+  'detail.bookmarked': '已收藏',
   'detail.visitSite': '访问网站',
   'detail.stars': '星标',
   'detail.forks': '复刻',
@@ -277,6 +308,10 @@ const zh: Messages = {
   'projects.trackedSince': '自 {date} 开始追踪',
   'detail.notEnoughHistory': '历史数据不足',
   'detail.noMetrics': '暂无指标数据',
+  'detail.relatedTitle': '猜你喜欢',
+  'detail.relatedSubtitle': '更多 {category} 项目',
+  'detail.notFound': '该项目已不再追踪，或链接已失效。',
+  'detail.browseAll': '浏览所有项目',
 
   'platform.name.github': 'GitHub',
   'platform.name.hacker_news': 'Hacker News',
@@ -317,6 +352,17 @@ const zh: Messages = {
   'trends.videoHighlights': '视频亮点',
   'trends.stats': '扫描 {projects} 个项目 · {signals} 个信号 · {insights} 条洞察',
   'trends.noTrendsYet': '暂无趋势数据。请等待每周分析完成后查看。',
+  'trends.distribution': '本周构成',
+  'trends.distributionSubtitle': '按分类或来源划分的热门产品',
+  'trends.wow': '环比变化',
+  'trends.thisWeek': '本周',
+  'trends.lastWeek': '上周',
+  'trends.topSource': '主要来源',
+  'trends.topProduct': '头号产品',
+  'trends.noPrevWeek': '暂无可对比的上一周 —— 下周再来查看。',
+  'trends.sourceUnchanged': '与上周相同',
+  'trends.sourceShifted': '从 {from} 变化而来',
+  'platform.name.other': '其他',
 };
 
 const MESSAGES: Record<Locale, Messages> = { en, zh };

@@ -126,6 +126,46 @@ export async function getTopProjects(limit: number): Promise<ProjectListItem[]> 
   return rows.slice(0, limit);
 }
 
+/**
+ * Projects matching the given slugs, in the same shape as getAllProjects.
+ * Backs the /bookmarks page (slugs come from the visitor's localStorage).
+ * Empty input → empty list (skips the round-trip). Result order is by stars,
+ * not input order — the page is a small set, not a ranked feed.
+ */
+export async function getProjectsBySlugs(slugs: string[]): Promise<ProjectListItem[]> {
+  if (slugs.length === 0) return [];
+  return await sql<ProjectListItem[]>`
+    select
+      p.id,
+      p.slug,
+      p.name,
+      p.one_liner,
+      -- Defensive read via to_jsonb: resilient if the column is ever absent.
+      (to_jsonb(p) ->> 'ai_summary') as ai_summary,
+      p.category,
+      p.llm_category,
+      p.primary_url,
+      latest.stars as github_stars,
+      latest.forks as github_forks,
+      p.created_at,
+      coalesce(
+        (select array_agg(distinct il.platform)
+         from app.identity_link il where il.project_id = p.id),
+        '{}'
+      ) as platforms
+    from app.project p
+    left join lateral (
+      select s.stars, s.forks
+      from raw.snapshot s
+      where s.project_id = p.id and s.platform = 'github'
+      order by s.timestamp desc
+      limit 1
+    ) latest on true
+    where p.slug = any(${slugs})
+    order by latest.stars desc nulls last, p.created_at desc
+  `;
+}
+
 /** Total number of tracked projects (home stats bar). */
 export async function getTotalProjectCount(): Promise<number> {
   const [row] = await sql<{ n: number }[]>`select count(*)::int as n from app.project`;
@@ -472,6 +512,92 @@ export async function getProjectBySlug(slug: string): Promise<ProjectDetail | nu
   return { ...project, platforms, metrics };
 }
 
+/** A mini-card entry for the "You might also like" row on the detail page. */
+export interface RelatedProject {
+  id: string;
+  slug: string;
+  name: string;
+  one_liner: string | null;
+  /** Latest GitHub stars (raw.snapshot); null when the project has no GH snapshot. */
+  stars: number | null;
+}
+
+/**
+ * Up to `limit` other projects in the same `llm_category`, for the detail-page
+ * recommendation row ("You might also like"). Excludes the current slug and any
+ * project merged away by dedup.
+ *
+ * Ordering: the spec asks for `stars * 0.7 + quality_score * 0.3`, but
+ * app.project has no quality_score column (and no stars column — stars live in
+ * raw.snapshot). With quality unavailable the weighted score collapses to its
+ * dominant term, so we order by latest GitHub stars desc, recency as tiebreak.
+ * Returns [] when the project has no category (nothing meaningful to relate on).
+ */
+export async function getRelatedProjects(
+  slug: string,
+  category: string | null,
+  limit = 4,
+): Promise<RelatedProject[]> {
+  if (!category) return [];
+  return await sql<RelatedProject[]>`
+    select
+      p.id, p.slug, p.name, p.one_liner,
+      latest.stars as stars
+    from app.project p
+    left join lateral (
+      select s.stars
+      from raw.snapshot s
+      where s.project_id = p.id and s.platform = 'github'
+      order by s.timestamp desc
+      limit 1
+    ) latest on true
+    where p.llm_category = ${category}
+      and p.slug <> ${slug}
+      and p.merged_into_id is null
+    order by latest.stars desc nulls last, p.created_at desc
+    limit ${limit}
+  `;
+}
+
+/** One hit from the fuzzy project search (/api/search). */
+export interface ProjectSearchResult {
+  slug: string;
+  name: string;
+  one_liner: string | null;
+  /** Latest GitHub stars (raw.snapshot); null when no GH snapshot. */
+  stars: number | null;
+}
+
+/**
+ * Fuzzy project search over name + one_liner, powered by pg_trgm (migration
+ * 0014). Combines a substring match on name (catches short queries the trigram
+ * `%` threshold would miss, e.g. "ai") with trigram similarity on both columns,
+ * ranked by name similarity then stars. Excludes dedup-merged projects. Empty /
+ * whitespace query returns []. Capped at 20 rows.
+ */
+export async function searchProjects(query: string): Promise<ProjectSearchResult[]> {
+  const q = query.trim();
+  if (!q) return [];
+  const like = `%${q}%`;
+  return await sql<ProjectSearchResult[]>`
+    select
+      p.slug, p.name, p.one_liner,
+      latest.stars as stars
+    from app.project p
+    left join lateral (
+      select s.stars
+      from raw.snapshot s
+      where s.project_id = p.id and s.platform = 'github'
+      order by s.timestamp desc
+      limit 1
+    ) latest on true
+    where p.merged_into_id is null
+      and (p.name ilike ${like} or p.name % ${q} or p.one_liner % ${q})
+    order by similarity(p.name, ${q}) desc nulls last, latest.stars desc nulls last
+    limit 20
+  `;
+}
+
 // ---------------------------------------------------------------------------
 // YouTube video insights (/youtube-insights)
 // ---------------------------------------------------------------------------
@@ -694,6 +820,104 @@ export async function getLatestWeeklyTrend(): Promise<WeeklyTrend | null> {
   } catch (err) {
     const code = (err as { code?: string }).code;
     if (code === '42P01' || code === '42703') return null;
+    throw err;
+  }
+}
+
+/**
+ * The most recent `limit` weekly trend reports, newest first. Drives the /trends
+ * week-over-week comparison (this week vs last). Same empty-state resilience as
+ * getLatestWeeklyTrend — returns [] before migration 0012 lands.
+ */
+export async function getRecentWeeklyTrends(limit = 2): Promise<WeeklyTrend[]> {
+  try {
+    return await sql<WeeklyTrend[]>`
+      select
+        id::text,
+        to_char(week_start, 'YYYY-MM-DD') as week_start,
+        to_char(week_end, 'YYYY-MM-DD') as week_end,
+        summary_en,
+        summary_zh,
+        coalesce(top_products, '[]'::jsonb) as top_products,
+        coalesce(emerging_themes, '{}'::text[]) as emerging_themes,
+        video_highlights,
+        total_projects_scanned,
+        total_signals_generated,
+        total_insights_collected,
+        to_char(created_at, 'YYYY-MM-DD') as created_at
+      from app.weekly_trend
+      order by created_at desc
+      limit ${limit}
+    `;
+  } catch (err) {
+    const code = (err as { code?: string }).code;
+    if (code === '42P01' || code === '42703') return [];
+    throw err;
+  }
+}
+
+/** One bar of the /trends distribution chart. */
+export interface TrendDistributionBar {
+  label: string;
+  count: number;
+}
+
+/**
+ * Distribution of the current week's top products for the /trends bar chart.
+ * Buckets by the product's project `llm_category` when known, falling back to
+ * its `platform` (then 'other') — most trend products are HN/PH posts that
+ * aren't classified projects, so a pure llm_category chart would be a single
+ * "uncategorized" bar. This yields a varied, real breakdown that auto-sharpens
+ * into true categories as classification backfills. Empty before migration 0012.
+ */
+export async function getTrendCategoryDistribution(): Promise<TrendDistributionBar[]> {
+  try {
+    return await sql<TrendDistributionBar[]>`
+      with latest as (
+        select top_products from app.weekly_trend order by created_at desc limit 1
+      )
+      select
+        case
+          when p.llm_category is not null then p.llm_category
+          when tp.platform in ('github','hacker_news','product_hunt','youtube','reddit','x')
+            then tp.platform
+          else 'other'
+        end as label,
+        count(*)::int as count
+      from latest,
+           jsonb_to_recordset(latest.top_products) as tp(slug text, platform text)
+      left join app.project p on p.slug = tp.slug
+      group by 1
+      order by count desc, label asc
+    `;
+  } catch (err) {
+    const code = (err as { code?: string }).code;
+    if (code === '42P01' || code === '42703') return [];
+    throw err;
+  }
+}
+
+/**
+ * The current week's top `limit` products by combined score, for the /trends
+ * "Top products" list. Reads directly from the latest weekly_trend's
+ * top_products jsonb (which carries name/slug/platform/description/score).
+ */
+export async function getTrendTopProducts(limit = 5): Promise<WeeklyTrendProduct[]> {
+  try {
+    return await sql<WeeklyTrendProduct[]>`
+      with latest as (
+        select top_products from app.weekly_trend order by created_at desc limit 1
+      )
+      select tp.name, tp.slug, tp.platform, tp.description, coalesce(tp.score, 0)::int as score
+      from latest,
+           jsonb_to_recordset(latest.top_products)
+             as tp(name text, slug text, platform text, description text, score numeric)
+      order by tp.score desc nulls last
+      limit ${limit}
+    `;
+  } catch (err) {
+    const code = (err as { code?: string }).code;
+    if (code === '42P01' || code === '42703') return [];
     throw err;
   }
 }

@@ -1,184 +1,149 @@
-# Product Tracer — Full Feature Sprint
+# Product Tracer — Day 2 Sprint (Phase 2)
 
-You are now the **sole Claude Code agent** handling both frontend and backend for product-tracer.
+## Agent Session Rules (read this first)
 
-**Repo**: `~/Desktop/ai_project/product-tracer/` (main branch)
-**Git author**: `JamesHuang22 <23440306+JamesHuang22@users.noreply.github.com>`
+You are a continuously-running agent. Follow these rules:
 
----
+### Polling
+1. Every 20 minutes: `git fetch origin main && git diff HEAD origin/main -- assistant-queue/REQUEST.md assistant-queue/FRONTEND_REQUEST.md`
+2. If diff is non-empty: git pull --rebase, implement the new tasks
+3. If empty: increment idle counter
+4. After 15 consecutive idle polls: write shutdown notice to next-request.md and stop
 
-## Workflow (non-negotiable)
+### Manual trigger
+If you see "pull now" in the conversation: immediately poll the queue files.
 
-For EVERY task:
-1. `git checkout -b feat/<descriptive-name>` from main
-2. Implement the changes
-3. Run typecheck: `pnpm --filter @product-tracer/web typecheck` (frontend) or `pnpm --filter @product-tracer/worker typecheck` (backend) — **both must pass**
-4. `git add -A && git commit -m 'feat: ...'`
-5. `git push origin feat/<branch>` → create PR via `gh pr create`
-6. Wait for Vercel preview build to pass (check via `gh pr checks`)
-7. `gh pr merge --squash`
-8. **Verify**: `curl -sI https://product-tracer.vercel.app/` → HTTP 200
-9. `curl -s -o /dev/null -w "%{http_code}" https://product-tracer.vercel.app/projects` → 200
-10. `curl -s -o /dev/null -w "%{http_code}" https://product-tracer.vercel.app/trends` → 200
-11. `curl -s -o /dev/null -w "%{http_code}" https://product-tracer.vercel.app/youtube-insights` → 200
-12. `curl -s -o /dev/null -w "%{http_code}" https://product-tracer.vercel.app/feed/projects.xml` → 200
-13. Check response body is not empty: `curl -s https://product-tracer.vercel.app/ | head -c 500`
-14. Apply any DB migrations via: `psql "$DATABASE_URL" -f packages/db/migrations/XXXX_name.sql`
-15. Update `CHANGELOG.md` and `DECISIONS.md`
-16. Write summary to `assistant-queue/RESPONSE.md` or `assistant-queue/FRONTEND_RESPONSE.md`
+### Supabase MCP
+Migrations via: `psql "$DATABASE_URL" -f packages/db/migrations/XXXX_name.sql`
 
-**Never push directly to main. Always branch → PR → merge.**
+### Vercel verify after every merge
+```
+curl -sI https://product-tracer.vercel.app/  → 200
+curl -s -o /dev/null -w "%{http_code}" https://product-tracer.vercel.app/projects → 200
+curl -s -o /dev/null -w "%{http_code}" https://product-tracer.vercel.app/trends → 200
+curl -s -o /dev/null -w "%{http_code}" https://product-tracer.vercel.app/youtube-insights → 200
+curl -s -o /dev/null -w "%{http_code}" https://product-tracer.vercel.app/api/search?q=ai → 200
+```
 
----
+### Git author
+`JamesHuang22 <23440306+JamesHuang22@users.noreply.github.com>`
 
-## Tasks (execute in order, one at a time)
-
-### T0 [P2 BUG] — Fix mobile horizontal scroll on /
-
-**Severity**: Bug — the mobile horizontal scroll regression is blocking users on 375px viewports.
-
-**Fix**: Check `apps/web/app/globals.css` and `apps/web/app/layout.tsx`. The issue is likely overflow on a flex/grid container or fixed-width element. Apply `overflow-x-clip` or `max-width: 100vw` on the root layout. Do NOT use a CSS library — fix with inline Tailwind or minimal custom CSS.
-
-**Files to touch**: `apps/web/app/globals.css`, `apps/web/app/layout.tsx`
-
-**Verify**: Open Chrome at 375×812 viewport → no horizontal scrollbar.
+### Workflow (non-negotiable)
+1. Branch from main → implement → `pnpm typecheck` → commit → push → `gh pr create --fill`
+2. Wait for Vercel preview ✅ → `gh pr merge --squash`
+3. Verify HTTP 200 on all critical paths
+4. Apply DB migrations via psql
+5. Update CHANGELOG.md, DECISIONS.md
+6. Write summary to assistant-queue/RESPONSE.md
 
 ---
 
-### T1 [FEATURE] — Detail Page Content Richness
-
-Read the full spec in `assistant-queue/FRONTEND_REQUEST.md` (179 lines).
-
-**6 sub-tasks**:
-1. **Fix AI summary rendering** — `app.project.ai_summary` column has 50+ rows but production detail pages show nothing. Debug the query and rendering chain in `apps/web/lib/db.ts` and `apps/web/app/projects/[slug]/page.tsx`.
-2. **Add breadcrumb navigation** — `Projects > {project name}` at top of detail page
-3. **Structured sections** — Organize detail page: Header → AI Summary → External Links → Related Projects
-4. **Related Projects component** — New file `apps/web/components/related-projects.tsx` — horizontal row of 4 mini cards from same `llm_category`, ordered by `stars DESC`, excluding current project
-5. **Graceful 404 page** — New file `apps/web/app/projects/[slug]/not-found.tsx` — centered 404 with "Browse all projects" link
-6. **ZH i18n** — Add detail page keys to `apps/web/lib/i18n.ts`
-
-**Files to touch**: `apps/web/app/projects/[slug]/page.tsx`, `apps/web/app/projects/[slug]/not-found.tsx`, `apps/web/lib/db.ts`, `apps/web/components/related-projects.tsx`, `apps/web/lib/i18n.ts`
-
-**No migration needed** — all columns (`ai_summary`, `llm_category`, `stars`) already exist.
+## Tasks (execute in order, high to low priority)
 
 ---
 
-### T2 [FEATURE] — Fuzzy Search on /projects
+### BUG-1 [P0] — YouTube Insights empty card on homepage
 
-4000+ projects and no way to search. This is the #1 user-facing gap.
+**Reported by James**: The homepage insights section shows a broken empty card. The card has no text, no title, just a "Watch on YouTube" link pointing to `https://www.youtube.com/watch?v=4y9DR2WwW3o`. The insight text is completely blank.
 
-**Backend**:
-1. Create `packages/db/migrations/0015_pg_trgm_search.sql` (skip 0014 if it doesn't exist — just pick the next number):
-   ```sql
-   create extension if not exists pg_trgm;
-   create index if not exists idx_project_name_trgm on app.project using gin (name gin_trgm_ops);
-   create index if not exists idx_project_one_liner_trgm on app.project using gin (one_liner gin_trgm_ops);
-   ```
-2. Create `apps/web/app/api/search/route.ts`:
-   ```
-   GET /api/search?q={query}
-   → SELECT name, slug, one_liner, stars, score
-     FROM app.project
-     WHERE name % q OR one_liner % q
-     ORDER BY similarity(name, q) DESC
-     LIMIT 20
-   ```
+**Root cause suspicion**: The insight in question has `key_insight` or `key_insight_zh` as NULL or empty string. The frontend renders the card anyway but without content.
 
-**Frontend**:
-3. Add a search input to the projects page header — debounced 300ms, calls `/api/search?q=...`, shows dropdown results while typing, links to detail pages
-4. Add search icon (Lucide `Search`) inside the input
+**Fix**:
+1. Check all insight data fetching queries in `apps/web/lib/db.ts` (especially `getLatestInsights()`)
+2. Add a guard: `WHERE key_insight IS NOT NULL AND key_insight != ''` to exclude empty insights
+3. On the frontend card component, add a fallback: if `key_insight` (or locale-appropriate field) is empty/null, do NOT render the card at all
+4. The locale-aware display logic (EN shows `key_insight`, ZH shows `key_insight_zh`) should also check: if the locale-preferred field is empty, try the other language; if both empty, skip
 
-**Files to touch**:
-- `packages/db/migrations/0015_pg_trgm_search.sql` (NEW)
-- `apps/web/app/api/search/route.ts` (NEW)
-- `apps/web/app/projects/page.tsx` — add search input
-- `apps/web/app/projects/projects-table.tsx` — if needed for search results display
+**Files to touch**: `apps/web/lib/db.ts`, the insight card component (check `apps/web/app/page.tsx` for the insights section), locale logic in card
 
-**Verify**: Type "gpt" → see all GPT-related projects pop up. Type "AI" → see results.
+**Verify**: Visit homepage → no empty cards → all insight cards have text content.
 
 ---
 
-### T3 [FEATURE] — Score heat indicator on project cards
+### FEAT-1 [HIGH] — Weekly Trends: historic weeks selector
 
-**Detail**: Add a subtle visual indicator for project quality scores on the /projects page cards.
+**Current state**: `/trends` shows only the most recent week's data.
 
-**Implementation**:
-- Add a thin left border or background tint based on `project.quality_score`:
-  - score >= 80: green (`border-l-4 border-l-emerald-500`)
-  - score >= 60: yellow (`border-l-4 border-l-amber-500`)
-  - score >= 40: gray (no border)
-  - no score or < 40: no special styling
-- The `quality_score` column already exists in `app.project`
-
-**Files to touch**: `apps/web/app/projects/projects-table.tsx`
-
-**Verify**: High-scoring cards have visible green accent.
-
----
-
-### T4 [FEATURE] — Weekly Trends Dashboard: Visual Charts
-
-**Detail**: Enhance the /trends page with basic charts and WoW comparisons.
+**Goal**: Allow users to browse historic weekly trends while keeping the homepage always showing the latest week.
 
 **Backend** (`apps/web/lib/db.ts`):
-- Add `getTrendCategoryDistribution()` — aggregate current weekly_trend products by `llm_category`
-- Add `getTrendTopProducts(limit: 5)` — top products by `combined_score` from current week
+1. Add query `getTrendWeeks()` — returns `SELECT DISTINCT week_start, week_end FROM app.weekly_trend ORDER BY week_start DESC` — list of available trend weeks
+2. Modify existing trend queries to accept an optional `weekStart: string` parameter — if provided, filter by that week; if omitted, default to most recent week
 
 **Frontend** (`apps/web/app/trends/page.tsx`):
-- Category distribution: simple horizontal bar chart or flex boxes with percentages (no external chart library required — use CSS-only bars)
-- Top 5 products: numbered list with scores, stars, and links
-- Week-over-Week: compare this week's top category against last week's (same table, query by `created_at`)
+1. Add a week selector dropdown at the top of /trends — populated from `getTrendWeeks()`
+2. Default: show most recent week (matching current behavior)
+3. On selection change: re-query data for that specific week (client-side navigation via `useSearchParams` or `router.push`)
+4. The URL should reflect the selected week: `/trends?week=2026-06-15`
+5. Homepage always shows only the latest week
 
-**No migration needed** — all data in existing `app.weekly_trend` table.
+**Files to touch**:
+- `apps/web/lib/db.ts` — new queries + optional week param
+- `apps/web/app/trends/page.tsx` — week selector dropdown, filtered queries
+- `apps/web/lib/i18n.ts` — i18n for "Select week" / "选择周"
+- Possibly `apps/web/app/trends/week-selector.tsx` (NEW) — if the component gets complex
 
-**Files to touch**: `apps/web/app/trends/page.tsx`, `apps/web/lib/db.ts`
+**No migration needed** — `week_start` column already exists in `app.weekly_trend`.
 
-**Verify**: `/trends` shows category bars, top 5 list, WoW changes.
-
----
-
-### T5 [FIX] — Reddit collector: GitHub Actions 403
-
-Reddit blocks GitHub Actions IPs (Cloudflare-based runners). Current `collectors/reddit.ts` uses no-OAuth JSON API.
-
-**Options (pick one)**:
-1. Route through `old.reddit.com` with a realistic `User-Agent` header
-2. Add a delay between requests and a cached proxy via `node-fetch` + `agent-keepalive`
-3. If all fail, mark Reddit collector as "requires manual deploy" and move on
-
-**Files to touch**: `apps/worker/src/collectors/reddit.ts`, `.github/workflows/collect-reddit.yml`
-
-**Verify**: Trigger workflow run, check if non-403.
+**Verify**: Visit /trends → see a dropdown with available weeks → pick a past week → data changes to that week's trends.
 
 ---
 
-### T6 [FEATURE] — AI Recommendation Engine
+### FEAT-2 [HIGH] — Revisit collectors: improve data quality, dedup, and freshness
 
-**"You might also like"** — 4 related projects based on shared `llm_category`, ordered by `(stars * 0.7 + score * 0.3) DESC`.
+**Problem**: Some projects feel low-quality or dead. The GitHub collector may miss real engagement signals. Dedup might miss duplicates.
 
-This builds on T1's Related Projects component. If T1 is done, extend it:
-1. Add weighted ordering: `COALESCE(stars, 0) * 0.7 + COALESCE(quality_score, 0) * 0.3 DESC`
-2. Label the section "You might also like" (EN) / "猜你喜欢" (ZH)
-3. If `llm_category` is NULL for current project, fall back to projects with the most matching tags
+**Backend tasks**:
 
-**Files to touch**: `apps/web/lib/db.ts`, `apps/web/components/related-projects.tsx`, `apps/web/app/projects/[slug]/page.tsx`
+**A. GitHub collector improvement** (`apps/worker/src/collectors/github.ts`):
+- Add additional data points to the snapshot: `issues_count`, `open_prs`, `forks`, `last_push_date`, `topics`
+- Add a freshness filter: skip repos with `pushed_at > 6 months ago` (unless they have >1000 stars)
+- Consider adding a "recent commits" count (last 30 days) to gauge activity
+
+**B. Dedup pipeline improvement**:
+- Review `apps/worker/src/scripts/dedup.ts` — check if the LLM-based dedup is matching pairs that shouldn't be merged (false positives)
+- Add stricter matching criteria: same `llm_category` OR name similarity > 0.8
+- Migration `0015_dedup_quality.sql`:
+  ```sql
+  alter table app.project add column if not exists last_checked_at timestamptz;
+  alter table app.project add column if not exists issues_count int;
+  alter table app.project add column if not exists open_prs_count int;
+  alter table app.project add column if not exists forks_count int;
+  alter table app.project add column if not exists topics text[];
+  alter table app.project add column if not exists last_push_at timestamptz;
+  alter table app.project add column if not exists recent_commits_30d int;
+  ```
+
+**C. GitHub workflow update** (`.github/workflows/collect-github.yml`):
+- Make the collector run more frequently if possible (currently N/A — check cron schedule)
+
+**Files to touch**:
+- `packages/db/migrations/0015_dedup_quality.sql` (NEW)
+- `apps/worker/src/collectors/github.ts` — add new data points + freshness filter
+- `apps/worker/src/scripts/dedup.ts` — stricter matching criteria
+- `.github/workflows/collect-github.yml` — revisit schedule
+- `packages/types/src/index.ts` — update `RawSnapshot` type if needed
+
+**Verify**: Run `pnpm --filter @product-tracer/worker typecheck` and GitHub collector workflow passes. After migration, `SELECT * FROM app.project LIMIT 5` shows new columns populated.
 
 ---
 
-## Quick reference
+### U1 [FEATURE] — Bookmark / Save Projects (from earlier, still pending)
 
-| Command | Purpose |
-|---|---|
-| `pnpm --filter @product-tracer/web typecheck` | Frontend typecheck |
-| `pnpm --filter @product-tracer/worker typecheck` | Backend typecheck |
-| `pnpm --filter @product-tracer/worker sums:generate` | Run AI summaries script |
-| `psql "$DATABASE_URL" -f packages/db/migrations/XXXX_name.sql` | Apply migration |
-| `curl -sI https://product-tracer.vercel.app/` | Verify homepage 200 |
-| `gh pr create --fill` | Create PR from current branch |
-| `gh pr merge --squash` | Merge approved PR |
+If you already started this, finish it. Otherwise, skip to the tasks above and return to this if time permits.
 
-## After completing ALL tasks
+**Files to touch** (from existing WIP):
+- `apps/web/lib/bookmarks.ts` (NEW)
+- `apps/web/app/bookmarks/page.tsx` (NEW)
+- `apps/web/components/bookmark-button.tsx` (NEW)
+- `apps/web/components/project-card.tsx` (NEW)
+- Modify `page.tsx`, `projects-table.tsx`, `site-header.tsx`, `db.ts`, `i18n.ts` as needed
 
-1. Ensure both `assistant-queue/RESPONSE.md` and `assistant-queue/FRONTEND_RESPONSE.md` are updated
-2. Write a concise summary to `assistant-queue/next-request.md` noting what was done and what's left
-3. Commit and push all queue files
+---
+
+### U2-U6 backlog (do after the above)
+- U2: Backfill AI summaries (one-off large batch)
+- U3: Backfill llm_category coverage
+- U4: AI granular tags
+- U5: YouTube OG images
+- U6: Multi-select insight filter

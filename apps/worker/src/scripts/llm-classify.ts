@@ -153,15 +153,31 @@ async function main(): Promise<void> {
     return;
   }
 
-  // Pull every not-yet-LLM-classified project that the rules haven't killed
-  // ('dead'), plus the snapshots and links needed to recompute its score. One
-  // query each, grouped in memory — avoids an N+1 storm (same shape as the
-  // rule pass).
+  // Default: only the gray zone — the score band where the rule classifier is
+  // least confident — so the cheap daily run spends LLM budget where it helps.
+  //
+  // LLM_CLASSIFY_ALL=1: a one-off backfill mode that classifies *every* active
+  // unclassified project, not just the gray zone. This exists because the rules
+  // never assign `llm_category` to confidently-scored projects, so ~97% of the
+  // catalogue has no category — which starves related-projects, the trends
+  // category chart, and search ranking. The pass still only demotes a project
+  // when the model is confident it's noise (so it doubles as a quality prune),
+  // and `llm_category` is written for every project it touches.
+  const classifyAll = ['1', 'true'].includes((process.env.LLM_CLASSIFY_ALL ?? '').toLowerCase());
+  // Optional per-run cap (all-mode). Lets the ~4k backfill run as a few short
+  // dispatches that each release their DB connections on exit, rather than one
+  // long-lived run that holds connections while the public site (sharing the
+  // Supabase pooler) is under traffic — that combination tripped EMAXCONNSESSION.
+  const runLimit = Number(process.env.LLM_CLASSIFY_LIMIT) || 0;
+
+  // Pull every not-yet-LLM-classified project the rules haven't killed ('dead').
+  // All-mode caps the pull with LIMIT so a single dispatch stays short.
   const projects = await sql<ProjectRow[]>`
     select id, name, one_liner, category, status
     from app.project
     where status <> 'dead'
       and llm_classified_at is null
+      ${classifyAll && runLimit > 0 ? sql`order by created_at desc limit ${runLimit}` : sql``}
   `;
 
   if (projects.length === 0) {
@@ -169,46 +185,58 @@ async function main(): Promise<void> {
     return;
   }
 
-  const projectIds = projects.map((p) => p.id);
-  const snapshotRows = await sql<({ project_id: string } & AssessSnapshot)[]>`
-    select project_id, platform, upvotes, comments, stars, forks
-    from raw.snapshot
-    where project_id = any(${projectIds})
-  `;
-  const linkRows = await sql<({ project_id: string } & AssessIdentityLink)[]>`
-    select project_id, platform from app.identity_link
-    where project_id = any(${projectIds})
-  `;
-
-  const snapshotsByProject = new Map<string, AssessSnapshot[]>();
-  for (const row of snapshotRows) {
-    const list = snapshotsByProject.get(row.project_id) ?? [];
-    list.push(row);
-    snapshotsByProject.set(row.project_id, list);
-  }
-  const linksByProject = new Map<string, AssessIdentityLink[]>();
-  for (const row of linkRows) {
-    const list = linksByProject.get(row.project_id) ?? [];
-    list.push(row);
-    linksByProject.set(row.project_id, list);
-  }
-
-  // Keep only the gray zone: recompute the rule score and select 15–39.
-  const candidates = projects.filter((p) => {
-    const { score } = assessProject(
-      p,
-      snapshotsByProject.get(p.id) ?? [],
-      linksByProject.get(p.id) ?? [],
+  let candidates: ProjectRow[];
+  if (classifyAll) {
+    // No gray-zone scoring here, so skip the snapshot + identity-link reads
+    // entirely — those two full-table scans over thousands of ids were the
+    // heavy part of the query footprint.
+    candidates = projects.filter((p) => p.status === 'active');
+    console.log(
+      `[llm-classify] ALL-mode backfill: ${candidates.length} active unclassified ` +
+        `projects (of ${projects.length} pulled${runLimit > 0 ? `, capped at ${runLimit}` : ''}).`,
     );
-    return score >= GRAY_ZONE_MIN && score <= GRAY_ZONE_MAX;
-  });
+  } else {
+    // Gray-zone mode needs each project's snapshots + links to recompute the
+    // rule score. One query each, grouped in memory — avoids an N+1 storm.
+    const projectIds = projects.map((p) => p.id);
+    const snapshotRows = await sql<({ project_id: string } & AssessSnapshot)[]>`
+      select project_id, platform, upvotes, comments, stars, forks
+      from raw.snapshot
+      where project_id = any(${projectIds})
+    `;
+    const linkRows = await sql<({ project_id: string } & AssessIdentityLink)[]>`
+      select project_id, platform from app.identity_link
+      where project_id = any(${projectIds})
+    `;
 
-  console.log(
-    `[llm-classify] ${projects.length} unclassified projects; ` +
-      `${candidates.length} in the gray zone (score ${GRAY_ZONE_MIN}–${GRAY_ZONE_MAX}).`,
-  );
+    const snapshotsByProject = new Map<string, AssessSnapshot[]>();
+    for (const row of snapshotRows) {
+      const list = snapshotsByProject.get(row.project_id) ?? [];
+      list.push(row);
+      snapshotsByProject.set(row.project_id, list);
+    }
+    const linksByProject = new Map<string, AssessIdentityLink[]>();
+    for (const row of linkRows) {
+      const list = linksByProject.get(row.project_id) ?? [];
+      list.push(row);
+      linksByProject.set(row.project_id, list);
+    }
+
+    candidates = projects.filter((p) => {
+      const { score } = assessProject(
+        p,
+        snapshotsByProject.get(p.id) ?? [],
+        linksByProject.get(p.id) ?? [],
+      );
+      return score >= GRAY_ZONE_MIN && score <= GRAY_ZONE_MAX;
+    });
+    console.log(
+      `[llm-classify] ${projects.length} unclassified projects; ` +
+        `${candidates.length} in the gray zone (score ${GRAY_ZONE_MIN}–${GRAY_ZONE_MAX}).`,
+    );
+  }
   if (candidates.length === 0) {
-    console.log('[llm-classify] No gray-zone projects to classify.');
+    console.log('[llm-classify] No projects to classify.');
     return;
   }
 
@@ -287,7 +315,8 @@ async function main(): Promise<void> {
   const totalCost = inputCost + outputCost;
 
   const summary = {
-    gray_zone_candidates: candidates.length,
+    mode: classifyAll ? 'all' : 'gray_zone',
+    candidates: candidates.length,
     classified,
     demoted_to_noise: demoted,
     rescued_to_active: rescued,
