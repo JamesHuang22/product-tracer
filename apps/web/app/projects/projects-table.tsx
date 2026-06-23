@@ -31,6 +31,18 @@ function truncateChars(s: string, max: number): string {
   return chars.length > max ? chars.slice(0, max).join('').trimEnd() + '…' : s;
 }
 
+/**
+ * Heat accent for a project card/row — a coloured left border keyed on GitHub
+ * stars (our available quality proxy; app.project has no quality_score column).
+ * Lower tiers keep a transparent 4px border so text alignment stays identical
+ * across every row regardless of tier.
+ */
+function heatBorderClass(stars: number | null | undefined): string {
+  if (stars != null && stars >= 1000) return 'border-l-4 border-l-emerald-500';
+  if (stars != null && stars >= 100) return 'border-l-4 border-l-amber-500';
+  return 'border-l-4 border-l-transparent';
+}
+
 /** Sort dropdown options → the tanstack sorting state each one applies. */
 const SORT_OPTIONS: { value: string; key: MessageKey; sorting: SortingState }[] = [
   { value: 'stars-desc', key: 'sort.starsDesc', sorting: [{ id: 'github_stars', desc: true }] },
@@ -331,10 +343,12 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
                 key={row.id}
                 className="relative cursor-pointer transition-colors hover:bg-neutral-50/60 dark:hover:bg-neutral-900/40"
               >
-                {row.getVisibleCells().map((cell) => (
+                {row.getVisibleCells().map((cell, idx) => (
                   <td
                     key={cell.id}
-                    className={`px-4 py-3 ${numeric(cell.column.id) ? 'text-right' : ''}`}
+                    className={`px-4 py-3 ${numeric(cell.column.id) ? 'text-right' : ''} ${
+                      idx === 0 ? heatBorderClass(row.original.github_stars) : ''
+                    }`}
                   >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </td>
@@ -349,8 +363,9 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
       <div className="space-y-3 md:hidden">
         {rows.map((row) => {
           const p = row.original;
-          const cardClass =
-            'block rounded-lg border border-neutral-200 p-4 transition-colors hover:border-neutral-400 dark:border-neutral-800 dark:hover:border-neutral-600';
+          const cardClass = `block rounded-lg border border-neutral-200 p-4 transition-colors hover:border-neutral-400 dark:border-neutral-800 dark:hover:border-neutral-600 ${heatBorderClass(
+            p.github_stars,
+          )}`;
           const { href, external } = projectHref(p);
           const oneLiner = localizedText(locale, cleanOneLiner(p.one_liner));
           const aiSummary = localizedText(locale, p.ai_summary);
