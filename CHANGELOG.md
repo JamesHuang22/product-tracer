@@ -3,6 +3,10 @@
 > Auto-generated summary of notable changes to product-tracer.
 > Format: Keep a Changelog — date, PR/commit, type, description.
 
+## 2026-06-23
+
+- **feat(web)**: bookmark / save projects (U1). Visitors can bookmark projects with no auth — slugs are persisted in `localStorage` (`pt:bookmarks`) via a small `lib/bookmarks.ts` API (`getBookmarks`/`toggleBookmark`/`isBookmarked` + reactive `useBookmark`/`useBookmarks` hooks that sync same-tab via a `CustomEvent` and cross-tab via the `storage` event). A `BookmarkButton` toggle (Lucide `Bookmark`/`BookmarkCheck`) appears on every `/projects` row & mobile card and on the project detail header (labeled variant). New `/bookmarks` page lists saved projects as cards, hydrated client-side from `GET /api/bookmarks?slugs=…` (new `getProjectsBySlugs()` in `lib/db.ts`, capped at 200 slugs); un-bookmarking removes a card instantly. New "Bookmarks" nav link. New i18n keys `nav.bookmarks`, `bookmarks.title`, `bookmarks.empty`, `detail.bookmark`, `detail.bookmarked` (EN/ZH). New shared `ProjectCard` component reused by the bookmarks list. The toggle button is a sibling of (not nested in) the card/row link to keep valid HTML and raises itself above the row's full-bleed link overlay (`relative z-10` + click stopPropagation) so saving never navigates
+
 ## 2026-06-22
 
 - **fix(worker)**: Reddit collector no longer dies on GitHub Actions 403s. `fetchSubredditHot` now tries the JSON endpoint on `old.reddit.com` (rotating realistic browser User-Agents across retries, backing off on 403/429) and **falls back to parsing the Atom RSS feed** (`/r/{sub}/hot/.rss`) when JSON stays blocked — Reddit now 403s `.json` from datacenter (and many residential) IPs regardless of UA, but RSS still returns 200 (verified). New `parseRedditRss()` + `REDDIT_HOST` env override. RSS posts carry no score/comment counts (stored as 0); GitHub cross-matching still works via the post's `[link]` URL

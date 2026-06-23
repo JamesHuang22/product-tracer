@@ -126,6 +126,46 @@ export async function getTopProjects(limit: number): Promise<ProjectListItem[]> 
   return rows.slice(0, limit);
 }
 
+/**
+ * Projects matching the given slugs, in the same shape as getAllProjects.
+ * Backs the /bookmarks page (slugs come from the visitor's localStorage).
+ * Empty input → empty list (skips the round-trip). Result order is by stars,
+ * not input order — the page is a small set, not a ranked feed.
+ */
+export async function getProjectsBySlugs(slugs: string[]): Promise<ProjectListItem[]> {
+  if (slugs.length === 0) return [];
+  return await sql<ProjectListItem[]>`
+    select
+      p.id,
+      p.slug,
+      p.name,
+      p.one_liner,
+      -- Defensive read via to_jsonb: resilient if the column is ever absent.
+      (to_jsonb(p) ->> 'ai_summary') as ai_summary,
+      p.category,
+      p.llm_category,
+      p.primary_url,
+      latest.stars as github_stars,
+      latest.forks as github_forks,
+      p.created_at,
+      coalesce(
+        (select array_agg(distinct il.platform)
+         from app.identity_link il where il.project_id = p.id),
+        '{}'
+      ) as platforms
+    from app.project p
+    left join lateral (
+      select s.stars, s.forks
+      from raw.snapshot s
+      where s.project_id = p.id and s.platform = 'github'
+      order by s.timestamp desc
+      limit 1
+    ) latest on true
+    where p.slug = any(${slugs})
+    order by latest.stars desc nulls last, p.created_at desc
+  `;
+}
+
 /** Total number of tracked projects (home stats bar). */
 export async function getTotalProjectCount(): Promise<number> {
   const [row] = await sql<{ n: number }[]>`select count(*)::int as n from app.project`;

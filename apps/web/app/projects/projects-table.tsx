@@ -22,6 +22,7 @@ import { fmtCount, cleanOneLiner, localizedText } from '@/lib/format';
 import { useI18n } from '@/lib/i18n-context';
 import type { MessageKey } from '@/lib/i18n';
 import { CategoryBadge } from '@/components/category-badge';
+import { BookmarkButton } from '@/components/bookmark-button';
 
 const ch = createColumnHelper<ProjectListItem>();
 
@@ -207,6 +208,18 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
         header: '',
         sortDescFirst: true,
       }),
+      // Bookmark toggle. The button raises itself above the row's full-bleed
+      // link overlay (relative z-10) and stops click propagation, so saving a
+      // project never navigates to it.
+      ch.display({
+        id: 'bookmark',
+        header: '',
+        cell: (info) => (
+          <div className="flex justify-end">
+            <BookmarkButton slug={info.row.original.slug} />
+          </div>
+        ),
+      }),
     ],
     [t, locale],
   );
@@ -363,7 +376,7 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
       <div className="space-y-3 md:hidden">
         {rows.map((row) => {
           const p = row.original;
-          const cardClass = `block rounded-lg border border-neutral-200 p-4 transition-colors hover:border-neutral-400 dark:border-neutral-800 dark:hover:border-neutral-600 ${heatBorderClass(
+          const cardClass = `block rounded-lg border border-neutral-200 p-4 pr-12 transition-colors hover:border-neutral-400 dark:border-neutral-800 dark:hover:border-neutral-600 ${heatBorderClass(
             p.github_stars,
           )}`;
           const { href, external } = projectHref(p);
@@ -397,14 +410,21 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
               </div>
             </>
           );
-          return external ? (
-            <a key={row.id} href={href} target="_blank" rel="noreferrer" className={cardClass}>
-              {inner}
-            </a>
-          ) : (
-            <Link key={row.id} href={href as Route} className={cardClass}>
-              {inner}
-            </Link>
+          return (
+            <div key={row.id} className="relative">
+              {external ? (
+                <a href={href} target="_blank" rel="noreferrer" className={cardClass}>
+                  {inner}
+                </a>
+              ) : (
+                <Link href={href as Route} className={cardClass}>
+                  {inner}
+                </Link>
+              )}
+              <div className="absolute right-3 top-3">
+                <BookmarkButton slug={p.slug} />
+              </div>
+            </div>
           );
         })}
       </div>

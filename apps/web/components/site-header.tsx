@@ -34,6 +34,12 @@ export function SiteHeader() {
           >
             {t('nav.trends')}
           </Link>
+          <Link
+            href="/bookmarks"
+            className="text-neutral-600 transition-colors hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-50"
+          >
+            {t('nav.bookmarks')}
+          </Link>
           <LanguageSwitcher />
           <ThemeToggle />
         </nav>

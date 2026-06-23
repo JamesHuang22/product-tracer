@@ -3,6 +3,18 @@
 > Permanent record of architectural, process, and product decisions.
 > Each entry: date, decision, rationale, alternatives considered.
 
+## 2026-06-23 — Bookmarks: localStorage-only, no auth (U1)
+
+**Decision**: Project bookmarks are stored entirely in the browser's `localStorage` (one key, `pt:bookmarks`, holding a JSON array of slugs). No accounts, no DB table, no server-side persistence. The `/bookmarks` page reads the slug set on the client and rehydrates project data from a new read-only `GET /api/bookmarks?slugs=…` endpoint (`getProjectsBySlugs`, capped at 200 slugs).
+
+**Rationale**: The app has no auth system, and bookmarks are a "give users a reason to return" convenience feature, not shared/critical data. localStorage delivers the entire feature with zero backend state, zero migration, and no PII. Same-tab reactivity is handled with a `CustomEvent` (the native `storage` event only fires in *other* tabs), so every mounted button and the list stay in sync instantly.
+
+**Tradeoff**: Bookmarks don't sync across devices or survive a cleared browser. Acceptable for the feature's value tier; a future authed account model could migrate the local set up to the server.
+
+**Alternatives considered**: (1) a DB-backed `bookmark` table keyed on an anonymous client id — rejected as over-engineered without auth and introducing PII/GDPR surface; (2) shipping the full project list to `/bookmarks` and filtering client-side (mirrors `/projects`) — rejected as wasteful (4k+ rows serialized to filter ~5); the targeted `getProjectsBySlugs` endpoint keeps the payload tiny.
+
+---
+
 ## 2026-06-22 — Reddit collector: JSON→RSS fallback (403 fix)
 
 **Decision**: `fetchSubredditHot` now tries the JSON endpoint on `old.reddit.com` first (rotating a pool of realistic browser User-Agents across up to 3 attempts, retrying 403/429 with backoff), and **falls back to parsing the Atom RSS feed** (`www.reddit.com/r/{sub}/hot/.rss`) when JSON stays blocked. New `REDDIT_HOST` env override; `parseRedditRss()` extracts id/title/timestamp/subreddit and the submitted URL from the entry's `[link]` anchor.
