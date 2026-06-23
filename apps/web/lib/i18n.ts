@@ -175,6 +175,17 @@ const en: Messages = {
   'trends.videoHighlights': 'Video Highlights',
   'trends.stats': '{projects} projects scanned · {signals} signals · {insights} insights',
   'trends.noTrendsYet': 'No trends yet. Check back after the weekly analysis runs.',
+  'trends.distribution': 'This week’s mix',
+  'trends.distributionSubtitle': 'Top products grouped by category or source',
+  'trends.wow': 'Week over week',
+  'trends.thisWeek': 'This week',
+  'trends.lastWeek': 'Last week',
+  'trends.topSource': 'Top source',
+  'trends.topProduct': 'Top product',
+  'trends.noPrevWeek': 'No prior week to compare yet — check back next week.',
+  'trends.sourceUnchanged': 'unchanged',
+  'trends.sourceShifted': 'shifted from {from}',
+  'platform.name.other': 'Other',
 };
 
 const zh: Messages = {
@@ -329,6 +340,17 @@ const zh: Messages = {
   'trends.videoHighlights': '视频亮点',
   'trends.stats': '扫描 {projects} 个项目 · {signals} 个信号 · {insights} 条洞察',
   'trends.noTrendsYet': '暂无趋势数据。请等待每周分析完成后查看。',
+  'trends.distribution': '本周构成',
+  'trends.distributionSubtitle': '按分类或来源划分的热门产品',
+  'trends.wow': '环比变化',
+  'trends.thisWeek': '本周',
+  'trends.lastWeek': '上周',
+  'trends.topSource': '主要来源',
+  'trends.topProduct': '头号产品',
+  'trends.noPrevWeek': '暂无可对比的上一周 —— 下周再来查看。',
+  'trends.sourceUnchanged': '与上周相同',
+  'trends.sourceShifted': '从 {from} 变化而来',
+  'platform.name.other': '其他',
 };
 
 const MESSAGES: Record<Locale, Messages> = { en, zh };
