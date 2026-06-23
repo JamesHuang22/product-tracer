@@ -4,37 +4,28 @@
 
 ---
 
-## BUG-1 [P1] — Homepage: all 3 insight cards display identical content
+## BUG-1 [P1] — Homepage: insight cards have duplicate / empty content (partially fixed, one card still empty)
 
 **Severity:** P1 (content quality — breaks the value prop of curated insights)
 
-**Description:** All 3 YouTube insight cards on the homepage display the exact same text, even though they link to 3 different YouTube videos. The text is about "US Commerce Secretary accuses ASML of allowing China to obtain EUV lithography machine components" — repeated verbatim across 3 cards linked to different video IDs.
+**Previous state (resolved):** All 3 insight cards displayed identical text (duplicated ASML/EUV content).  
+**Current state (2026-06-23 14:05 PT):** Duplicate content is **fixed** ✅ — all 3 cards now show different text.  
+**Remaining issue:** **Card 2** (video `4y9DR2WwW3o`) has **empty content** — only shows "🟢▶Watch on YouTube" with no insight text. The other 2 cards have substantive text.
 
-**URL:** `https://product-tracer.vercel.app/`
+**Reproduction (remaining bug):**
+1. Visit `https://product-tracer.vercel.app/`
+2. Scroll to the YouTube insight cards (3 cards below hero)
+3. Card 1 (`bBMJFZ1JRng`): shows text about US Commerce Secretary / ASML
+4. Card 2 (`4y9DR2WwW3o`): ONLY shows "🟢▶Watch on YouTube" — blank insight body
+5. Card 3 (`_FBivfgOvuE`): shows text about getting first 10 customers
 
-**Reproduction:**
-1. Visit homepage
-2. Scroll down to the insights section (below hero)
-3. Observe the 3 YouTube insight cards — they all show identical content
-4. Click each card link — they go to different videos: `bBMJFZ1JRng`, `4y9DR2WwW3o`, `_FBivfgOvuE`
+**Root cause suspicion:** The insight row for video `4y9DR2WwW3o` has `key_insight` or `key_insight_zh` as NULL/empty in the database. The frontend still renders the card without checking if content exists.
 
-**Evidence:**
-- Card 1: links to `youtube.com/watch?v=bBMJFZ1JRng` — text: "🔥The US Commerce Secretary accuses ASML of allowing China to obtain EUV lithography machine components..."
-- Card 2: links to `youtube.com/watch?v=4y9DR2WwW3o` — text: identical
-- Card 3: links to `youtube.com/watch?v=_FBivfgOvuE` — text: identical
-
-**Root cause suspicion:** The `getLatestInsights()` query (likely in `apps/web/lib/db.ts`) is either:
-1. Joining incorrectly and returning the same insight row for all 3 slots
-2. The insight content in the DB has `key_insight` referencing the wrong video for 2 of 3 entries
-3. There's a frontend rendering issue where all cards bind to the same data item
-
-**Related:** BUG-1 in `assistant-queue/REQUEST.md` describes "empty card" variant. This is a different manifestation — cards render, but with duplicated content instead of empty content.
-
-**Suggested fix:** Debug `getLatestInsights()` query to verify it returns 3 distinct rows. Then verify each row's `key_insight` maps to the correct video.
+**Related:** This matches **BUG-1 [P0]** in `assistant-queue/REQUEST.md` — the fix was originally described for this specific type of empty insight card. The queue fix description says to add `WHERE key_insight IS NOT NULL AND key_insight != ''` to the query, plus a frontend guard. This fix hasn't been implemented yet.
 
 ---
 
-## BUG-2 [P2] — Missing favicon (404 on /favicon.ico)
+## BUG-2 [P2] — Missing favicon (404 on /favicon.ico) — STILL UNFIXED
 
 **Severity:** P2 (minor UX — shows in browser tab as generic icon, dev console error)
 
@@ -54,65 +45,104 @@
 
 ---
 
-## BUG-3 [P2] — detail pages show "Related Projects: false" — related projects section doesn't render
+## BUG-3 [P2] — Related projects: section heading renders but contains no project data [inconsistent behavior]
 
-**Severity:** P2 (missing feature that shipped — see assistant-queue history)
+**Severity:** P2 (UX regression — feature shipped in PR #44 but inconsistently visible)
 
-**Description:** Despite PR #44 claiming "related projects" shipped, the `You might also like` / `猜你喜欢` section does NOT render on any detail page tested (odysseus, speakup, cloudflare-ai). The AI SUMMARY section renders correctly, but the related row is absent.
+**Description:** The "You might also like" / "猜你喜欢" section now renders on some detail pages but the heading is followed by blank space or has incorrectly formatted link text. On `/projects/speakup` (category: `productivity`), the section heading says "You might also like" then continues with "More in productivity" followed by mini-cards that show star counts but are missing project descriptions.
 
-**URLs tested:**
-- `https://product-tracer.vercel.app/projects/speakup`
-- `https://product-tracer.vercel.app/projects/cloudflare-ai`
+**URLs tested (2026-06-23 14:05 PT):**
+- `/projects/speakup` — **section RENDERS** ✅ but cards show star counts inline without descriptions
+- `/projects/cloudflare-ai` — **section MISSING** ❌
 
 **Reproduction:**
-1. Visit any project detail page
-2. Scroll to the bottom of the content
-3. Observe no "You might also like" / "猜你喜欢" section
+1. Visit `/projects/speakup` → scroll to bottom → "You might also like" section appears with 4 project links (read-frog, zotero-better-notes, obsidian-excalidraw-plugin, pdfcraft)
+2. Visit `/projects/cloudflare-ai` → scroll to bottom → NO related projects section
 
-**Root cause suspicion:**
-1. The `getRelatedProjects()` query depends on `llm_category` being populated. Since U3 backfilled `llm_category` to 99.8% coverage today, this should now work. But the frontend component may only render if there are ≥4 same-category projects (unlikely if `llm_category` was just populated — the component may have been built with strict filter logic).
-2. Check if the `RelatedProjects` component is actually imported and rendered in `page.tsx`, and if the query returns results for the tested projects.
+**Root cause:** The `getRelatedProjects()` query depends on `llm_category` matching. `speakup` is categorized as `productivity` and there are ≥4 other productivity projects. `cloudflare-ai` might have a different or unset `llm_category`, or there are <4 same-category projects.
 
-**Suggested investigation:**
-1. Test `getRelatedProjects('speakup')` directly — does it return any rows?
-2. Check if `RelatedProjects` server component has a `if (projects.length === 0) return null` guard (it's suppressing itself)
-3. Monitor server-side logs for query errors
+**Note on card formatting:** The related project links on `/speakup` show inline text like "read-frog8.1k" (slug concatenated with star count) — the card mini-component may have a layout issue where star count isn't visually separated from the project name.
 
 ---
 
-## BUG-4 [P2] — Trend page /trends shows no week selector (FEAT-1 not yet implemented)
+## BUG-4 [NEW] [P2] — /projects search input is decorative/does not work
 
-**Severity:** P2 (FEAT-1 is in queue — expected behavior is single-week view)
+**Severity:** P2 (functional — search input gives false impression of functionality)
 
-**Description:** The `/trends` page has no week selector dropdown, no "Summary" section heading, and shows only the latest week. This matches the current state before FEAT-1 is implemented (which is in REQUEST.md). Not a regression, but noted for tracking.
+**Description:** The search input on `/projects` appears to be functional (styled as a search bar with "Search projects…" placeholder and search icon) but does not perform any search operation. Typing text and pressing Enter does not filter results, submit a form, or navigate to a search URL. The API endpoint at `/api/search?q=...` works correctly and returns JSON results, but the frontend search input is not wired to it.
 
-**URL:** `https://product-tracer.vercel.app/trends`
+**URL:** `https://product-tracer.vercel.app/projects`
 
-**Details:**
-- No week selector dropdown found
-- Shows "Week of 2026-06-22 – 2026-06-28" (latest only)
-- Content: 1336 chars total — relatively thin
+**Reproduction:**
+1. Visit `/projects`
+2. Click in the search input and type "speak"
+3. Observe: no dropdown appears, no filtering happens, 107 project links remain visible
+4. Press Enter: URL doesn't change, no request is made
+5. Visit `/projects?q=speak` directly: parameters are ignored, all projects shown
 
-This is expected pre-FEAT-1; not filing as a bug. Tracked via REQUEST.md.
+**Evidence:**
+- Search input is NOT wrapped in a `<form>` element
+- No autocomplete/dropdown container exists in the DOM
+- No URL change or fetch when typing
+- API at `/api/search?q=speak` returns correct results (speakup, speaklearn, sunpeak, cpeak)
+- Visit `/projects?q=speak` shows unfiltered results (100+ projects)
+
+**Root cause suspicion:** The search component may have been partially implemented (UI only, without wiring the onChange/onSubmit handler to the API). The next.js page doesn't read `searchParams.q` to filter results server-side.
+
+**Impact:** Users cannot search/filter the 4000+ project catalog. This is the primary navigation path for discovering projects.
 
 ---
 
-## Appendix: recent sprint status verification
+## BUG-5 [NEW] [P2] — /projects/speakup missing breadcrumb, inconsistent with /projects/cloudflare-ai
 
-**What works correctly:**
-- ✅ Mobile overflow: NO horizontal scroll at 375px (scrollWidth = 375px = clientWidth) — mobile scroll fix is effective
-- ✅ AI Summary renders on detail pages (`speakup`, `cloudflare-ai` — verified via `AI SUMMARY` heading)
-- ✅ Bookmark page (`/bookmarks`) loads correctly — "No bookmarks yet" empty state
-- ✅ Search API (`/api/search?q=ai%20agent`) returns 200 with JSON data
-- ✅ ZH locale is appropriately routed (no i18n leak detected in automated test; ZH pages return 404 which is expected for non-existent localized routing)
-- ✅ All critical paths return HTTP 200: `/`, `/projects`, `/trends`, `/youtube-insights`, `/api/search?q=ai`
+**Severity:** P2 (inconsistency — different detail pages render differently)
+
+**Description:** `/projects/cloudflare-ai` renders a semantic breadcrumb `Projects > ai`, but `/projects/speakup` does NOT show a breadcrumb. The `speakup` page title text starts directly with the project name.
+
+**URLs tested:**
+- `/projects/speakup` — breadcrumb MISSING
+- `/projects/cloudflare-ai` — breadcrumb PRESENT (`Projects > ai`)
+
+**Reproduction:**
+1. Visit `/projects/speakup`
+2. Look for breadcrumb navigation — none found
+3. Visit `/projects/cloudflare-ai`
+4. Observe breadcrumb `Projects > ai` is present
+
+**Root cause speculation:** The breadcrumb may be conditionally rendered based on project data availability. `cloudflare-ai` might have more complete metadata that triggers the breadcrumb, while `speakup` doesn't.
+
+---
+
+## BUG-6 [NEW] [P3] — Detail page titles inconsistent: "SpeakUp — Product Tracer" vs "ai — Product Tracer"
+
+**Severity:** P3 (cosmetic)
+
+**Description:** Page `<title>` tags vary in quality. `/projects/speakup` has a proper title "SpeakUp — Product Tracer" while `/projects/cloudflare-ai` shows "ai — Product Tracer" (the repo/slug name "ai" instead of the project's display name).
+
+**Impact:** Low — affects bookmarking and tab identification.
+
+---
+
+## Appendix A: Verified resolved issues (since last check)
+
+- ✅ **Insight card duplicate content** (previously BUG-1) — **RESOLVED.** All 3 cards now show unique text. Only Card 2 remains empty.
+- ✅ **Related projects completely missing** (previously BUG-3) — **PARTIALLY RESOLVED.** `/speakup` now shows related projects. `/cloudflare-ai` still missing.
+
+## Appendix B: What works correctly
+
+- ✅ Mobile overflow: NO horizontal scroll at 375px — fixed
+- ✅ AI Summary renders on detail pages (`speakup` has full summary)
+- ✅ Bookmark page (`/bookmarks`) loads correctly with empty state
+- ✅ Bookmark button present on detail pages
+- ✅ Search API (`/api/search?q=ai%20agent`) returns 200 with multiple results
+- ✅ All critical paths HTTP 200: `/`, `/projects`, `/trends`, `/youtube-insights`, `/api/search?q=ai`
 - ✅ Nav has all 5 links: Projects, Insights, Trends, Bookmarks, EN/中文 toggle
-- ✅ Desktop bookmarks page works correctly
-- ✅ Insight cards have text content (BUG-1 from queue about "empty card" appears to be fixed — no empty cards found)
-- ✅ Tap targets: 36 small targets found but this is acceptable for nav links at mobile width (nav items are inherently narrow)
+- ✅ Homepage unique content detection — 3 different cards now
+- ✅ Breadcrumb on `/projects/cloudflare-ai` works
+- ✅ `/projects` page shows 50+ project links with category filter and sort dropdowns
 
-**Outstanding issues (all in queue):**
-- BUG-1 [P0] in REQUEST.md — originally filed as "empty card" but now manifests as BUG-1 above (duplicate content instead of empty). The fix from the queue may need adjustment.
+## Appendix C: Outstanding queue items (unchanged)
+
+- BUG-1 [P0] in REQUEST.md — empty insight card (still present as Card 2)
 - FEAT-1 [HIGH] — week selector on /trends
 - FEAT-2 [HIGH] — collector improvements
-- U1 — bookmarks (marked as done but verify)
