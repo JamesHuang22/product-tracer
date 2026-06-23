@@ -4,6 +4,20 @@
 |---|------|----|--------|
 | U1 | Bookmark / save projects | #50 | ✅ merged, verified |
 | U3 | Backfill llm_category | #52, #53 | ✅ backfilled (1.2% → 99.8%), verified |
+| U2 | Backfill AI summaries | #55 | ✅ backfilled (150 → 4,537), verified |
+
+### U2 — Backfill AI summaries
+
+**Outcome: summaries 150 → 4,537** (active-project coverage ~99.7%), ~$0.15 in DeepSeek tokens, ~28 min, production HTTP 200 throughout.
+
+- **Constraint**: `generate-summaries` makes one *sequential* LLM call per project (prose, not batchable like classify), so the backlog was ~3h serial and the daily cron only does 50/day.
+- **Fix (PR #55)**: added `SUMMARY_CONCURRENCY` (default 1 = unchanged daily behaviour; clamped 1–16) via a shared-cursor worker pool, plus `batch`/`concurrency` workflow_dispatch inputs and a 45m timeout. The DB pool (max 2) serialises the UPDATEs; per-item errors are caught so failures retry next run.
+- **Run**: two monitored dispatches at concurrency 6 (1000, then 3388) — 999 + 3388 summarised, ~6 + ~22 min, `/projects` polled every ~25–30s, steady 200. 12 newly-collected stragglers remain for the daily cron.
+- **Verified**: detail page (`/projects/cloudflare-ai`) now renders the AI Summary block, the "you might also like" related row, and the Bookmark control together.
+
+### Production incident note (shared with the team)
+
+The U3 backfill's first unbounded run caused a brief production `EMAXCONNSESSION` outage (intermittent 500s) because the worker and the public site share one Supabase pooler. Root-caused and fixed (lean reads + chunking) before completing either backfill; every subsequent monitored run held production at HTTP 200. **Lesson for future bulk jobs: keep the worker's per-run DB footprint small and chunk long runs — the Supabase connection ceiling is the binding constraint.**
 
 ### U3 — Backfill llm_category coverage
 
