@@ -472,6 +472,53 @@ export async function getProjectBySlug(slug: string): Promise<ProjectDetail | nu
   return { ...project, platforms, metrics };
 }
 
+/** A mini-card entry for the "You might also like" row on the detail page. */
+export interface RelatedProject {
+  id: string;
+  slug: string;
+  name: string;
+  one_liner: string | null;
+  /** Latest GitHub stars (raw.snapshot); null when the project has no GH snapshot. */
+  stars: number | null;
+}
+
+/**
+ * Up to `limit` other projects in the same `llm_category`, for the detail-page
+ * recommendation row ("You might also like"). Excludes the current slug and any
+ * project merged away by dedup.
+ *
+ * Ordering: the spec asks for `stars * 0.7 + quality_score * 0.3`, but
+ * app.project has no quality_score column (and no stars column — stars live in
+ * raw.snapshot). With quality unavailable the weighted score collapses to its
+ * dominant term, so we order by latest GitHub stars desc, recency as tiebreak.
+ * Returns [] when the project has no category (nothing meaningful to relate on).
+ */
+export async function getRelatedProjects(
+  slug: string,
+  category: string | null,
+  limit = 4,
+): Promise<RelatedProject[]> {
+  if (!category) return [];
+  return await sql<RelatedProject[]>`
+    select
+      p.id, p.slug, p.name, p.one_liner,
+      latest.stars as stars
+    from app.project p
+    left join lateral (
+      select s.stars
+      from raw.snapshot s
+      where s.project_id = p.id and s.platform = 'github'
+      order by s.timestamp desc
+      limit 1
+    ) latest on true
+    where p.llm_category = ${category}
+      and p.slug <> ${slug}
+      and p.merged_into_id is null
+    order by latest.stars desc nulls last, p.created_at desc
+    limit ${limit}
+  `;
+}
+
 // ---------------------------------------------------------------------------
 // YouTube video insights (/youtube-insights)
 // ---------------------------------------------------------------------------
