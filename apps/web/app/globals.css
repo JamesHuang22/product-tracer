@@ -28,6 +28,18 @@ html {
   text-rendering: optimizeLegibility;
 }
 
+/* Kill any horizontal scroll on narrow (e.g. 375px) viewports. The body class
+   carries overflow-x-clip, but the viewport's scroll container can propagate to
+   <html>, so a wide child (full-bleed strip, long unbroken token) still scrolls
+   the root. Clipping at both html+body — plus max-width: 100% — closes that gap.
+   `clip` (not `hidden`) is deliberate: it creates no scroll container, so the
+   sticky header and inner overflow-x-auto card strips keep working. */
+html,
+body {
+  max-width: 100%;
+  overflow-x: clip;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
