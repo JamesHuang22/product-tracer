@@ -1,3 +1,23 @@
+# Day 2 Sprint — Response (2026-06-23)
+
+| # | Task | PR | Status |
+|---|------|----|--------|
+| U1 | Bookmark / save projects | #50 | ✅ merged, verified |
+
+### U1 — Bookmark / Save Projects
+
+No-auth bookmarks persisted in `localStorage` (`pt:bookmarks`).
+
+- **`lib/bookmarks.ts`** — `getBookmarks` / `toggleBookmark` / `isBookmarked` + reactive `useBookmark(slug)` / `useBookmarks()` hooks. Same-tab sync via a `CustomEvent` (the native `storage` event only fires cross-tab), cross-tab via `storage`. SSR-safe: initial render is "not bookmarked", state reads localStorage after mount (no hydration mismatch).
+- **`BookmarkButton`** (Lucide `Bookmark`/`BookmarkCheck`) — `icon` variant on every `/projects` desktop row + mobile card; `labeled` variant on the detail header. The button is a **sibling** of the card/row link (not nested — avoids invalid `<button>`-in-`<a>`) and raises itself above the row's full-bleed link overlay (`relative z-10` + `stopPropagation`/`preventDefault`) so saving never navigates.
+- **`/bookmarks`** page + `BookmarksList` client — reads the slug set from localStorage, rehydrates project data from `GET /api/bookmarks?slugs=…` (new `getProjectsBySlugs()`, capped at 200 slugs). Rendered cards are filtered to the live slug set, so un-bookmarking removes a card instantly without waiting on a refetch. Shared `ProjectCard` component in the `/projects` mobile-card style.
+- **Nav**: "Bookmarks" link added next to Trends. **i18n**: `nav.bookmarks`, `bookmarks.title`, `bookmarks.empty`, `detail.bookmark`, `detail.bookmarked` (EN/ZH).
+- **Decision** (DECISIONS.md): localStorage-only, no DB/auth — zero backend state, no PII; tradeoff is no cross-device sync.
+
+**Verification**: production `/`, `/projects`, `/bookmarks`, `/trends`, `/youtube-insights`, `/api/search?q=ai` → all **200**; `/api/bookmarks?slugs=cloudflare-ai` → 200 with correct project JSON. `pnpm typecheck` + full `next build` passed before PR.
+
+---
+
 # Full Feature Sprint — Response (2026-06-22 / 23)
 
 All 7 tasks (T0–T6) implemented, each as its own branch → PR → squash-merge → production verification. `pnpm typecheck` passed before every PR. No direct pushes to main.
