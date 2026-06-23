@@ -3,6 +3,28 @@
 > Permanent record of architectural, process, and product decisions.
 > Each entry: date, decision, rationale, alternatives considered.
 
+## 2026-06-22 — Reddit collector: JSON→RSS fallback (403 fix)
+
+**Decision**: `fetchSubredditHot` now tries the JSON endpoint on `old.reddit.com` first (rotating a pool of realistic browser User-Agents across up to 3 attempts, retrying 403/429 with backoff), and **falls back to parsing the Atom RSS feed** (`www.reddit.com/r/{sub}/hot/.rss`) when JSON stays blocked. New `REDDIT_HOST` env override; `parseRedditRss()` extracts id/title/timestamp/subreddit and the submitted URL from the entry's `[link]` anchor.
+
+**Rationale**: Reddit now 403s the `.json` endpoint from essentially all datacenter IPs (GitHub Actions runners) **and** my local residential IP, regardless of UA — verified via Node `fetch` and curl against `www`, `old`, and `oauth` hosts and several path variants (all 403/429). The RSS feed, however, returns 200 with full entries from the same client (verified). RSS is the only anonymous path that still works, so it's the reliable fallback. JSON is kept as the preferred first attempt because, where reachable, it carries richer data (scores, comment counts, external URLs).
+
+**Tradeoff**: RSS carries no `score`/`num_comments` (stored as 0) and, for self-posts, no body text. GitHub cross-matching still works for link posts via the `[link]` URL. This is a deliberate data-richness-for-availability trade — a Reddit-only project record with 0 score beats a 403 and no data.
+
+**Alternatives considered**: (1) JSON-only with UA rotation per the request's Option 1 — rejected, verified still 403 everywhere reachable from here; (2) OAuth via a registered app — blocked by Reddit's "Responsible Builder Policy"; (3) mark the collector "requires manual deploy" (request's Option 3) — unnecessary now that RSS works.
+
+---
+
+## 2026-06-22 — Feature sprint adapted to the real app.project schema
+
+**Decision**: Several sprint specs assumed columns that don't exist on `app.project` (verified against the live schema): there is **no `stars` column** (GitHub stars live in `raw.snapshot`, read via a lateral join) and **no `quality_score` column**. Adaptations: related-projects + search return stars from `raw.snapshot`; the T6 "you might also like" weighting (`stars*0.7 + quality_score*0.3`) collapses to **stars desc**; the T3 heat indicator keys on `github_stars` thresholds (≥1000 emerald / ≥100 amber) instead of a 0–100 quality score; the T4 trend "category distribution" buckets by `llm_category` but falls back to `platform` because trend `top_products` are mostly unclassified HN/PH posts.
+
+**Rationale**: Build against the schema that exists rather than block on missing columns. Stars are the quality proxy already surfaced everywhere in the UI, so they're the natural substitute. Each substitution preserves the feature's user-facing intent.
+
+**Also**: T1's "AI summaries don't render" was a false alarm — the rendering chain is correct and summaries show on production (verified on `/projects/speakup`); only 150/4344 projects currently have a summary, so most detail pages legitimately show none.
+
+---
+
 ## 2026-06-21 — AI project summaries: NULL column as work queue
 
 **Decision**: `app.project.ai_summary` (migration 0013, nullable text) holds an LLM-written 2-3 sentence summary per project. The backfill script (`generate-summaries.ts`) selects `where ai_summary is null limit 50` each run, summarises with one plain `callLlm` per project (prose, not JSON; `maxTokens: 150`), and updates the row. Daily cron at 04:00 UTC; batch size overridable via `SUMMARY_BATCH`.
