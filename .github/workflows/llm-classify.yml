@@ -9,6 +9,10 @@ on:
         description: 'One-off: classify ALL active unclassified projects (not just the gray zone)'
         type: boolean
         default: false
+      limit:
+        description: 'All-mode only: max projects to classify this run (0 = no cap). Use to chunk the backfill.'
+        type: string
+        default: '0'
 
 jobs:
   classify:
@@ -34,3 +38,6 @@ jobs:
           # Scheduled runs leave this unset (gray-zone only); the manual dispatch
           # toggle flips it on for a one-off full-catalogue backfill.
           LLM_CLASSIFY_ALL: ${{ inputs.classify_all && '1' || '' }}
+          # All-mode per-run cap so the backfill can be chunked into short runs
+          # that release their DB connections on exit (avoids EMAXCONNSESSION).
+          LLM_CLASSIFY_LIMIT: ${{ inputs.limit || '0' }}
