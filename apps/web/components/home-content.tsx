@@ -2,8 +2,18 @@
 
 import Link from 'next/link';
 import type { Route } from 'next';
-import { Activity, ArrowRight, Boxes, Flame, Radio, Sparkles, Youtube } from 'lucide-react';
-import type { PlatformTopItem, ProjectListItem, VideoInsight } from '@/lib/db';
+import {
+  Activity,
+  ArrowRight,
+  ArrowUpRight,
+  Boxes,
+  Flame,
+  Radio,
+  Sparkles,
+  TrendingUp,
+  Youtube,
+} from 'lucide-react';
+import type { PlatformTopItem, ProjectListItem, VideoInsight, WeeklyTrendProduct } from '@/lib/db';
 import { cleanOneLiner, fmtCount, localizedPair, localizedText } from '@/lib/format';
 import { useI18n } from '@/lib/i18n-context';
 import type { MessageKey } from '@/lib/i18n';
@@ -18,6 +28,17 @@ const LIVE_PLATFORMS = [
   PLATFORM_VISUALS.youtube,
 ];
 
+/** Single-locale weekly-trend overview for the home Trends section. The summary
+ * is already resolved to the active language server-side; the full report (both
+ * languages, video highlights, corpus stats) lives on /trends. */
+export interface TrendOverview {
+  weekStart: string;
+  weekEnd: string;
+  summary: string;
+  topProducts: WeeklyTrendProduct[];
+  emergingThemes: string[];
+}
+
 export interface HomeData {
   totalLive: number;
   livePlatforms: number;
@@ -30,6 +51,7 @@ export interface HomeData {
   hackerNews: { count: number; items: PlatformTopItem[] };
   productHunt: { count: number; items: PlatformTopItem[] };
   youtube: { count: number; items: PlatformTopItem[] };
+  trend: TrendOverview | null;
 }
 
 type Translate = (key: MessageKey, params?: Record<string, string | number>) => string;
@@ -96,6 +118,70 @@ function StatCard({
       </div>
       <div className="mt-2 text-2xl font-semibold tabular-nums tracking-tight">{value}</div>
     </div>
+  );
+}
+
+/** Shared header for the three home overview sections: icon + title + subtitle
+ * on the left, an optional "view all →" link on the right. */
+function SectionHeader({
+  icon,
+  title,
+  subtitle,
+  viewAllHref,
+  viewAllLabel,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  subtitle?: string;
+  viewAllHref?: Route;
+  viewAllLabel?: string;
+}) {
+  return (
+    <div className="mb-5 flex items-end justify-between gap-3">
+      <div>
+        <h2 className="inline-flex items-center gap-2 text-xl font-semibold tracking-tight">
+          {icon}
+          {title}
+        </h2>
+        {subtitle && <p className="mt-1 text-sm text-neutral-500">{subtitle}</p>}
+      </div>
+      {viewAllHref && viewAllLabel && (
+        <Link
+          href={viewAllHref}
+          className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-neutral-500 transition-colors hover:text-neutral-900 dark:hover:text-neutral-100"
+        >
+          {viewAllLabel}
+          <ArrowRight className="h-3 w-3" />
+        </Link>
+      )}
+    </div>
+  );
+}
+
+/** Compact product card for the Trends overview — name + platform badge + score,
+ * linking through to the project detail page (mirrors the /trends ProductCard). */
+function TrendProductCard({ product }: { product: WeeklyTrendProduct }) {
+  return (
+    <Link
+      href={`/projects/${product.slug}` as Route}
+      className="flex flex-col gap-1.5 rounded-xl border border-neutral-200 bg-white p-4 transition-colors hover:border-neutral-400 dark:border-neutral-800 dark:bg-neutral-950 dark:hover:border-neutral-600"
+    >
+      <div className="flex items-center justify-between gap-2">
+        <span className="inline-flex min-w-0 items-center gap-2 font-medium text-neutral-900 dark:text-neutral-50">
+          <PlatformBadges platforms={[product.platform]} />
+          <span className="truncate">{product.name}</span>
+          <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-neutral-400" />
+        </span>
+        {Number.isFinite(product.score) && (
+          <span className="shrink-0 rounded-md bg-emerald-50 px-1.5 py-0.5 text-xs font-semibold tabular-nums text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+            {product.score}
+          </span>
+        )}
+      </div>
+      {product.description && (
+        <p className="line-clamp-2 text-sm leading-relaxed text-neutral-500">{product.description}</p>
+      )}
+    </Link>
   );
 }
 
@@ -253,20 +339,21 @@ export function HomeContent({ data }: { data: HomeData }) {
         />
       </section>
 
-      {/* Latest activity */}
-      <section className="mt-12">
-        <div className="mb-4 flex items-baseline justify-between gap-3">
-          <h2 className="inline-flex items-center gap-2 text-xl font-semibold tracking-tight">
-            <Activity className="h-4 w-4 text-emerald-500" />
-            {t('home.latest.title')}
-          </h2>
-          {data.latest.length > 0 && (
-            <span className="text-xs tabular-nums text-neutral-500">
-              {t('home.latest.subtitle', { count: data.latest.length })}
-            </span>
-          )}
-        </div>
+      {/* ─── Section 1: Projects ─── */}
+      <section className="mt-16">
+        <SectionHeader
+          icon={<Boxes className="h-4 w-4 text-emerald-500" />}
+          title={t('home.section.projects.title')}
+          subtitle={t('home.section.projects.subtitle')}
+          viewAllHref="/projects"
+          viewAllLabel={t('home.section.projects.viewAll')}
+        />
 
+        {/* Latest activity — newest projects, any platform */}
+        <div className="mb-2 flex items-center gap-2 text-[11px] font-medium uppercase tracking-wide text-neutral-400">
+          <Activity className="h-3.5 w-3.5" />
+          {t('home.latest.title')}
+        </div>
         {data.latest.length === 0 ? (
           <div className="rounded-xl border border-dashed border-neutral-300 p-8 text-center text-sm text-neutral-500 dark:border-neutral-700">
             {t('home.latest.empty')}
@@ -278,23 +365,51 @@ export function HomeContent({ data }: { data: HomeData }) {
             ))}
           </div>
         )}
+
+        {/* Top projects by platform */}
+        <div className="mb-2 mt-8 flex items-center justify-between gap-2 text-[11px] font-medium uppercase tracking-wide text-neutral-400">
+          <span>{t('byPlatform.title')}</span>
+          <span className="tabular-nums normal-case">
+            {t('byPlatform.summary', { live: data.livePlatforms })}
+          </span>
+        </div>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <LivePlatformSection
+            visual={PLATFORM_VISUALS.github}
+            count={data.github.count}
+            items={data.github.items}
+            viewAllHref="/platform/github"
+          />
+          <LivePlatformSection
+            visual={PLATFORM_VISUALS.hacker_news}
+            count={data.hackerNews.count}
+            items={data.hackerNews.items}
+            viewAllHref="/platform/hacker_news"
+          />
+          <LivePlatformSection
+            visual={PLATFORM_VISUALS.product_hunt}
+            count={data.productHunt.count}
+            items={data.productHunt.items}
+            viewAllHref="/platform/product_hunt"
+          />
+          <LivePlatformSection
+            visual={PLATFORM_VISUALS.youtube}
+            count={data.youtube.count}
+            items={data.youtube.items}
+            viewAllHref="/platform/youtube"
+          />
+        </div>
       </section>
 
-      {/* Latest video insights */}
-      <section className="mt-12">
-        <div className="mb-4 flex items-baseline justify-between gap-3">
-          <h2 className="inline-flex items-center gap-2 text-xl font-semibold tracking-tight">
-            <Youtube className="h-4 w-4 text-red-600" />
-            {t('home.insights.title')}
-          </h2>
-          <Link
-            href="/youtube-insights"
-            className="inline-flex items-center gap-1 text-xs font-medium text-neutral-500 transition-colors hover:text-neutral-900 dark:hover:text-neutral-100"
-          >
-            {t('home.insights.viewAll')}
-            <ArrowRight className="h-3 w-3" />
-          </Link>
-        </div>
+      {/* ─── Section 2: Insights ─── */}
+      <section className="mt-16">
+        <SectionHeader
+          icon={<Youtube className="h-4 w-4 text-red-600" />}
+          title={t('home.section.insights.title')}
+          subtitle={t('home.section.insights.subtitle')}
+          viewAllHref="/youtube-insights"
+          viewAllLabel={t('home.section.insights.viewAll')}
+        />
 
         {data.videoInsights.length === 0 ? (
           <div className="rounded-xl border border-dashed border-neutral-300 p-8 text-center text-sm text-neutral-500 dark:border-neutral-700">
@@ -309,44 +424,57 @@ export function HomeContent({ data }: { data: HomeData }) {
         )}
       </section>
 
-      {/* Platform sections */}
+      {/* ─── Section 3: Trends ─── */}
       <section className="mt-16">
-        <div className="mb-6 flex items-baseline justify-between">
-          <h2 className="text-xl font-semibold tracking-tight">{t('byPlatform.title')}</h2>
-          <span className="text-xs tabular-nums text-neutral-500">
-            {t('byPlatform.summary', { live: data.livePlatforms })}
-          </span>
-        </div>
+        <SectionHeader
+          icon={<TrendingUp className="h-4 w-4 text-amber-500" />}
+          title={t('home.section.trends.title')}
+          subtitle={
+            data.trend
+              ? t('home.trends.weekOf', {
+                  start: data.trend.weekStart,
+                  end: data.trend.weekEnd,
+                })
+              : t('home.section.trends.subtitle')
+          }
+          viewAllHref="/trends"
+          viewAllLabel={t('home.section.trends.viewAll')}
+        />
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <LivePlatformSection
-            visual={PLATFORM_VISUALS.github}
-            count={data.github.count}
-            items={data.github.items}
-            viewAllHref="/platform/github"
-          />
+        {!data.trend ? (
+          <div className="rounded-xl border border-dashed border-neutral-300 p-8 text-center text-sm text-neutral-500 dark:border-neutral-700">
+            {t('home.trends.empty')}
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {data.trend.summary && (
+              <p className="max-w-3xl text-[15px] leading-relaxed text-neutral-700 dark:text-neutral-300">
+                {data.trend.summary}
+              </p>
+            )}
 
-          <LivePlatformSection
-            visual={PLATFORM_VISUALS.hacker_news}
-            count={data.hackerNews.count}
-            items={data.hackerNews.items}
-            viewAllHref="/platform/hacker_news"
-          />
+            {data.trend.topProducts.length > 0 && (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {data.trend.topProducts.map((p, i) => (
+                  <TrendProductCard key={`${p.slug}-${i}`} product={p} />
+                ))}
+              </div>
+            )}
 
-          <LivePlatformSection
-            visual={PLATFORM_VISUALS.product_hunt}
-            count={data.productHunt.count}
-            items={data.productHunt.items}
-            viewAllHref="/platform/product_hunt"
-          />
-
-          <LivePlatformSection
-            visual={PLATFORM_VISUALS.youtube}
-            count={data.youtube.count}
-            items={data.youtube.items}
-            viewAllHref="/platform/youtube"
-          />
-        </div>
+            {data.trend.emergingThemes.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {data.trend.emergingThemes.map((theme) => (
+                  <span
+                    key={theme}
+                    className="inline-flex items-center rounded-full bg-neutral-100 px-3 py-1 text-sm font-medium text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300"
+                  >
+                    {theme}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </section>
     </main>
   );
