@@ -35,6 +35,10 @@ const en: Messages = {
   'nav.projects': 'Projects',
   'nav.insights': 'Insights',
   'nav.trends': 'Trends',
+  'nav.bookmarks': 'Bookmarks',
+
+  'bookmarks.title': 'Bookmarks',
+  'bookmarks.empty': 'No bookmarks yet. Save a project to find it here.',
 
   'byPlatform.title': 'By platform',
   'byPlatform.summary': '{live} active sources',
@@ -117,6 +121,8 @@ const en: Messages = {
   'theme.toLight': 'Switch to light mode',
 
   'detail.aiSummary': 'AI Summary',
+  'detail.bookmark': 'Bookmark',
+  'detail.bookmarked': 'Bookmarked',
   'detail.visitSite': 'Visit site',
   'detail.stars': 'stars',
   'detail.forks': 'forks',
@@ -202,6 +208,10 @@ const zh: Messages = {
   'nav.projects': '项目',
   'nav.insights': '洞察',
   'nav.trends': '趋势',
+  'nav.bookmarks': '收藏',
+
+  'bookmarks.title': '收藏',
+  'bookmarks.empty': '还没有收藏。点击项目上的收藏按钮即可在此找到它。',
 
   'byPlatform.title': '按平台',
   'byPlatform.summary': '{live} 个活跃来源',
@@ -282,6 +292,8 @@ const zh: Messages = {
   'theme.toLight': '切换到浅色模式',
 
   'detail.aiSummary': 'AI 概述',
+  'detail.bookmark': '收藏',
+  'detail.bookmarked': '已收藏',
   'detail.visitSite': '访问网站',
   'detail.stars': '星标',
   'detail.forks': '复刻',
