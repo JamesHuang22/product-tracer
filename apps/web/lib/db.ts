@@ -783,3 +783,101 @@ export async function getLatestWeeklyTrend(): Promise<WeeklyTrend | null> {
     throw err;
   }
 }
+
+/**
+ * The most recent `limit` weekly trend reports, newest first. Drives the /trends
+ * week-over-week comparison (this week vs last). Same empty-state resilience as
+ * getLatestWeeklyTrend — returns [] before migration 0012 lands.
+ */
+export async function getRecentWeeklyTrends(limit = 2): Promise<WeeklyTrend[]> {
+  try {
+    return await sql<WeeklyTrend[]>`
+      select
+        id::text,
+        to_char(week_start, 'YYYY-MM-DD') as week_start,
+        to_char(week_end, 'YYYY-MM-DD') as week_end,
+        summary_en,
+        summary_zh,
+        coalesce(top_products, '[]'::jsonb) as top_products,
+        coalesce(emerging_themes, '{}'::text[]) as emerging_themes,
+        video_highlights,
+        total_projects_scanned,
+        total_signals_generated,
+        total_insights_collected,
+        to_char(created_at, 'YYYY-MM-DD') as created_at
+      from app.weekly_trend
+      order by created_at desc
+      limit ${limit}
+    `;
+  } catch (err) {
+    const code = (err as { code?: string }).code;
+    if (code === '42P01' || code === '42703') return [];
+    throw err;
+  }
+}
+
+/** One bar of the /trends distribution chart. */
+export interface TrendDistributionBar {
+  label: string;
+  count: number;
+}
+
+/**
+ * Distribution of the current week's top products for the /trends bar chart.
+ * Buckets by the product's project `llm_category` when known, falling back to
+ * its `platform` (then 'other') — most trend products are HN/PH posts that
+ * aren't classified projects, so a pure llm_category chart would be a single
+ * "uncategorized" bar. This yields a varied, real breakdown that auto-sharpens
+ * into true categories as classification backfills. Empty before migration 0012.
+ */
+export async function getTrendCategoryDistribution(): Promise<TrendDistributionBar[]> {
+  try {
+    return await sql<TrendDistributionBar[]>`
+      with latest as (
+        select top_products from app.weekly_trend order by created_at desc limit 1
+      )
+      select
+        case
+          when p.llm_category is not null then p.llm_category
+          when tp.platform in ('github','hacker_news','product_hunt','youtube','reddit','x')
+            then tp.platform
+          else 'other'
+        end as label,
+        count(*)::int as count
+      from latest,
+           jsonb_to_recordset(latest.top_products) as tp(slug text, platform text)
+      left join app.project p on p.slug = tp.slug
+      group by 1
+      order by count desc, label asc
+    `;
+  } catch (err) {
+    const code = (err as { code?: string }).code;
+    if (code === '42P01' || code === '42703') return [];
+    throw err;
+  }
+}
+
+/**
+ * The current week's top `limit` products by combined score, for the /trends
+ * "Top products" list. Reads directly from the latest weekly_trend's
+ * top_products jsonb (which carries name/slug/platform/description/score).
+ */
+export async function getTrendTopProducts(limit = 5): Promise<WeeklyTrendProduct[]> {
+  try {
+    return await sql<WeeklyTrendProduct[]>`
+      with latest as (
+        select top_products from app.weekly_trend order by created_at desc limit 1
+      )
+      select tp.name, tp.slug, tp.platform, tp.description, coalesce(tp.score, 0)::int as score
+      from latest,
+           jsonb_to_recordset(latest.top_products)
+             as tp(name text, slug text, platform text, description text, score numeric)
+      order by tp.score desc nulls last
+      limit ${limit}
+    `;
+  } catch (err) {
+    const code = (err as { code?: string }).code;
+    if (code === '42P01' || code === '42703') return [];
+    throw err;
+  }
+}
