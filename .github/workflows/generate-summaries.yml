@@ -4,11 +4,21 @@ on:
   schedule:
     - cron: '0 4 * * *' # daily UTC 04:00
   workflow_dispatch:
+    inputs:
+      batch:
+        description: 'Projects to summarise this run (default 50). Raise for a one-off backfill.'
+        type: string
+        default: '50'
+      concurrency:
+        description: 'Parallel LLM calls (default 1). Raise (e.g. 6) to speed up a backfill.'
+        type: string
+        default: '1'
 
 jobs:
   generate:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # Default daily run is small; a manual backfill (large batch) needs headroom.
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -24,3 +34,7 @@ jobs:
           # Optional overrides — defaults: deepseek-chat @ api.deepseek.com, batch 50
           LLM_MODEL: ${{ secrets.LLM_MODEL }}
           LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
+          # Scheduled runs fall back to the script defaults (batch 50, serial);
+          # manual dispatch can enlarge the batch and parallelise for a backfill.
+          SUMMARY_BATCH: ${{ inputs.batch || '50' }}
+          SUMMARY_CONCURRENCY: ${{ inputs.concurrency || '1' }}
