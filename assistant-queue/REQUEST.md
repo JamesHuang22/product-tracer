@@ -1,5 +1,47 @@
 # Product Tracer — Day 2 Sprint
 
+## Agent Session Rules (read this first)
+
+You are a continuously-running agent. Follow these rules:
+
+### Polling
+1. Every 20 minutes: `git fetch origin main && git diff HEAD origin/main -- assistant-queue/REQUEST.md assistant-queue/FRONTEND_REQUEST.md`
+2. If diff is non-empty: git pull --rebase, implement the new tasks
+3. If empty: increment idle counter
+4. After 15 consecutive idle polls: write shutdown notice to next-request.md and stop
+
+### Manual trigger
+If you see "pull now" in the conversation: immediately poll the queue files. Reset idle counter if new work found.
+
+### MCP tools
+- **Supabase**: migrations via `psql "$DATABASE_URL" -f packages/db/migrations/XXXX_name.sql`
+- **Vercel**: verify deployment after every merge
+
+### Git author
+Always: `JamesHuang22 <23440306+JamesHuang22@users.noreply.github.com>`
+
+---
+
+## Workflow (non-negotiable)
+
+For EVERY task:
+1. `git checkout -b feat/<name>` from main
+2. Implement changes
+3. `pnpm --filter @product-tracer/web typecheck` (frontend) / `pnpm --filter @product-tracer/worker typecheck` (backend) — **both must pass**
+4. `git add -A && git commit -m 'feat: ...'`
+5. `git push origin feat/<branch>` → `gh pr create --fill`
+6. Wait for Vercel preview build ✅ (`gh pr checks`)
+7. `gh pr merge --squash`
+8. **Verify**: `curl -sI https://product-tracer.vercel.app/` → HTTP 200
+9. `curl -s -o /dev/null -w "%{http_code}" https://product-tracer.vercel.app/projects` → 200
+10. `curl -s -o /dev/null -w "%{http_code}" https://product-tracer.vercel.app/trends` → 200
+11. `curl -s -o /dev/null -w "%{http_code}" https://product-tracer.vercel.app/youtube-insights` → 200
+12. `curl -s -o /dev/null -w "%{http_code}" https://product-tracer.vercel.app/api/search?q=ai` → 200
+13. Apply any DB migrations via: `psql "$DATABASE_URL" -f packages/db/migrations/XXXX_name.sql`
+14. Update `CHANGELOG.md`, `DECISIONS.md`
+15. Write summary to `assistant-queue/RESPONSE.md`
+# Product Tracer — Day 2 Sprint
+
 You are the **sole Claude Code agent** for both frontend and backend.
 
 **Repo**: `~/Desktop/ai_project/product-tracer/` (main branch)
