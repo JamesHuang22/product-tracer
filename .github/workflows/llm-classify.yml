@@ -4,10 +4,18 @@ on:
   schedule:
     - cron: '30 6 * * *' # daily UTC 06:30 — after data-quality.yml at 06:00
   workflow_dispatch:
+    inputs:
+      classify_all:
+        description: 'One-off: classify ALL active unclassified projects (not just the gray zone)'
+        type: boolean
+        default: false
 
 jobs:
   classify:
     runs-on: ubuntu-latest
+    # ALL-mode backfill walks the whole active catalogue (~4k) one LLM batch at a
+    # time, so give it well beyond the gray-zone run's ~1 min.
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -23,3 +31,6 @@ jobs:
           # Optional overrides — defaults: deepseek-chat @ api.deepseek.com
           LLM_MODEL: ${{ secrets.LLM_MODEL }}
           LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
+          # Scheduled runs leave this unset (gray-zone only); the manual dispatch
+          # toggle flips it on for a one-off full-catalogue backfill.
+          LLM_CLASSIFY_ALL: ${{ inputs.classify_all && '1' || '' }}

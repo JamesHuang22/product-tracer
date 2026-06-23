@@ -193,22 +193,37 @@ async function main(): Promise<void> {
     linksByProject.set(row.project_id, list);
   }
 
-  // Keep only the gray zone: recompute the rule score and select 15–39.
-  const candidates = projects.filter((p) => {
-    const { score } = assessProject(
-      p,
-      snapshotsByProject.get(p.id) ?? [],
-      linksByProject.get(p.id) ?? [],
-    );
-    return score >= GRAY_ZONE_MIN && score <= GRAY_ZONE_MAX;
-  });
+  // Default: only the gray zone — the score band where the rule classifier is
+  // least confident — so the cheap daily run spends LLM budget where it helps.
+  //
+  // LLM_CLASSIFY_ALL=1: a one-off backfill mode that classifies *every* active
+  // unclassified project, not just the gray zone. This exists because the rules
+  // never assign `llm_category` to confidently-scored projects, so ~97% of the
+  // catalogue has no category — which starves related-projects, the trends
+  // category chart, and search ranking. The pass still only demotes a project
+  // when the model is confident it's noise (so it doubles as a quality prune),
+  // and `llm_category` is written for every project it touches.
+  const classifyAll = ['1', 'true'].includes((process.env.LLM_CLASSIFY_ALL ?? '').toLowerCase());
+  const candidates = classifyAll
+    ? projects.filter((p) => p.status === 'active')
+    : projects.filter((p) => {
+        const { score } = assessProject(
+          p,
+          snapshotsByProject.get(p.id) ?? [],
+          linksByProject.get(p.id) ?? [],
+        );
+        return score >= GRAY_ZONE_MIN && score <= GRAY_ZONE_MAX;
+      });
 
   console.log(
-    `[llm-classify] ${projects.length} unclassified projects; ` +
-      `${candidates.length} in the gray zone (score ${GRAY_ZONE_MIN}–${GRAY_ZONE_MAX}).`,
+    classifyAll
+      ? `[llm-classify] ALL-mode backfill: ${candidates.length} active unclassified ` +
+          `projects (of ${projects.length} total).`
+      : `[llm-classify] ${projects.length} unclassified projects; ` +
+          `${candidates.length} in the gray zone (score ${GRAY_ZONE_MIN}–${GRAY_ZONE_MAX}).`,
   );
   if (candidates.length === 0) {
-    console.log('[llm-classify] No gray-zone projects to classify.');
+    console.log('[llm-classify] No projects to classify.');
     return;
   }
 
@@ -287,7 +302,8 @@ async function main(): Promise<void> {
   const totalCost = inputCost + outputCost;
 
   const summary = {
-    gray_zone_candidates: candidates.length,
+    mode: classifyAll ? 'all' : 'gray_zone',
+    candidates: candidates.length,
     classified,
     demoted_to_noise: demoted,
     rescued_to_active: rescued,
