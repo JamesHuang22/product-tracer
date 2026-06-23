@@ -519,6 +519,45 @@ export async function getRelatedProjects(
   `;
 }
 
+/** One hit from the fuzzy project search (/api/search). */
+export interface ProjectSearchResult {
+  slug: string;
+  name: string;
+  one_liner: string | null;
+  /** Latest GitHub stars (raw.snapshot); null when no GH snapshot. */
+  stars: number | null;
+}
+
+/**
+ * Fuzzy project search over name + one_liner, powered by pg_trgm (migration
+ * 0014). Combines a substring match on name (catches short queries the trigram
+ * `%` threshold would miss, e.g. "ai") with trigram similarity on both columns,
+ * ranked by name similarity then stars. Excludes dedup-merged projects. Empty /
+ * whitespace query returns []. Capped at 20 rows.
+ */
+export async function searchProjects(query: string): Promise<ProjectSearchResult[]> {
+  const q = query.trim();
+  if (!q) return [];
+  const like = `%${q}%`;
+  return await sql<ProjectSearchResult[]>`
+    select
+      p.slug, p.name, p.one_liner,
+      latest.stars as stars
+    from app.project p
+    left join lateral (
+      select s.stars
+      from raw.snapshot s
+      where s.project_id = p.id and s.platform = 'github'
+      order by s.timestamp desc
+      limit 1
+    ) latest on true
+    where p.merged_into_id is null
+      and (p.name ilike ${like} or p.name % ${q} or p.one_liner % ${q})
+    order by similarity(p.name, ${q}) desc nulls last, latest.stars desc nulls last
+    limit 20
+  `;
+}
+
 // ---------------------------------------------------------------------------
 // YouTube video insights (/youtube-insights)
 // ---------------------------------------------------------------------------
