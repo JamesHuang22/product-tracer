@@ -129,6 +129,10 @@ const en: Messages = {
   'projects.trackedSince': 'Tracked since {date}',
   'detail.notEnoughHistory': 'Not enough history yet',
   'detail.noMetrics': 'No metrics recorded yet',
+  'detail.relatedTitle': 'You might also like',
+  'detail.relatedSubtitle': 'More in {category}',
+  'detail.notFound': 'This project is no longer tracked, or the link is broken.',
+  'detail.browseAll': 'Browse all projects',
 
   'platform.name.github': 'GitHub',
   'platform.name.hacker_news': 'Hacker News',
@@ -277,6 +281,10 @@ const zh: Messages = {
   'projects.trackedSince': '自 {date} 开始追踪',
   'detail.notEnoughHistory': '历史数据不足',
   'detail.noMetrics': '暂无指标数据',
+  'detail.relatedTitle': '猜你喜欢',
+  'detail.relatedSubtitle': '更多 {category} 项目',
+  'detail.notFound': '该项目已不再追踪，或链接已失效。',
+  'detail.browseAll': '浏览所有项目',
 
   'platform.name.github': 'GitHub',
   'platform.name.hacker_news': 'Hacker News',

@@ -3,6 +3,11 @@
 > Auto-generated summary of notable changes to product-tracer.
 > Format: Keep a Changelog — date, PR/commit, type, description.
 
+## 2026-06-22
+
+- **fix(web)**: kill the remaining mobile horizontal scroll on 375px viewports. The earlier fix put `overflow-x-clip` on `<body>`, but the viewport's scroll container can propagate to `<html>`, so a wide child still scrolled the root. Now clipped at both `html` + `body` with `max-width: 100%` in `globals.css` (still `clip`, not `hidden`, so the sticky header and inner `overflow-x-auto` strips keep working)
+- **feat(web)**: richer project detail page + "You might also like" recommendations. Added a `Projects > {name}` breadcrumb, a new `RelatedProjects` server component (up to 4 same-`llm_category` mini-cards, ordered by GitHub stars — the spec's `stars*0.7 + quality_score*0.3` weighting collapses to stars since `app.project` has no quality_score/stars columns; stars come from `raw.snapshot`), and a graceful localized 404 (`not-found.tsx`) with a "Browse all projects" link. New `getRelatedProjects()` query + `RelatedProject` type in `lib/db.ts`; new i18n keys `detail.relatedTitle`/`relatedSubtitle`/`notFound`/`browseAll` (EN/ZH). AI summaries already render (verified on prod) — no change needed there
+
 ## 2026-06-21
 
 - **feat(web)**: display AI-generated project summaries (backend migration 0013, `app.project.ai_summary`). The `/projects` table shows a truncated ✨ italic summary under the one-liner with a `title` tooltip for the full text; the `/projects/[slug]` detail page shows the full summary in a subtle "AI Summary" block above the cross-platform signals. Read defensively via `to_jsonb` (resilient if the column is absent), suppressed in EN mode when the summary is Chinese (same rule as one-liners, incl. server-side strip on `/projects`). New i18n key `detail.aiSummary` (EN/ZH)
