@@ -3,6 +3,16 @@
 | # | Task | PR | Status |
 |---|------|----|--------|
 | U1 | Bookmark / save projects | #50 | ✅ merged, verified |
+| U3 | Backfill llm_category | #52, #53 | ✅ backfilled (1.2% → 99.8%), verified |
+
+### U3 — Backfill llm_category coverage
+
+**Outcome: active-project category coverage 1.2% → 99.8%** (≈150 → 4,490 classified), ~$0.11 in DeepSeek tokens, production HTTP 200 throughout (after the connection fix below).
+
+- **Why a plain re-trigger couldn't work**: `llm-classify` is deliberately *gray-zone-only* (rule score 15–39) — one trigger classified just 24 projects. The rules never assign `llm_category` to confidently-scored projects, which is why ~99% sat uncategorised, breaking related-projects, the trends category chart, the `/projects` filter, and search ranking.
+- **Fix (PR #52)**: added `LLM_CLASSIFY_ALL=1` mode (default off — scheduled runs unchanged) that classifies every active unclassified project, wired to a `classify_all` workflow_dispatch input.
+- **Incident + fix (PR #53)**: the first unbounded run tripped Supabase `EMAXCONNSESSION` and intermittently 500'd the public site (shared pooler). Cancelled it, restored production, then: (1) ALL-mode now skips the snapshot + identity-link full scans (only gray-zone scoring needs them); (2) added `LLM_CLASSIFY_LIMIT` to chunk the backfill into short, connection-releasing runs. Re-ran in 200 → 1500 → 3000 → 50 chunks, monitoring `/projects` every ~25s — steady 200 throughout.
+- **Side benefit**: the LLM pruned ≈520 genuine scraped-junk projects to `noise`. Final category mix: devtool 1465, ai/ml 710, productivity 399, open-source 367, other 322, saas 226, security 140, design 136, data 106. Frontend `LLM_CATEGORIES` already matches these 9 values exactly.
 
 ### U1 — Bookmark / Save Projects
 

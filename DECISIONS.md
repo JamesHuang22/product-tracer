@@ -3,6 +3,18 @@
 > Permanent record of architectural, process, and product decisions.
 > Each entry: date, decision, rationale, alternatives considered.
 
+## 2026-06-23 — Backfill llm_category catalogue-wide via an opt-in ALL mode (U3)
+
+**Decision**: Added `LLM_CLASSIFY_ALL=1` to `llm-classify.ts` — a one-off mode that classifies **every active unclassified project**, not just the gray zone (rule score 15–39) the daily run targets. Exposed via a `classify_all` + `limit` `workflow_dispatch` input. Backfilled the full catalogue in monitored chunks, lifting active-project category coverage from **1.2% to 99.8%** (~4,490 classified, ~$0.11).
+
+**Rationale**: The rule classifier only ever assigns `llm_category` in the gray zone; confidently-scored projects (the vast majority) were left uncategorised, so every category-dependent feature (related projects, trends chart, `/projects` filter, search ranking) was effectively dead for ~99% of the catalogue. A plain re-trigger of the existing workflow could never fix this — it's gray-zone-only by design. The LLM is the intended final curator, so running it over the whole active set both assigns categories (the goal) and demotes genuine junk to `noise` (≈520 projects, a quality bonus).
+
+**Tradeoff / incident**: The first unbounded ALL-mode run tripped Supabase **`EMAXCONNSESSION`** (pooler client-session limit) and intermittently 500'd the public site, which shares the same Supabase pooler. Root cause: the gray-zone code path eagerly reads *all* `raw.snapshot` + `app.identity_link` rows for thousands of project ids (two full scans) to recompute scores — unnecessary in ALL mode — and a long-lived run holds its pooled connections while site traffic and a concurrent Vercel redeploy compete for the same ceiling. **Fixes**: (1) ALL mode skips the snapshot/link reads entirely (one light read instead of three heavy ones); (2) `LLM_CLASSIFY_LIMIT` chunks the backfill into short runs that release connections on exit. After both, every chunk ran with production steady at HTTP 200.
+
+**Alternatives considered**: (1) widening the gray zone — rejected, it conflates the daily-run's purpose with a one-off backfill; (2) raising the worker pool / Supabase connection ceiling — doesn't address the wasteful heavy reads and costs money; (3) a separate `classify-all.ts` script — rejected as duplicative; a guarded branch in the existing script keeps the prompt, parsing, and verdict-application logic in one place.
+
+---
+
 ## 2026-06-23 — Bookmarks: localStorage-only, no auth (U1)
 
 **Decision**: Project bookmarks are stored entirely in the browser's `localStorage` (one key, `pt:bookmarks`, holding a JSON array of slugs). No accounts, no DB table, no server-side persistence. The `/bookmarks` page reads the slug set on the client and rehydrates project data from a new read-only `GET /api/bookmarks?slugs=…` endpoint (`getProjectsBySlugs`, capped at 200 slugs).
