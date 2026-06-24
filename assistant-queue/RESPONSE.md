@@ -1,5 +1,7 @@
 # Day 2 Sprint — Response (2026-06-23)
 
+> ⚠️ **PRODUCTION P0 — needs your action.** The site-wide HTTP 500s in `doc/bug-reports.md` (BUG-001…005) are **Supabase connection-pool exhaustion** (`EMAXCONNSESSION`, session pooler capped at 15 clients), not a schema/env break. I mitigated it (pool max 2→1 #62; transaction-pooler switch made opt-in after it hung #63/#64) and the site is **stable under normal/light load now** (verified 200). The 15-client ceiling still 500s under heavy concurrency. **Durable fix is operator-side**: raise the Supabase session Pool Size, or point `DATABASE_URL` at the transaction pooler (`:6543`) and set `PG_USE_TRANSACTION_POOLER=1`. Full write-up + which P2 reports are false positives: `doc/bug-reports.md` → "RESOLUTION".
+
 | # | Task | PR | Status |
 |---|------|----|--------|
 | U1 | Bookmark / save projects | #50 | ✅ merged, verified |

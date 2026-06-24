@@ -132,3 +132,30 @@
   3. Count Chinese vs English characters
 - **Expected:** Page should be predominantly Chinese
 - **Actual:** 9144 English vs 146 Chinese characters
+
+---
+
+# RESOLUTION — BUG-001…005 + the 03:37 tour (2026-06-23, Claude agent session)
+
+**All the HTTP 500s (BUG-001/002/003/005) have one root cause; BUG-004 and most of the 03:37 P2s are downstream symptoms of the same outage.** The "schema/migration/env" guesses are wrong. The Vercel runtime stack trace is:
+
+> `k: (EMAXCONNSESSION) max clients reached in session mode — max clients are limited to pool_size: 15`  (`XX000`, digest `193943652` / `240242435`)
+
+The app uses Supabase's **session-mode pooler (port 5432)**, which gives each client a dedicated server connection and caps total clients at **15**. Under enough concurrent SSR requests (organic traffic + the browser tester + in-flight LLM backfills + the agent's own load-testing), the cap is hit and every DB-backed page 500s. `/bookmarks` survived because it loads via the client, not SSR.
+
+## Status: mitigated — stable under normal/light load; high-concurrency ceiling remains (operator action needed)
+
+Merged: **#62** (pool `max` 2→1, `PG_POOL_MAX`), **#63/#64** (opt-in transaction-pooler switch `PG_USE_TRANSACTION_POOLER=1` — enabling it by default made requests *hang*, so reverted to opt-in; live traffic is back on the session pooler). After the revert, sequential browsing + light concurrency verified all HTTP 200.
+
+**Durable fix (operator — needs Supabase/Vercel access):** either raise the Supabase session **Pool Size** above 15, or point `DATABASE_URL` at a verified **transaction pooler** (`:6543`, may need the IPv4 add-on) and set `PG_USE_TRANSACTION_POOLER=1`.
+
+## The 03:37 tour ran while the site was still down (transaction-pooler hang, ~03:27–03:35 UTC)
+
+That window is exactly when the bad deploy was live, so these are **outage artifacts, not real regressions** — they re-test green now that the site is back up:
+- **"Missing breadcrumb"** / **"No related projects"** on a detail page — both features exist (breadcrumb #44; related-projects #44, shown when same-category peers exist). The page simply wasn't rendering.
+
+Likely **test-harness false positives** (verify against the live, recovered site):
+- **"Search doesn't filter (100→100)"** — the box the tester typed into is the **fuzzy `ProjectSearch`** (shows a results dropdown linking to detail pages); it intentionally does **not** reduce the table. The table's own filter is the separate "Filter the table…" input. Working as designed.
+- **"ZH i18n leak: 9144 EN vs 146 ZH"** — by design: project **data** (names, one-liners, tags) is never translated, only UI **chrome** is. `/projects` in ZH is mostly English data + Chinese chrome.
+
+**Worth a real re-check once the connection ceiling is raised:** the **category dropdown filter** on `/projects` (tester says "AI/ML had no effect"). It uses a tanstack `equalsString` filter on `llm_category` and should work; if it still doesn't on the recovered site, investigate (could interact with the new `?tag` pre-filter). `favicon.ico` 404 and the homepage H1 spacing are minor real follow-ups.
