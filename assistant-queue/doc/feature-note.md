@@ -1,48 +1,60 @@
 # Product Tracer — Feature Status
 
-*Last updated: 2026-06-21 17:15 PDT*
+*Last updated: 2026-06-23 21:15 PDT*
 
-## ✅ Done & Merged
+## ✅ Day 2 Sprint — All Tasks Complete (PRs #43–#64)
 
-### Weekly Hot Trends (PRs #29–#32)
-- **#29** — `/trends` page, nav link, locale-aware rendering (frontend)
-- **#30** — Backend data pipeline: `0012_weekly_trend` migration, `weekly-trend.ts`, GitHub Actions cron
-- **#31** — Fix `/trends` 500 on `emerging_themes` coalesce type
-- **#32** — Fix `top_products` shape mismatch
+### Full Feature Sprint (T0–T6) — PRs #43–#48
+- **T0** — Mobile horizontal scroll fix (`overflow-x: clip` on `html` + `body`)
+- **T1+T6** — Detail page richness + "You might also like" (breadcrumb, related projects, AI summary block, graceful 404)
+- **T2** — Fuzzy search (pg_trgm, `GET /api/search`, debounced dropdown)
+- **T3** — Score heat indicator (colored left border by GitHub stars)
+- **T4** — Trends dashboard (bar chart, top-5 list, week-over-week comparison)
+- **T5** — Reddit collector 403 fix (JSON → RSS fallback with UA rotation)
 
-Status: `/trends` renders real data, all prod-verified (HTTP 200).
+**Migrations**: `0014_pg_trgm_search.sql` applied.
 
-## 🔧 PR #33 — Code review fixes (merged ✅)
+### U1 — Bookmarks / Save Projects (PR #50)
+- localStorage-only, no auth needed
+- `BookmarkButton` on `/projects` rows/cards + detail page
+- `/bookmarks` page with live card removal
+- Nav link with i18n (EN/ZH)
 
-- `apps/web/lib/db.ts` — `'{}'::text[]` explicit cast
-- `apps/web/lib/format.ts` — Emoji-safe truncation via spread operator
+### U2 — Backfill AI Summaries (PR #55)
+- **150 → 4,537 projects** (~99.7% coverage)
+- ~$0.15 DeepSeek tokens, ~28 min
+- Added `SUMMARY_CONCURRENCY` (shared-cursor worker pool)
 
-Merged, no migration needed.
+### U3 — Backfill llm_category (PR #52, #53)
+- **1.2% → 99.8%** (~150 → 4,490 classified)
+- ~$0.11 DeepSeek tokens
+- Added `LLM_CLASSIFY_ALL=1` mode with chunking
 
-## ✅ Done Since Last Check
+### U4 — AI Granular Tags (PR #57)
+- Migration `0015_granular_tags.sql`: `app.project.tags text[]` + GIN index
+- `generate-tags.ts` worker (3–5 tags/project)
+- **3,953/3,953 active projects tagged** (~$0.13, ~12 min)
+- `TagChips` component, `?tag=` client-side filter
 
-### PR #39 — Mobile horizontal scroll fix
-- **Issue**: Full-bleed strips caused overflow on 375px viewports
-- **Fix**: `overflow-x-clip` on `<body>` (not `hidden`, which breaks sticky header + inner scroll containers)
-- **Scope**: `app/layout.tsx` only, covers `/`, `/projects`, `/youtube-insights`
-- **Status**: Merged → prod verified (HTTP 200)
+### U5 — YouTube OG Image (PR #60)
+- Dynamic 1200×630 OG card at `/og/youtube-insights`
+- Open Graph / Twitter `summary_large_image` metadata
+- `metadataBase` in root layout
 
-### PR #40 — Backend: AI-powered project summaries
-- **Migration**: `0013_ai_summary.sql` — additive, nullable `ai_summary` on `app.project`
-- **Worker**: `apps/worker/src/scripts/generate-summaries.ts` — LLM batch (50/project, daily cron)
-- **CI**: `.github/workflows/generate-summaries.yml` — daily 04:00 UTC + `workflow_dispatch`
-- **Design**: `ai_summary IS NULL` as work queue (idempotent, resumable, zero bookkeeping)
-- **Status**: PR merged, migration 0013 applied to prod. **50 summaries generated, 4126 pending** (daily cron)
+### U6 — Insight Multi-Select Filter (PR #59)
+- Toggle chips replacing single-category dropdown
+- URL state: `?category=a,b,c`
+- `= any(...)` DB query
 
-### PR #41 — Frontend: Display AI project summaries
-- `lib/db.ts`: `ai_summary` on `ProjectListItem` + `ProjectDetail` (defensive via `to_jsonb`)
-- `app/projects/projects-table.tsx`: truncated (80 char) ✨ italic summary with full-text tooltip
-- `app/projects/[slug]/page.tsx`: full "AI Summary" block (rounded, light-gray bg, sparkle icon)
-- `app/projects/page.tsx`: EN server-side stripping of `ai_summary` (same as one-liners)
-- `lib/i18n.ts`: keys `detail.aiSummary` (EN "AI Summary", ZH "AI 概述")
-- **Status**: PR merged, prod-verified (HTTP 200, 16 summaries on first EN page)
+### Production Incident — Supabase Connection Pool Exhaustion
+- Root-caused `EMAXCONNSESSION` (15-client session-pooler cap)
+- Mitigated: pool `max` 2→1 (#62); transaction-pooler opt-in (#63/#64)
+- Site stable under normal/light load
+- **Operator action needed**: Raise Supabase session Pool Size or switch to transaction pooler (`:6543`)
 
-## ⏳ Queued
+## ⏳ Open (requires operator action)
 
-1. **Reddit collector** — `next-request.md`. Subreddits: SideProject, indiehackers, startups. 4h cron, JSON API (no key).
-2. Product Hunt collector still executing.
+1. **Supabase connection pool** — raise Pool Size or verify `:6543` transaction pooler works
+2. **Project-level `quality_score`** — 0–100 column for better heat/recommendation ranking
+3. **Reddit collector hardening** — longer inter-subreddit delay, OAuth for score data
+4. **Minor UI** — `favicon.ico` 404, homepage H1 spacing

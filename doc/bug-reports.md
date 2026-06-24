@@ -1,9 +1,9 @@
-# Bug Reports — 2026-06-23
+# Bug Reports — 2026-06-24
 
-## Automated Test Summary
-- Browser test: 0 bugs detected by test script (test passes successfully)
-- HTTP status check: 3 pages return 500 Internal Server Error
-- Product tour: Site rendered partially but many pages crashed
+## Automated Test Summary (Run #18 - /projects focus)
+- Browser test: All 6 pages HTTP 200, no new bugs found
+- Focal tour: /projects + detail page + ZH locale + bookmarks — all features verified working
+- Known P2 remaining: /favicon.ico 404 (unchanged)
 
 ---
 
@@ -179,3 +179,15 @@ Likely **test-harness false positives** (verify against the live, recovered site
 - Grid/list toggle present in page text
 - 20 clickable cards/links on the page
 - No console errors besides favicon
+
+
+## Product Tour: Homepage — 2026-06-24T04:20:58.794Z
+
+### [P2] /
+- **Description:** Resource loading errors on homepage
+- **Found:** 2026-06-24T04:20:53.428Z
+- **Reproduction:**
+  Load homepage and check console
+- **Expected:** No resource loading errors
+- **Actual:** Resource loading errors found
+
