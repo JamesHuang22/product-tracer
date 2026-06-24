@@ -2,6 +2,23 @@
 
 *Last updated: 2026-06-23 21:15 PDT*
 
+## ✅ Phase 2 Sprint — All Tasks Complete (PRs #43–#70, 2026-06-24)
+
+### Phase 2 Tasks (PRs #68–#70)
+| # | Task | PR | Status |
+|---|------|----|--------|
+| 1 | Fix empty homepage insight card (P0 bug) | #68 | ✅ merged, verified |
+| 2 | Historic weekly trends selector | #69 | ✅ merged, verified |
+| 3 | Collector quality + migration 0016 | #70 | ✅ code merged, migration applied |
+
+**Task 1**: Root cause — insight with Chinese `key_insight` (CJK-suppressed for EN) rendered empty card. Fixed: query guard (`WHERE key_insight IS NOT NULL`), page filter (buffer 8→3), client-side null guard. Bad card `4y9DR2WwW3o` gone from EN home.
+
+**Task 2**: `getTrendWeeks()` + optional `weekStart` param on trend queries. `/trends?week=` validated against real list, falls back to latest. WoW compares to preceding week. All weeks 200 incl. garbage param.
+
+**Task 3**: Migration `0016_collector_quality.sql` (7 new columns) applied. Collector stores issues/pr/forks counts, topics, last_push_at, recent_commits_30d; freshness-filters unpushed repos >6mo unless >1000★; bounded best-effort PR/commit enrichment (≤40/run). Dedup: require same-category OR Dice>0.8. Schedule 4h→2h.
+
+> ⚠️ GitHub Actions billing blocked — post-merge workflow can't start. Resolve in repo Settings → Billing.
+
 ## ✅ Day 2 Sprint — All Tasks Complete (PRs #43–#64)
 
 ### Full Feature Sprint (T0–T6) — PRs #43–#48

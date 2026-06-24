@@ -405,3 +405,77 @@ Bug 2 previously reported "/trends has 0 clickable links to individual trend ite
 - 1 P0 bug re-confirmed (no .env file)
 - 1 known P2 confirmed (locale-prefixed routes missing)
 - No new unique bugs — blocked by database setup
+
+## Browser Test Run #42 (2026-06-24 20:35 UTC) — Focus: /projects grid, search, category filter, detail pages
+
+### Automated Test — 12/12 passing (Vercel deployment)
+- ✅ / → HTTP 200
+- ✅ /projects → HTTP 200
+- ✅ /trends → HTTP 200
+- ✅ /youtube-insights → HTTP 200
+- ✅ /bookmarks → HTTP 200
+- ✅ i18n charset check
+- ✅ Grid layout with 100+ project links
+- ✅ No server errors in body on any page
+
+### Manual Tour Findings — /projects with Puppeteer (against Vercel production)
+
+#### Overview
+- **100 project rows** rendered in table format on /projects (sorted by GitHub stars descending)
+- **4,610 total projects** tracked across GitHub, HN, Product Hunt, YouTube
+- Search input works with "Search projects…" placeholder
+- Category filter buttons: All categories, AI/ML, devtools, aas, open-source, design, data, security, productivity, other
+- Category filter ("devtools") ✓ reduces results correctly
+- Search ("odysseus") ✓ finds the project
+- Detail pages have AI-powered summaries and bookmark buttons
+- Performance: 2.8s DOMContentLoaded on Vercel (could be faster)
+
+#### 🔴 P1 — Missing DATABASE_URL in local .env (local dev only)
+**Severity**: P1 (development blocker)
+**Description**: The `.env` file has `DATABASE_URL=` with no value set. Starting `next dev` or running any page that queries the database returns a 500 error: "Missing DATABASE_URL. Check .env (Supabase → Connect → Session pooler URI)."
+**Reproduction**:
+1. `cp .env.example .env` (creates blank vars)
+2. `pnpm dev` or `next dev --port 3000`
+3. Visit `/projects`, `/trends`, `/youtube-insights`, or homepage
+4. See "Application error: a server-side exception has occurred" with 500 status
+**Note**: Vercel deployment unaffected (env vars set in Vercel dashboard). This only affects local development.
+**Suggestion**: Improve dev setup instructions or add graceful degradation when DB is unavailable.
+
+#### 🟡 P3 — No breadcrumb on project detail pages
+**Severity**: P3 (low)
+**Description**: Project detail pages like `/projects/pewdiepie-archdaemon-odysseus` lack breadcrumb navigation. Users navigating from a filtered search or category view have no visual indicator of where they are in the site hierarchy.
+**Reproduction**:
+1. Visit /projects
+2. Click any project (e.g. odysseus)
+3. The detail page has no breadcrumb like `Projects > odysseus`
+**Expected**: A breadcrumb trail at the top of detail pages for navigation context.
+
+#### 🟡 P3 — Missing "Related products" section on detail pages
+**Severity**: P3 (low)
+**Description**: Detail pages don't show related or similar projects. After reading an AI summary, there's no natural next step to discover similar products.
+**Reproduction**:
+1. Visit any project detail page (e.g. `/projects/pewdiepie-archdaemon-odysseus`)
+2. Scroll below the main content
+3. No "Related projects" or "Similar products" section exists
+**Expected**: Bottom of detail page shows 3-5 related projects based on category or tags.
+
+#### 🟠 P2 — 233+ tap targets under 44px on mobile (375px)
+**Severity**: P2 (medium)
+**Description**: At 375px viewport, over 200 interactive elements (links, buttons) have clickable areas smaller than the 44px accessibility minimum. This includes category pills, sort buttons, and tag links on /projects.
+**Reproduction**:
+1. Open DevTools, set viewport to 375×812 (iPhone 14)
+2. Visit /projects
+3. Many tag pills (#self-hosted, #ai, etc.) are ~28px tall
+4. Sort buttons (Project, Stars, Forks) are ~32px tall
+5. Pagination Prev/Next buttons may also be undersized
+**Expected**: All interactive elements meet WCAG minimum of 44×44px tap target.
+
+**Note for next run**: Focus on /youtube-insights grid/list toggle. Date: 2026-06-24.
+
+### Bug Count Summary
+| Severity | New | Carried Over |
+|----------|-----|--------------|
+| P0       | 0   | 1 (no .env)  |
+| P1       | 1   | 0            |
+| P2       | 1   | 1            |
+| P3       | 2   | 0            |
