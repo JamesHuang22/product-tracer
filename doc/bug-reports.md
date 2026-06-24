@@ -1,5 +1,65 @@
 # Bug Reports — 2026-06-24
 
+## Browser Test Run #28 (2026-06-24 10:05 UTC) — Focus: /youtube-insights (deep-dive: new data-driven page)
+
+### Automated Test — All 12/12 passing
+- ✅ / HTTP 200, ✅ /projects HTTP 200, ✅ /trends HTTP 200, ✅ /youtube-insights HTTP 200 (prod), ✅ /bookmarks HTTP 200
+- ✅ ZH locale footer / locale detection pass
+- ✅ Grid layout check: /projects has 100+ project link references
+- ✅ No server errors in page bodies on production
+- ❌ /favicon.ico 404 (known P2, unchanged)
+
+### Product Tour: /youtube-insights — New data-driven page with DB-backed categories
+
+**[P1 Regression] /youtube-insights returns HTTP 500 locally — getVideoInsightCount() requires DATABASE_URL**
+- **Description**: The youtube-insights page now calls `getVideoInsightCount()` as part of server rendering, which calls `sql<…>` → `createSqlClient()` → throws "Missing DATABASE_URL". The page previously rendered static content without DB calls. This is a regression introduced when the page was updated to be data-driven (category counts + pagination).
+- **Found**: 2026-06-24T10:05 UTC
+- **Severity**: P1 (page is broken locally, blocks local testing/development of the youtube-insights page)
+- **In production**: ✅ HTTP 200 — works fine on Vercel where DATABASE_URL is set
+- **Stack trace**:
+  ```
+  Error: Missing DATABASE_URL. Check .env (Supabase → Connect → Session pooler URI)
+    at createSqlClient (chunks/ssr/[root-of-the-server]__d15d18da._.js:145)
+    at getSql (chunks/ssr/[root-of-the-server]__d15d18da._.js:270)
+    at getVideoInsightCount (chunks/ssr/[root-of-the-server]__d15d18da._.js:768)
+    at YoutubeInsightsPage (chunks/ssr/[root-of-the-server]__1ebc2c77._.js:1195)
+  ```
+- **Reproduction**:
+  1. Run `pnpm web:dev` locally without DATABASE_URL in .env
+  2. Visit http://localhost:3000/youtube-insights
+  3. HTTP 500 rendered as error page with "Missing DATABASE_URL"
+- **Expected**: Page renders with data (categories, count, paginated insights)
+- **Actual**: 500 error
+
+**[P2] /zh/youtube-insights returns 404 — ZH locale route broken (unresolved)**
+- **Status**: Unchanged from Run #27. /zh/youtube-insights returns 404. The ZH locale route is still not registered under the `[locale]` dynamic segment.
+- **Reproduction**:
+  1. Visit `http://localhost:3000/zh/youtube-insights` or production URL
+  2. 404 page: "This page could not be found."
+
+**[P3] EN text leaks in ZH-locale error pages**
+- **Description**: When hitting `/zh/youtube-insights` (404 page) or `/youtube-insights?lang=zh` (500 page), the rendered body still contains "YouTube Insights" and "Insights" in English text. These strings leak through even when a ZH locale is requested, because the error pages are rendered by the Next.js built-in error handler which doesn't use i18n.
+- **Found**: 2026-06-24T10:05 UTC
+- **Severity**: P3 (minor — only visible on error/404 pages, not the actual page)
+- **Reproduction**:
+  1. Visit `/zh/youtube-insights`
+  2. Search body text for "YouTube Insights" → found (in <title>)
+  3. Search body text for "Insights" → found (in description meta tag, breadcrumb fallback)
+- **Root cause**: Next.js error pages use non-i18n-aware layout
+
+**[Observation] Category filter not visible in plain-HTTP scrape**
+- The page's HTML contains `<select>`, `<button>`, and category filter DOM elements, but they're rendered via `InsightsControls` which is a client component with `'use client'`. The server-rendered HTML doesn't include the actual filter UI — it's hydrated client-side. This is expected RSC behavior.
+
+**[Observation] The new youtube-insights page appears well-structured**
+- Has: paginated grid with 20 items per page, category filter dropdown, grid/list view toggle, EN/ZH locale toggle, sentiment indicators (🟢🟡🔴), category badges, AI-generated key insights per card, "Watch on YouTube" links. This is a substantial upgrade from the previous static layout.
+
+### No new P0/P1 bugs on production
+- Production site is healthy on all critical routes
+- REQUEST.md has active tasks (TASK 1-3 in progress) — not overwritten
+- FRONTEND_REQUEST.md has 5 feature requests — not overwritten
+
+---
+
 ## Browser Test Run #27 (2026-06-24 09:50 UTC) — Focus: /trends + /youtube-insights locale deep-dive
 
 ### Automated Test — All 12/12 passing
