@@ -1,5 +1,51 @@
 # Bug Reports — 2026-06-24
 
+## Browser Test Run #40 (2026-06-24 18:05 UTC) — Focus: /trends page quality, WoW indicators, week selector
+
+### Automated Test — 12/12 passing (Vercel deployment)
+- ✅ All 5 pages HTTP 200
+- ✅ Grid layout w/ 100 project links on /projects
+- ✅ No server errors in any page body
+- ✅ i18n baseline scan clean
+
+### Product Tour Findings — /trends
+
+**Week Selector (new feature):**
+- ✅ Week selector dropdown present with 2 weeks available: 2026-06-22 and 2026-06-15
+- ✅ Dropdown is functional — selection changes URL and page data
+
+**Top Product Cards:**
+- ✅ 5 project links detected linking to detail pages
+- ✅ All links functional, navigate to correct projects (are-you-in-the-weights, elvin, dropmatico, etc.)
+- ✅ Detail pages have breadcrumb and bookmark button
+- ❌ AI Summary label not visible on one detail page (1290 chars total — content may be embedded without heading)
+
+**WoW Comparison:**
+- ✅ Aggregate WoW stats visible (919 new projects tracked, signal activity comparisons)
+- ❌ **No WoW position change indicators on individual product cards** — no ↑/↓ arrows, position deltas, or NEW labels per card
+- ❌ The WoW prose mentions product performance but is not tied to individual cards
+
+**EMERGING THEMES:**
+- ✅ 6 themes detected (Recursive Self-Improvement, Open-Source LLMs, etc.)
+- ❌ All themes are plain text — no clickable links to filtered /projects views
+
+**VIDEO HIGHLIGHTS:**
+- ✅ 3 videos mentioned (RSI $4.65B, Claude Opus 4.6, GLM-5.2)
+- ❌ No clickable YouTube links — all prose, no anchor elements
+
+**Mobile (375px):**
+- ❌ Nav still overflows at 375px (scrollWidth=490 vs viewport=375)
+- ❌ EN/中文 locale buttons and hamburger off-screen
+- ⚠️ Same issue as previous runs — mobile nav collapse not yet implemented
+
+**Console Errors:**
+- ❌ 1 404 for favicon.ico (persistent across all runs)
+
+### Bug 2 status update
+Bug 2 previously reported "/trends has 0 clickable links to individual trend items." This run found 5 project links on /trends — Bug 2 appears to be **FIXED** (links now exist). The EMERGING THEMES and VIDEO HIGHLIGHTS sections remain plain text (no links), but those are separate P3 issues.
+
+---
+
 ## Browser Test Run #39 (2026-06-24 14:35 UTC) — Focus: Mobile tour (375px viewport, all pages)
 
 ### Automated Test — 12/12 passing (Vercel deployment)
