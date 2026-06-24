@@ -193,13 +193,24 @@
 - Automated tests use the Vercel URL ✓
 - If producttracer.com is the canonical domain, redirect may be intentional; if not, this could break bookmarks, SEO, and shared links.
 
-## Browser Test Run #37 (2026-06-24 13:50 UTC) — Focus: /projects search, sort, filter & detail pages
+## Browser Test Run #38 (2026-06-24 14:20 UTC) — Focus: /youtube-insights grid/list toggle, category filter, EN/ZH locale, mobile homepage
 
 ### Automated Test — 12/12 passing (HTTP status only)
 
-### ⚠️ Re-verified Bug 10 — All DB pages still crash (same P0)
-- The automated test only checks HTTP status codes (all returned 200), but the **rendered HTML body** still shows the same `next_error` server exception
-- Rendered pages show "Application error: a server-side exception has occurred" with digest `2731443499`
-- `/youtube-insights` and `/bookmarks` work (no DB dependency)
-- No .env file found — this has been unresolved since Browser Test Run #36
-- **No new unique bugs found** — the missing search/filter/links on /projects are all downstream of the P0 DB connection failure
+### ⚠️ Bug 10 — All DB pages still crash (P0, 3rd consecutive verify)
+- Root cause confirmed in HTML RSC payload: `"Missing DATABASE_URL. Check .env (Supabase → Connect → Session pooler URI)."`
+- Homepage, /projects, /trends, /[slug] all render the Next.js global-error component
+- `/youtube-insights` and `/bookmarks` still work (no DB dependency)
+- No `.env.local` or `.env` file exists in `apps/web/` or project root
+- **This is a setup blocker** — cannot test sorting, filtering, search, AI summaries, or project links until DATABASE_URL is configured
+- Automated test passes only because it checks HTTP 200 status, but the response body is an error page
+
+### Discovered during product tour
+- **/zh/youtube-insights returns 404** — matches existing FRONTEND_REQUEST.md P2 about locale-prefixed routes
+- **No grid/list toggle or category filter on /youtube-insights** — the page is minimal, no interactive controls found
+- **Mobile (375px): homepage has no horizontal overflow ✅** but all DB pages crash before rendering
+
+### Summary
+- 1 P0 bug re-confirmed (no .env file)
+- 1 known P2 confirmed (locale-prefixed routes missing)
+- No new unique bugs — blocked by database setup
