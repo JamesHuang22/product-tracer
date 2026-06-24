@@ -1,8 +1,8 @@
 # Bug Reports — 2026-06-24
 
-## Automated Test Summary (Run #18 - /projects focus)
-- Browser test: All 6 pages HTTP 200, no new bugs found
-- Focal tour: /projects + detail page + ZH locale + bookmarks — all features verified working
+## Automated Test Summary (Run #19 - Mobile focus)
+- Browser test: All 6 pages HTTP 200, 1 console error (404 resource, non-blocking)
+- Focal tour: Mobile 375px viewport — homepage, /projects, detail page, /trends, /bookmarks
 - Known P2 remaining: /favicon.ico 404 (unchanged)
 
 ---
@@ -190,4 +190,37 @@ Likely **test-harness false positives** (verify against the live, recovered site
   Load homepage and check console
 - **Expected:** No resource loading errors
 - **Actual:** Resource loading errors found
+
+
+## Product Tour: 2026-06-24T04:51:37.866Z (Focus: Mobile 375px)
+
+### [P2] / — Nav links undersized on mobile (<44px tap targets)
+- **Description:** 10 tappable elements on the mobile homepage fall below Apple's 44px minimum tap target height. Nav links (Projects, Insights, Trends, Bookmarks) are only 20px; EN toggle 24px; 中文 toggle 40px; Browse all projects CTA 36px; All projects link 16px; brand link 40px. Hard to tap accurately on a real phone.
+- **Found:** 2026-06-24T04:51:37.866Z
+- **Reproduction:**
+  1. Open DevTools, set 375×812 viewport with mobile emulation
+  2. Go to https://product-tracer.vercel.app/
+  3. Inspect nav bar link and CTA button bounding boxes
+- **Expected:** All tappable elements ≥44px height (Apple HIG minimum)
+- **Actual:** Nav links at 20px, locale toggle at 24px, CTAs at 16-36px
+
+### [P2] /projects/[slug] — No back navigation on mobile
+- **Description:** Project detail pages have no back button. Mobile users navigating to a detail page have no way to return to /projects without the browser's back button.
+- **Found:** 2026-06-24T04:51:37.866Z
+- **Reproduction:**
+  1. Open 375px viewport
+  2. Navigate to any /projects/[slug] (e.g. /projects/pewdiepie-archdaemon-odysseus)
+  3. Look for a back button or breadcrumb element
+- **Expected:** Back button or breadcrumb visible for mobile navigation
+- **Actual:** No back button or breadcrumb found
+
+### [P3] /projects — Mobile card detection heuristic failed
+- **Description:** The mobile tour script failed to detect project cards on /projects. Cards may not have standard `card`, `Card`, `<article>`, or `<li>` selectors, or use a different DOM structure at 375px.
+- **Found:** 2026-06-24T04:51:37.866Z
+- **Reproduction:**
+  1. Open 375px viewport on /projects
+  2. Query for elements with class containing "card" or "Card", or article/li tags
+  3. Check bounding boxes for 100-500px width
+- **Expected:** Project cards detected as DOM elements
+- **Actual:** Zero cards matched the heuristic (0 found)
 
