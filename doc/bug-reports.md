@@ -1,5 +1,20 @@
 # Bug Reports — 2026-06-24
 
+## Automated Test Summary (Run #23 — /projects + detail page deep-dive)
+
+- **Focus**: /projects — search, tag filtering, detail page content, related projects
+- Browser test: All 5 pages HTTP 200, 1 console error (favicon 404)
+- ✅ ?tag=llm filter works (async load renders 707 projects, 100 links on first page)
+- ✅ ?tag=llm URL param preserved in address bar (bookmarkable filters)
+- ✅ Detail pages (/odysseus, /open-design, /ponytail, /speakup) all have "You might also like" section with 4 related project cards
+- ✅ /projects/amie (nonexistent slug) returns proper 404 page with "Browse all projects" link
+- ✅ Breadcrumb `<nav><ol>` present on all detail pages
+- ✅ Mobile 375px — no horizontal overflow on /projects
+- ✅ ZH locale — nav items translated (项目/洞察/趋势/收藏)
+- ❌ /favicon.ico 404 (known P2, unchanged)
+- **No new bugs found this run** — site healthy, all features functional
+- REQUEST.md has active tasks (not overwritten)
+
 ## Automated Test Summary (Run #22 — /trends focus)
 - Browser test: All 5 pages HTTP 200, 1 console error (favicon 404)
 - Focal tour: /trends — all 6 H2 sections render (Summary, WoW, Mix, Top Products, Emerging Themes, Video Highlights)
