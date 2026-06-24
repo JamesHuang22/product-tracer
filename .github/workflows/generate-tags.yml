@@ -1,0 +1,40 @@
+name: Generate Tags
+
+on:
+  schedule:
+    - cron: '0 2 * * *' # daily UTC 02:00
+  workflow_dispatch:
+    inputs:
+      batch:
+        description: 'Projects to tag this run (default 50). Raise for a one-off backfill.'
+        type: string
+        default: '50'
+      concurrency:
+        description: 'Parallel LLM calls (default 1). Raise (e.g. 6) to speed up a backfill.'
+        type: string
+        default: '1'
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    # Default daily run is small; a manual backfill (large batch) needs headroom.
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @product-tracer/worker tags:generate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          # Optional overrides — defaults: deepseek-chat @ api.deepseek.com
+          LLM_MODEL: ${{ secrets.LLM_MODEL }}
+          LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
+          # Scheduled runs fall back to the script defaults (batch 50, serial);
+          # manual dispatch can enlarge the batch and parallelise for a backfill.
+          TAGS_BATCH: ${{ inputs.batch || '50' }}
+          TAGS_CONCURRENCY: ${{ inputs.concurrency || '1' }}
