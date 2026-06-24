@@ -815,7 +815,7 @@ export interface WeeklyTrend {
  * 500-ing) before migration 0012 creates app.weekly_trend — 42P01 is
  * "undefined_table", 42703 "undefined_column" during a partial rollout.
  */
-export async function getLatestWeeklyTrend(): Promise<WeeklyTrend | null> {
+export async function getLatestWeeklyTrend(weekStart?: string): Promise<WeeklyTrend | null> {
   try {
     const rows = await sql<WeeklyTrend[]>`
       select
@@ -832,6 +832,7 @@ export async function getLatestWeeklyTrend(): Promise<WeeklyTrend | null> {
         total_insights_collected,
         to_char(created_at, 'YYYY-MM-DD') as created_at
       from app.weekly_trend
+      ${weekStart ? sql`where week_start = ${weekStart}` : sql``}
       order by created_at desc
       limit 1
     `;
@@ -839,6 +840,28 @@ export async function getLatestWeeklyTrend(): Promise<WeeklyTrend | null> {
   } catch (err) {
     const code = (err as { code?: string }).code;
     if (code === '42P01' || code === '42703') return null;
+    throw err;
+  }
+}
+
+/**
+ * Distinct weeks that have a trend report, newest first — drives the /trends
+ * week selector. Same empty-state resilience as the other trend queries
+ * (returns [] before migration 0012 lands). ISO `YYYY-MM-DD` strings sort
+ * chronologically, so ordering by the formatted `week_start` is correct.
+ */
+export async function getTrendWeeks(): Promise<{ week_start: string; week_end: string }[]> {
+  try {
+    return await sql<{ week_start: string; week_end: string }[]>`
+      select distinct
+        to_char(week_start, 'YYYY-MM-DD') as week_start,
+        to_char(week_end, 'YYYY-MM-DD') as week_end
+      from app.weekly_trend
+      order by week_start desc
+    `;
+  } catch (err) {
+    const code = (err as { code?: string }).code;
+    if (code === '42P01' || code === '42703') return [];
     throw err;
   }
 }
@@ -889,11 +912,15 @@ export interface TrendDistributionBar {
  * "uncategorized" bar. This yields a varied, real breakdown that auto-sharpens
  * into true categories as classification backfills. Empty before migration 0012.
  */
-export async function getTrendCategoryDistribution(): Promise<TrendDistributionBar[]> {
+export async function getTrendCategoryDistribution(
+  weekStart?: string,
+): Promise<TrendDistributionBar[]> {
   try {
     return await sql<TrendDistributionBar[]>`
       with latest as (
-        select top_products from app.weekly_trend order by created_at desc limit 1
+        select top_products from app.weekly_trend
+        ${weekStart ? sql`where week_start = ${weekStart}` : sql``}
+        order by created_at desc limit 1
       )
       select
         case
@@ -921,11 +948,16 @@ export async function getTrendCategoryDistribution(): Promise<TrendDistributionB
  * "Top products" list. Reads directly from the latest weekly_trend's
  * top_products jsonb (which carries name/slug/platform/description/score).
  */
-export async function getTrendTopProducts(limit = 5): Promise<WeeklyTrendProduct[]> {
+export async function getTrendTopProducts(
+  limit = 5,
+  weekStart?: string,
+): Promise<WeeklyTrendProduct[]> {
   try {
     return await sql<WeeklyTrendProduct[]>`
       with latest as (
-        select top_products from app.weekly_trend order by created_at desc limit 1
+        select top_products from app.weekly_trend
+        ${weekStart ? sql`where week_start = ${weekStart}` : sql``}
+        order by created_at desc limit 1
       )
       select tp.name, tp.slug, tp.platform, tp.description, coalesce(tp.score, 0)::int as score
       from latest,
