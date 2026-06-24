@@ -692,3 +692,38 @@ Likely **test-harness false positives** (verify against the live, recovered site
 
 ### [P2] https://www.youtube.com/watch?v=bBMJFZ1JRng: No back navigation
 **Steps:** Back link/button should exist
+
+---
+
+## Automated Test Summary (Run #24 — /bookmarks end-to-end flow)
+- **Focus**: /bookmarks — empty state, bookmark toggle, ZH locale, mobile, end-to-end bookmark flow
+- Browser test: All 5 pages HTTP 200, 1 console error (favicon 404)
+- ✅ /bookmarks empty state — has empty message + CTA (was missing in previous runs — FIXED!)
+- ✅ /bookmarks meta description "Your saved projects." — present
+- ✅ Bookmark toggle works on detail page ("Bookmark" → "Bookmarked" state change)
+- ✅ 100 bookmark buttons on /projects (one per card), 1 on detail page — all with `aria-label="Bookmark"`
+- ✅ ZH locale H1 "收藏" — correct translation
+- ✅ Detail page bookmark button functional — click toggles state
+- ❌ /favicon.ico 404 (known P2, unchanged)
+
+### [P2] All pages — Nav bar overflows at 375px viewport (clipped, not reachable)
+- **Description**: At 375px viewport (iPhone SE/12/13 size), the sticky header `<nav>` element extends 490px wide — 115px beyond the viewport. The `body` has `overflow-x: clip` so the overflow is invisible (no scrollbar), but the locale toggle buttons and hamburger-style button are pushed off-screen. At 375px, users cannot access the "中文" locale toggle or the hamburger menu because they're rendered off-screen.
+- **Found**: 2026-06-24T09:07 UTC
+- **Severity**: P2 (mobile usability — EN/中文 toggle and mobile hamburger menu hidden at smallest breakpoints)
+- **Reproduction**:
+  1. Open Chrome DevTools, set viewport to 375×812 (iPhone SE)
+  2. Load any page
+  3. Try to tap the "中文" locale toggle or the hamburger menu button
+- **Expected**: Nav collapses to a hamburger menu at 375px, with all controls accessible
+- **Actual**: Nav container is 400px wide, forced to render at 490px due to flex children. EN/中文 toggle and hamburger button are clipped outside the viewport (right edge at 490px). Neither is visible or reachable.
+- **Details**: `<nav class="flex items-center gap-4 text-sm sm:gap-6">` — the `sm:` breakpoint is 640px, so no responsive collapse happens at 375px. The parent container is `max-w-6xl` (1152px). With brand name + 5 nav links + locale toggle + hamburger, it doesn't fit.
+
+### [P2] Mobile — 36 small tap targets on homepage, 284 on /projects
+- **Description**: At 375px viewport, nav links are ~20px tall — well below the 44px Apple HIG minimum. On /projects (more elements), 284 tap targets are below 44px.
+- **Found**: 2026-06-24T09:07 UTC (confirmed from previous runs)
+- **Severity**: P2 (accessibility — hard to tap on real mobile devices)
+- **Reproduction**:
+  1. Open 375×812 viewport
+  2. Run `[...document.querySelectorAll('a,button')].filter(e => e.getBoundingClientRect().height < 44)`
+- **Expected**: All interactive elements ≥44×44px
+- **Actual**: 36 targets on homepage, 284 on /projects below threshold
