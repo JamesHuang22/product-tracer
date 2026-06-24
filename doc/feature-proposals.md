@@ -78,788 +78,89 @@ Requires: `CREATE EXTENSION IF NOT EXISTS pg_trgm;` + migration 0013.
 **Effort:** Medium-Large  
 **Impact:** Very High — transforms from a directory into a discovery engine
 
-**Problem:** Each project page is an island. Users who visit a project detail page have no signal about *what to look at next*.
+**Problem:** Currently, related projects on detail pages are purely category-based (same `llm_category`). This is blunt — all 25 "AI/ML" projects appear similar even though they serve different sub-niches.
 
-**Solution:** Use the existing LLM classification data. Projects with the same `llm_category` are obvious candidates, but we can go deeper:
+**Solution:** Use vector embeddings (pgvector) on project descriptions + tags to find semantically similar projects. For the MVP:
 
-**Approach A (vector similarity — high quality):** Compute embeddings for each project's `name + one_liner + llm_category` using an LLM, store in a `app.project_embedding` table, and use pgvector for cosine similarity search:
+1. Store a `embedding vector(1536)` column on `app.project` — populate via a worker script using OpenAI `text-embedding-ada-002` or similar
+2. Replace the category-based `getRelatedProjects()` with a `cosine_distance` query:
+   ```sql
+   select p.id, p.name, p.slug, p.one_liner
+   from app.project p
+   where p.id != $target_id
+     and p.embedding is not null
+   order by p.embedding <=> (select embedding from app.project where id = $target_id)
+   limit 6;
+   ```
+3. Add a migration `0014_embeddings.sql` for the new column + index
+4. Worker cron: nightly refresh for projects updated in the last 24h
 
-```sql
-SELECT p.id, p.name, p.slug
-FROM app.project p
-JOIN app.project_embedding pe ON pe.project_id = p.id
-WHERE p.id != :current_id
-ORDER BY pe.embedding <=> (SELECT embedding FROM app.project_embedding WHERE project_id = :current_id)
-LIMIT 5;
-```
-
-**Approach B (co-occurrence — simpler):** Track which platforms a project appears on, and recommend projects sharing 2+ platforms with the same `llm_category`.
-
-**Approach C (tag-based — simplest):** "More in [category]". Just group by `llm_category` and show 5 random projects from the same bucket.
-
-**Recommendation:** Start with Approach C (zero infra, ship in a day), then graduate to Approach A for quality.
+No LLM calls on the request path — all compute happens in the nightly worker.
 
 ---
 
-## 5. AI-generated project summaries
-
-**Status:** Proposed  
-**Effort:** Medium (backend worker only)  
-**Impact:** High — turns raw data into readable, scannable content
-
-**Problem:** Most projects have only a one-liner from GitHub. For the Product Hunt co-hort and newer projects, there's barely any description.
-
-**Solution:** Add an LLM-powered batch job that generates a 2-3 sentence summary for each project, stored in `app.project.ai_summary`. Run it as part of the existing nightly pipeline.
-
-**Migration:**
-```sql
-ALTER TABLE app.project ADD COLUMN ai_summary TEXT;
-```
-
-**Worker:**
-```ts
-// For each project without ai_summary (or stale > 7 days):
-const prompt = `Write a 2-3 sentence summary of this project: ${project.name}. ${project.one_liner || ''}. Category: ${project.llm_category}.`;
-const summary = await callLLM(prompt);
-await sql`UPDATE app.project SET ai_summary = ${summary} WHERE id = ${project.id}`;
-```
-
-Display on the project detail page and as hover tooltip on cards.
-
----
-
-## 6. Weekly AI Digest — smarter trends page
-
-**Status:** Proposed  
-**Effort:** Medium  
-**Impact:** High — the trends page is the "5-minute morning read" value prop
-
-**Problem:** The current `/trends` page is functional but basic — a summary + themes list. It doesn't feel like a *curated newsletter*.
-
-**Solution:** Upgrade to a richer format:
-
-- **Top 5 Rising Stars:** Projects with the biggest week-over-week growth in stars/upvotes (delta, not absolute)
-- **Trending GitHub Repos:** By star velocity (stars/week)
-- **"Notable Launches":** Product Hunt launches from this week with upvotes above a threshold
-- **Weekly Chart:** A simple bar/sparkline chart showing project counts by platform over the last 4 weeks
-- **"Under-the-Radar"** section: projects with < 100 stars but > 10x star growth this week
-- **Direct email export:** "Send as email" / "Subscribe to weekly digest" button
-
----
-
-## 7. Dark mode toggle
+## 5. /trends — Clickable emerging themes
 
 **Status:** Proposed  
 **Effort:** Small (frontend only)  
-**Impact:** Medium — quality-of-life
+**Impact:** Medium — turns passive reading into discovery
 
-**Problem:** The site respects system dark mode via CSS `prefers-color-scheme`, but users can't manually override. Some prefer light mode even on a dark system (or vice versa).
+**Problem:** The EMERGING THEMES section on /trends lists 8 theme keywords (e.g., "Recursive Self-Improvement", "AI Agent Workflows", "Open-Source LLMs") but they're plain text with zero clickability. Users can't explore projects in a given theme.
 
-**Solution:** Add a sun/moon icon toggle in the site header. Persist choice to `localStorage`. If `localStorage` value exists, use it; otherwise fall back to system preference.
-
-The Tailwind dark mode is already set up (classes like `dark:bg-neutral-950` throughout). Just needs:
-1. A `ThemeProvider` similar to `I18nProvider`
-2. A toggle button
-3. Persist to localStorage under key `theme`
-
----
-
-## 8. Bookmark / Save projects
-
-**Status:** Proposed  
-**Effort:** Medium (needs auth or localStorage)  
-**Impact:** High — daily users need a way to track projects they care about
-
-**Problem:** No personalization at all. If you see a project you like, the only way to remember it is to bookmark the browser tab.
-
-**Solution (v1 — zero auth):** Store bookmarked slugs in `localStorage` under key `saved_projects`. Show a ☆/★ toggle on every project card and detail page. Add a `/saved` page that reads from localStorage.
-
-**Solution (v2 — with auth):** Add a simple email-based auth (magic link via Resend). Store bookmarks in a new `app.saved_project` table. This enables cross-device sync and is foundation for future newsletter features.
-
-**Migration (v2):**
-```sql
-CREATE TABLE app.saved_project (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES app.user(id),
-  project_id UUID NOT NULL REFERENCES app.project(id),
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE(user_id, project_id)
-);
-```
-
----
-
-## 9. RSS / Atom feeds per platform
-
-**Status:** Proposed  
-**Effort:** Small  
-**Impact:** Medium — developer audience expects RSS
-
-**Problem:** The target audience (developers/indie hackers) loves RSS readers. No feeds exist.
-
-**Solution:** Add:
-- `/feed/projects.xml` — all projects
-- `/feed/github.xml` — top GitHub projects
-- `/feed/producthunt.xml` — top PH projects
-- `/feed/youtube-insights.xml` — latest video insights
-
-Each is a plain `/api/feed/[platform]` route that renders RSS XML. Use the existing DB queries. Include project name, one_liner, link, and date.
-
----
-
-## 10. Trending charts (sparklines for GitHub stars)
-
-**Status:** Proposed  
-**Effort:** Medium-Large  
-**Impact:** Very High — visual data is 10x more scannable than tables
-
-**Problem:** The project detail page shows raw numbers (2.4k stars) but no *trajectory*. Is it growing fast, flat, or declining?
-
-**Solution:** On the project detail page, render a tiny SVG sparkline showing the last 30 days of GitHub stars. Source data: `raw.snapshot` rows for that project, grouped by date.
-
-**Implementation:**
-1. Add a DB query: `SELECT date(timestamp) as day, max(stars) FROM raw.snapshot WHERE project_id = $1 AND platform = 'github' AND timestamp > now() - interval '30 days' GROUP BY 1 ORDER BY 1`
-2. Server-render a tiny SVG with `<polyline>` using normalized values
-3. Show on project cards as a small inline chart when hovering
-
-The snapshot table already exists (used for the "latest stars" query), so no new data collection needed.
-
----
-
-## 11. Locale persistence review — already done
-
-**Status:** ✅ Already implemented  
-**Details:** The locale is persisted in both cookie (1 year, site-wide) and localStorage. On SSR, the cookie is read server-side so there's no flash. On client toggle, `router.refresh()` triggers server re-render. No issues found.
-
----
-
-## 12. Insight category filtering improvements
-
-**Status:** Proposed  
-**Effort:** Small  
-**Impact:** Medium
-
-**Problem:** The `/youtube-insights` page has category filter and sentiment filter, but no date range filter. As insights grow, this becomes essential.
-
-**Solution:** Add a "Last 7 days / Last 30 days / All time" filter alongside existing controls. Implemented as a simple date WHERE clause on `insight.created_at` in the DB query.
-
----
-
-## 13. AI auto-tagging with granular tags
-
-**Status:** Proposed  
-**Effort:** Medium (backend worker)  
-**Impact:** Medium
-
-**Problem:** Projects are tagged into 8 broad LLM categories (AI/ML, Dev Tools, etc.). This is too coarse for interesting filtering.
-
-**Solution:** Enhance the LLM classification prompt to extract up to 5 granular sub-tags per project. Store in a new `app.project_tag` table:
-```sql
-CREATE TABLE app.project_tag (
-  project_id UUID REFERENCES app.project(id),
-  tag TEXT NOT NULL,
-  PRIMARY KEY (project_id, tag)
-);
-```
-
-Examples: `langchain`, `nextjs-template`, `saas-boilerplate`, `chrome-extension`, `devtool-cli`, `docker-image`, `open-source-alternative`.
-
-Enable filtering via URL: `/projects?tag=saas-boilerplate`.
-
----
-
-## Priority Matrix
-
-| # | Feature | Effort | Impact | Order |
-|---|---|---|---|---|
-| 1 | Browser language detection | Small | Medium | 🥇 |
-| 2 | Sort by stars/upvotes | Medium | High | 🥇 |
-| 3 | Fuzzy search | Medium | High | 🥇 |
-| 4 | AI recommendations | Med-Large | Very High | 🥈 |
-| 5 | AI summaries | Medium | High | 🥈 |
-| 6 | Smarter weekly digest | Medium | High | 🥈 |
-| 7 | Dark mode toggle | Small | Medium | 🥉 |
-| 8 | Bookmark/save | Medium | High | 🥉 |
-| 9 | RSS feeds | Small | Medium | 🥉 |
-| 10 | Sparkline charts | Med-Large | Very High | 🥈 |
-| 12 | Date range filter | Small | Medium | 🥉 |
-| 13 | Granular tags | Medium | Medium | 🥉 |
-
----
-
-*## 14. Weekly Trend Comparison & Score Direction (Run #14)
-
-**Status:** Proposed
-**Effort:** Medium (2 days)
-**Impact:** Very High — turns /trends from a snapshot into a narrative
-**Category:** Data
-
-**Problem:** The current /trends page shows a single week snapshot. A reader sees "Hyperscale is trending with score 87" but has no idea if that's up from 62 last week, down from 91, or flat. Without direction, scores lack context. The weekly report feels like a static PDF, not a living dashboard.
-
-**Solution:** Add week-over-week comparison to every trend data point. This makes the page the #1 reason to visit — it becomes a trend *tracker*, not just a trend *snapshot*.
-
-### 1. Backend: Store previous week's scores
-
-Add to the `weekly_trend` query (or a new helper `getTrendComparison`) that fetches both the current and previous week:
-
-```sql
--- Get top products from previous week for comparison
-SELECT pt.slug, wts.score, wts.rank
-FROM weekly_trend_scores wts
-JOIN app.project pt ON pt.id = wts.project_id
-WHERE wts.week_start = $1 - INTERVAL '7 days'
-ORDER BY wts.rank ASC;
-```
-
-### 2. Score deltas on product cards
-
-Add a `Δ` (delta) indicator next to each score on the product card. Green arrow up if up ≥5, red arrow down if down ≥5, grey dash if within ±4.
-
-**ProductCard component changes:**
-```tsx
-// Add to product type
-interface WeeklyTrendProduct {
-  // existing fields...
-  score_delta?: number; // positive = up, negative = down, undefined = new this week
-  prev_score?: number;
-  prev_rank?: number;
-}
-
-// Badge rendering
-{Number.isFinite(product.score) && (
-  <span className="inline-flex items-center gap-1 shrink-0 rounded-md bg-emerald-50 px-1.5 py-0.5 text-xs font-semibold tabular-nums">
-    {product.score}
-    {product.score_delta !== undefined ? (
-      product.score_delta >= 5 ? (
-        <ArrowUp className="h-3 w-3 text-emerald-500" />
-      ) : product.score_delta <= -5 ? (
-        <ArrowDown className="h-3 w-3 text-red-500" />
-      ) : (
-        <Minus className="h-3 w-3 text-neutral-400" />
-      )
-    ) : (
-      <Sparkles className="h-3 w-3 text-amber-400" title="New this week" />
-    )}
-  </span>
-)}
-```
-
-### 3. Summary comparison block
-
-Add a section below the main summary that compares the themes with last week:
-
-> 🔄 **Shift from last week:** "AI Code Editors" replaced "Vector Databases" as the #1 emerging theme. 3 products from last week's top 10 fell off entirely.
-
-This gives the AI-generated weekly summary a dynamic, comparative angle instead of a static description.
-
-### 4. "Products on the Rise" section
-
-Add a new card section showing the 3 products with the biggest score increase this week. These are the breakout hits worth paying attention to:
-
-```sql
-SELECT *
-FROM weekly_trend_scores
-ORDER BY (score - prev_score) DESC
-LIMIT 3;
-```
-
-### 5. Charts — 4-week sparkline (future phase)
-
-Phase 2: store 4 weeks of scores and render a mini line chart in the product card. This is the visual that makes data irresistible.
-
-### DB Schema Changes
-
-```sql
--- Store score history by product by week
-CREATE TABLE app.weekly_snapshot_history (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  project_id UUID REFERENCES app.project(id) NOT NULL,
-  score NUMERIC(5,1),
-  rank INTEGER,
-  week_start DATE NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  UNIQUE (project_id, week_start)
-);
-
-CREATE INDEX idx_weekly_snap_project ON app.weekly_snapshot_history(project_id);
-CREATE INDEX idx_weekly_snap_week ON app.weekly_snapshot_history(week_start);
-```
-
-### Effort breakdown
-
-| Task | Hours |
-|------|-------|
-| DB migration + helper query | 3h |
-| Backend API change (`getLatestWeeklyTrend` → include deltas) | 2h |
-| Frontend ProductCard delta badges | 2h |
-| "Products on the Rise" section | 2h |
-| Summary comparison block (AI prompt change) | 3h |
-| 4-week sparkline (Phase 2) | 4h |
-
-**Total:** ~12h / 2 days (Phase 1 only)
-
-**Impact:** \
-- 📈 /trends becomes a living dashboard, not a static report \
-- 🏆 Readers visit weekly to see what *changed*, not what's listed \
-- 🔥 "Products on the Rise" is shareable social content \
-- 🧠 Data quality: score deltas surface validation issues (e.g., a product jumping 50 points → investigate)
-
----
-
-## Priority Matrix
-
-| # | Feature | Effort | Impact | Order |
-|---|---|---|---|---|
-| 1 | Browser language detection | Small | Medium | 🥇 |
-| 2 | Sort by stars/upvotes | Medium | High | 🥇 |
-| 3 | Fuzzy search | Medium | High | 🥇 |
-| 4 | AI recommendations | Med-Large | Very High | 🥈 |
-| 5 | AI summaries | Medium | High | 🥈 |
-| 6 | Smarter weekly digest | Medium | High | 🥈 |
-| 7 | Dark mode toggle | Small | Medium | 🥉 |
-| 8 | Bookmark/save | Medium | High | 🥉 |
-| 9 | RSS feeds | Small | Medium | 🥉 |
-| 10 | Sparkline charts | Med-Large | Very High | 🥈 |
-| 12 | Date range filter | Small | Medium | 🥉 |
-| 13 | Granular tags | Medium | Medium | 🥉 |
-| 14 | Trend score deltas + "Products on the Rise" | Medium | Very High | 🥈 |
-
----
-
-*Run #14 proposed by JBK (CTO) on 2026-06-21. /trends Focus E tour: core page structure is solid, lacks week-over-week context — feature turns snapshot into living dashboard.*
-
----
-
-## 15. Detail Page Content Richness — Related Projects + Breadcrumb + Structured Sections
-
-**Status:** Proposed
-**Effort:** Medium (3-4 days)
-**Impact:** Very High — transforms content-desert detail pages into rich discovery hubs
-**Category:** UX / Discovery
-**Source:** Focus C tour — all 5 tested detail pages had < 300 chars total, 0 related links, no bookmarks, no description sections
-
-**Problem:** Project detail pages are content deserts. Across 5 tested pages:
-- 150-260 characters total content
-- 0 related project links on every page
-- No AI summaries rendered (despite backend having 50+ summaries populated)
-- No "About" / "Description" / structured sections
-- No breadcrumb navigation (2 of 5 pages)
-- ZH locale shows 0 Chinese characters (i18n not reaching detail page)
-- 2 of 5 slugs return 404 (stale/deleted projects in DB)
-
-Users click a project, get a bare page, and have no reason to stay or click further. Discovery ends at the detail page.
-
-**Solution — 4 layers of content richness:**
-
-### Layer 1: Fix fundamentals (Day 1)
-- **Verify AI summary rendering:** The ai_summary column has 50+ populated rows, and the frontend PR #41 was "merged", but NOTHING renders. Check the deployment, or the query doesn't include the column.
-- **Breadcrumb navigation:** `<nav><a href="/projects">Projects</a> / <span>{project.name}</span></nav>` — simple, semantic, zero data cost.
-- **Structured sections:** Add clear heading sections: Overview (one-liner), Data (platform stats), About (ai_summary or fallback), Links (GitHub, PH, HN).
-
-### Layer 2: Related Projects (Day 2-3)
-
-SQL query that runs alongside the main project fetch:
-
-```sql
-SELECT p.id, p.name, p.slug, p.one_liner, p.ai_summary, p.stars
-FROM app.project p
-WHERE p.llm_category = (
-  SELECT llm_category FROM app.project WHERE slug = :current_slug
-)
-AND p.slug != :current_slug
-AND p.stars IS NOT NULL
-ORDER BY p.stars DESC
-LIMIT 4;
-```
-
-Display as a horizontal row of mini cards below the main project info. Show name, one-liner (truncated), and a "View →" link. Title the section "More in [category]".
-
-**Why it works:**
-- Zero additional infra — llm_category already exists on every project
-- Every project with an llm_category gets instant related projects
-- Drives internal page views (users stay on site)
-- Creates discovery loops: Project A → Related → Project B → Related
-
-### Layer 3: External Links Section (Day 2)
-
-Show links to where the project lives:
-- GitHub repo (stars badge)
-- Product Hunt page (upvotes badge)
-- Hacker News thread (points badge)
-- Website (if available)
-
-Use existing `raw.snapshot` data and join to generate hyperlinks:
-- GitHub: `https://github.com/{owner}/{repo}`
-- Product Hunt: `https://www.producthunt.com/posts/{slug}`
-
-### Layer 4: 404 Handling (Day 1)
-
-Not all slugs in the DB have corresponding detail pages (2 of 5 tested returned 404). Either:
-- Graceful 404 with "This project is no longer tracked. Browse [all projects](/projects) instead." + search bar
-- OR add a reaper that soft-deletes projects whose slugs 404 in the detail page routing
-
-### Implementation Plan
-
-| Task | Files | Effort |
-|------|-------|--------|
-| 1. Debug AI summary rendering | `apps/web/lib/db.ts`, `apps/web/app/projects/[slug]/page.tsx` | 2h |
-| 2. Add breadcrumb | `apps/web/app/projects/[slug]/page.tsx` | 1h |
-| 3. Add structured sections | `apps/web/app/projects/[slug]/page.tsx`, i18n keys | 2h |
-| 4. Related projects query + card row | `apps/web/lib/db.ts`, new `RelatedProjects` component | 4h |
-| 5. External links section | Same page, use existing snapshot data | 2h |
-| 6. Graceful 404 | `apps/web/app/projects/[slug]/not-found.tsx` | 1h |
-| 7. ZH i18n for detail page | `apps/web/lib/i18n.ts` | 1h |
-
-**Total:** ~13h / 3-4 days
-
-### Impact
-- 📈 Average content per detail page: 200 chars → 800+ chars (4x increase)
-- 🧭 Discovery loop created (project → related project → related project)
-- 🔧 Fixes a shipped-but-broken feature (AI summaries)
-- 🌏 Fixes i18n hole (ZH locale on detail pages)
-- 🛡️ Graceful error handling for dead slugs
-- 🎯 Drives internal page views, reducing bounce rate
-
-### Design for non-engineer (Maggie's view)
-
-> When I click a project, I want to know what it does, see a few similar projects, and have clear links to check it out myself. Right now I get a name and a one-liner and nowhere to go. The breadcrumb at the top should say "Projects > {name}" and at the bottom there should be a row of 4 cards saying "More in AI/ML" or whatever category.
-
----
-
-## Priority Matrix
-
-| # | Feature | Effort | Impact | Order |
-|---|---|---|---|---|
-| 1 | Browser language detection | Small | Medium | 🥇 |
-| 2 | Sort by stars/upvotes | Medium | High | 🥇 |
-| 3 | Fuzzy search | Medium | High | 🥇 |
-| 4 | AI recommendations | Med-Large | Very High | 🥈 |
-| 5 | AI summaries | Medium | High | 🥈 |
-| 6 | Smarter weekly digest | Medium | High | 🥈 |
-| 7 | Dark mode toggle | Small | Medium | 🥉 |
-| 8 | Bookmark/save | Medium | High | 🥉 |
-| 9 | RSS feeds | Small | Medium | 🥉 |
-| 10 | Sparkline charts | Med-Large | Very High | 🥈 |
-| 12 | Date range filter | Small | Medium | 🥉 |
-| 13 | Granular tags | Medium | Medium | 🥉 |
-| 14 | Trend score deltas | Medium | Very High | 🥈 |
-| **15** | **Detail Page Content Richness** | **Medium** | **Very High** | **🥇** |
-
----
-
-*Run #15 proposed by JBK (CTO) on 2026-06-21. Focus C /projects/[slug] tour: detail pages are content deserts with 150-260 chars, no related projects, no AI summaries rendered, no breadcrumbs, broken i18n. Proposal fixes all layers.*
-
----
-
-## 16. Weekly Trends Dashboard — Visual Charts + Shareable Snapshot (Run #16)
-
-**Status:** Proposed
-**Effort:** Medium-Large (3-4 days)
-**Impact:** Very High — makes /trends the #1 reason to visit the site
-**Category:** Visual / Growth
-**Source:** Focus E /trends tour — 0 images, 0 charts, 0 star/upvote metrics, 400px mobile overflow, 2616 chars total text. Page is a text list when it should be a visual dashboard.
-
-**Problem:** The /trends page is currently a text-based report. From the actual product tour:
-- **0 images, 0 charts, 0 graphs** — all data is textual
-- **0 star mentions, 0 upvote mentions** — no quantitative metrics beyond a single `score`
-- **Score lacks context** — no growth %, no week-over-week delta, no historical trajectory
-- **Mobile overflows slightly** (400px > 375px viewport)
-- **14 links, 5 headings, 15 paragraphs** — reads like a blog post, not a dashboard
-- Content is only 2616 chars — thin for a full trends page
-
-The page title is "Weekly Hot Trends" and subtitle is "A weekly read on what is gaining traction" — positioning it as a 5-minute morning read. But the actual page provides no visual hook or data story. A user scanning this in their morning routine will skim text, not engage.
-
-**Solution — 3 layers of visualization:**
-
-### Layer 1: Category Distribution Donut Chart (Day 1)
-
-At the top of the page, render a simple server-side SVG donut chart showing the breakdown of trending products by category (AI/ML, DevTools, Design, etc.).
-
-**Data source:** Already exists in `trend.top_products` — group by `llm_category` and count.
-
-**Implementation:**
-```tsx
-// Simple inline SVG donut — no JS library needed
-function CategoryDonut({ products }: { products: WeeklyTrendProduct[] }) {
-  const counts: Record<string, number> = {};
-  for (const p of products) {
-    const cat = p.llm_category || 'Uncategorized';
-    counts[cat] = (counts[cat] || 0) + 1;
-  }
-  const total = products.length;
-  // SVG with stroke-dasharray for each segment
-  // ...
-}
-```
-
-Colors: use a predefined palette (8 categories, 8 distinct colors). Render a legend below the chart.
-
-### Layer 2: Platform Distribution Bar Chart (Day 1-2)
-
-Below the category donut, a horizontal bar chart showing how many products came from each platform:
-
-```
-GitHub    ████████████████  42%
-PH        ██████████        27%
-HN        ██████            16%
-Reddit    ███               8%
-YouTube   ██                5%
-X         █                 2%
-```
-
-**Data source:** Same `trend.top_products` — group by `platform` field.
-
-**Implementation:** Simple server-rendered divs with CSS width percentages. Zero JS, zero dependencies. Responsive: stacks to vertical on mobile.
-
-### Layer 3: Score Leaderboard with Mini Sparklines (Day 2-3)
-
-Replace the 2-column card grid with a sorted leaderboard that includes:
-- Rank (#1, #2, #3 with medal emoji for top 3)
-- Project name + platform badge
-- Score with sparkline bar (not SVG — just a colored bar width proportional to score)
-- Score delta (up/down arrow with color) if available from proposal #14
-
-```
-#1  🥇  87 ████████████████████  LangChain       +12 ▲  GH
-#2  🥈  82 ████████████████████  Supabase         -3 ▼  GH
-#3  🥉  79 ████████████████████  Bolt.new         +8 ▲  PH
-#4     72 ██████████████████     Windsurf               HN
-#5     68 ████████████████       Cursor AI             GH
-```
-
-This reads much faster than the current card grid. Users scan top-to-bottom.
-
-### Layer 4: Shareable Weekly Snapshot Image (Day 3-4)
-
-**Growth feature:** Add a "Share this week's trends" button that generates an OG-image-style PNG with:
-- "Weekly Hot Trends" header + date
-- Top 3 products with scores
-- Platform distribution mini-chart
-- QR code to /trends
-
-**Implementation:** Use `@vercel/og` (Vercel Edge OG Image Generation) — returns a PNG from an API route. The image can be:
-1. Downloaded as PNG
-2. Shared on social media via `?format=image` query param
-3. Used as the `/trends` Open Graph image when shared on X/LinkedIn
+**Solution:** Make each theme keyword a clickable link to a filtered `/projects` view:
 
 ```tsx
-// app/api/trends-og/route.tsx
-import { ImageResponse } from '@vercel/og';
-
-export async function GET() {
-  return new ImageResponse(
-    <div style={{...}}>
-      <h1>Weekly Hot Trends</h1>
-      <p>June 15–21, 2026</p>
-      {/* Top 3 products with mini bar charts */}
-    </div>,
-    { width: 1200, height: 630 }
-  );
-}
+// In the trends page component
+{themes.map(theme => (
+  <Link key={theme} href={`/projects?tag=${slugify(theme)}`} 
+        className="inline-block rounded-full bg-neutral-100 px-3 py-1 text-sm dark:bg-neutral-800">
+    {theme}
+  </Link>
+))}
 ```
 
-### Mobile Fix
+Alternatively, for the MVP, just link to `<a href="/projects?q=recursive+self+improvement">`.
 
-The current 400px overflow is likely caused by the `ProductCard` score badge or card padding at small screens. Fix: add `overflow-hidden` to card container or reduce padding at `max-w-sm` breakpoint:
-```css
-@media (max-width: 420px) {
-  .product-card { padding: 0.75rem; }
-  .score-badge { font-size: 0.7rem; padding: 0.125rem 0.5rem; }
-}
-```
-
-### Implementation Plan
-
-| Task | Files | Effort |
-|------|-------|--------|
-| Category donut chart (inline SVG) | `apps/web/app/trends/page.tsx` + new component | 3h |
-| Platform distribution bar chart | Same component file | 2h |
-| Score leaderboard replacing card grid | Same page, restructure render | 4h |
-| Mobile overflow fix | CSS tweak in page or global | 0.5h |
-| `/api/trends-og` image endpoint | New route handler | 3h |
-| Share button + download integration | Frontend button + download logic | 2h |
-| Update trends OG metadata | `metadata` export in page.tsx | 0.5h |
-
-**Total:** ~15h / 3-4 days
-
-### Impact
-- 📊 **Visual data is 10x faster to scan** than text — users get the story in 3 seconds
-- 📱 **Mobile readability** jumps — bar charts are more readable than card grids at 375px
-- 🔗 **Shareable images drive organic reach** — a weekly infographic is inherently shareable
-- 🏆 **Scores with visual bars** create competition psychology — users want to check who's #1
-- 📈 **Product Tracer becomes a "morning habit"** — visual weekly snapshot > text report
-- 🖼️ **Social media presence** — OG image on /trends shows the chart, driving click-through
-
-### Design for non-engineer (Maggie's view)
-
-> I want to see a colorful donut chart showing "This week's biggest categories" right at the top. Then a horizontal bar chart showing where these products live (GitHub, PH, etc.). Then a simple numbered list of the top products with score bars — like a music chart. Below that, a "Share" button that creates a pretty image I can post on LinkedIn or X.
-
-### Risk
-- `@vercel/og` has a 50ms cold start on Vercel serverless — acceptable for a share button
-- SVG donut chart is experimental — test on Safari/Firefox. Fallback: CSS-only bar version (already covered by Layer 2)
-- Weekly snapshot only has data when `getLatestWeeklyTrend()` returns a row — empty state remains as-is
-
-### Future Phase 2
-- **4-week trend line chart**: small SVG sparkline showing score trajectory for top 5 products over 4 weeks
-- **Export as PDF**: "Download Weekly Report" button
-- **Email subscription**: "Get this in your inbox every Monday"
+**Impact**: Turns a static section into a discovery entry point. No backend changes needed if using the existing search param.
 
 ---
 
-## Priority Matrix
+## 6. /trends — Clickable video highlights
 
-| # | Feature | Effort | Impact | Order |
-|---|---|---|---|---|
-| 1 | Browser language detection | Small | Medium | 🥇 |
-| 2 | Sort by stars/upvotes | Medium | High | 🥇 |
-| 3 | Fuzzy search | Medium | High | 🥇 |
-| 4 | AI recommendations | Med-Large | Very High | 🥈 |
-| 5 | AI summaries | Medium | High | 🥈 |
-| 6 | Smarter weekly digest | Medium | High | 🥈 |
-| 7 | Dark mode toggle | Small | Medium | 🥉 |
-| 8 | Bookmark/save | Medium | High | 🥉 |
-| 9 | RSS feeds | Small | Medium | 🥉 |
-| 10 | Sparkline charts | Med-Large | Very High | 🥈 |
-| 12 | Date range filter | Small | Medium | 🥉 |
-| 13 | Granular tags | Medium | Medium | 🥉 |
-| 14 | Trend score deltas | Medium | Very High | 🥈 |
-| **15** | **Detail Page Content Richness** | **Medium** | **Very High** | **🥇** |
-| **16** | **Trends Visual Dashboard + Shareable Snapshot** | **Medium-Large** | **Very High** | **🥇** |
+**Status:** Proposed  
+**Effort:** Small (backend + frontend)  
+**Impact:** Medium — reduces friction from summary to action
+
+**Problem:** The VIDEO HIGHLIGHTS section on /trends is a prose paragraph ("Notable videos include discussions on RSI's $4.65B valuation…") with no clickable links to the YouTube videos. Users read about a video but can't navigate to it.
+
+**Solution:** If the trend data includes video IDs (from the weekly_trend or related table), render each mentioned video as a tappable card with title + "▶ Watch on YouTube" link beneath the summary paragraph. Alternatively, inline the YouTube URLs as markdown links in the summary text.
+
+**Backend**: Ensure the trends query (`getWeeklyTrends`) returns video IDs or YouTube URLs alongside the summary text. The VIDEO HIGHLIGHTS section in the page already has access to trend data — just need to render the links.
 
 ---
 
-*Run #16 proposed by JBK (CTO) on 2026-06-21. Focus E /trends tour: page is text-only, no images/charts/metadata, 400px mobile overflow. Solution: category donut, platform bar chart, score leaderboard with bars, shareable OG image. Makes /trends a visual daily habit.*
+## 7. /trends — "No data" state for weeks with no trends
+
+**Status:** Proposed  
+**Effort:** Very Small  
+**Impact:** Low — edge case polish
+
+**Problem:** The week selector dropdown currently shows all available weeks. If a user selects a week with no trend data (possible for brand-new weeks or test data), the page would show empty sections.
+
+**Solution:** Add a client-side check: if the trend query returns empty/null data, show a human-friendly state:
+
+> "No trend data available for this week. [Browse the latest trends →]"
+
+This is a defensive guard — the week selector already filters to weeks with data, so this would only trigger for edge cases.
 
 ---
 
-## 17. YouTube Insight Image Generation — Auto-thumbnails from video content
+## 8. /trends — Week boundary visual indicator
 
-**Status:** Proposed
-**Effort:** Medium (2-3 days)
-**Impact:** High — solves "0 images" problem on /youtube-insights, improves scanability 10x
-**Category:** Visual / UX
-**Source:** Focus D tour (2026-06-21) — 0 images on the entire /youtube-insights page, 9178 chars of pure text makes it hard to scan
+**Status:** Proposed  
+**Effort:** Very Small (frontend only)  
+**Impact:** Low — clarifies data scope
 
-**Problem:** The /youtube-insights page is entirely text. From the actual product tour:
-- **0 images** on the full page (27 links, 9178 chars EN / 4014 chars ZH)
-- Grid view renders 4 columns at 1440px with cards that are text-only
-- Each insight has a YouTube video link (`youtube.com/watch?v=...`) but no thumbnail
-- Users can't visually scan to find interesting content — every card looks the same
+**Problem:** The /trends page shows "Week of 2026-06-22 – 2026-06-28" without explaining the week boundary convention (Mon-Sun ISO vs Sun-Sat US).
 
-This is a missed opportunity: the YouTube API provides video thumbnails for every video ID. Even without the full API, thumbnails follow a predictable URL pattern.
-
-**Solution — 3-tier approach:**
-
-### Tier 1: YouTube thumbnail URL (Day 1, zero code)
-
-YouTube thumbnails follow a deterministic URL pattern:
-```
-https://img.youtube.com/vi/{VIDEO_ID}/maxresdefault.jpg
-https://img.youtube.com/vi/{VIDEO_ID}/hqdefault.jpg (fallback)
-```
-
-Since each insight links to `youtube.com/watch?v={VIDEO_ID}`, extract the video ID from the link and render the thumbnail inline.
-
-**Implementation:**
-```tsx
-// In InsightCard component, extract video ID from the YouTube link
-function getYouTubeThumbnail(videoUrl: string): string | null {
-  const match = videoUrl.match(/(?:v=|\/)([a-zA-Z0-9_-]{11})(?:\?|$|&)/);
-  if (!match) return null;
-  return `https://img.youtube.com/vi/${match[1]}/mqdefault.jpg`; // 320x180, balanced quality/size
-}
-
-// In card render:
-<img 
-  src={getYouTubeThumbnail(insight.videoUrl)} 
-  alt={insight.title}
-  className="rounded-lg object-cover w-full aspect-video"
-  loading="lazy"
-/>
-```
-
-**Why `mqdefault.jpg` instead of `maxresdefault`:**
-- `maxresdefault.jpg` (1920x1080) — often 404 for old/non-HD videos
-- `hqdefault.jpg` (480x360) — always available but low quality
-- `mqdefault.jpg` (320x180) — medium quality, always available, perfect for card layout
-- `default.jpg` (120x90) — too small
-- Fallback chain: `mqdefault` → `hqdefault` → placeholder SVG
-
-### Tier 2: Link expansion (Day 1)
-
-Each insight card should show:
-- Video thumbnail (from Tier 1)
-- Channel name (extract from description or store in DB)
-- Published date relative ("3 days ago")
-- View count (if available from snapshot or metadata)
-- Category badge (already exists)
-- Sentiment indicator (if available)
-
-### Tier 3: AI-generated summary thumbnail (Day 2-3)
-
-Use the existing LLM pipeline to generate a small visual summary for each insight:
-- Extract 1 key sentence from the insight description
-- Generate a colored card with a gradient background based on sentiment
-- Render as a server-side SVG that looks like a "quote card"
-
-This is more complex and lower priority — Tier 1 is the 80/20 solution.
-
-### Implementation Plan (Tier 1 only)
-
-| Task | Files | Effort |
-|------|-------|--------|
-| Extract YouTube video IDs from insight links | `apps/web/lib/youtube.ts` (NEW helper) | 1h |
-| Thumbnail component | `apps/web/components/youtube-thumbnail.tsx` (NEW) | 1h |
-| Integrate into cards | `apps/web/components/insight-card.tsx` (modify) | 1h |
-| Loading states + fallback | Same component | 0.5h |
-| Mobile responsive check | Verify grid view at 375px | 0.5h |
-
-**Total:** ~4h / half day for Tier 1
-
-### Impact
-- 🖼️ **0 images → thumbnails on every card** — visual scanability increases 10x
-- 🎯 Users can find interesting content at a glance (recognizable video thumbnails)
-- 📱 Mobile grid view becomes visually distinct (currently all text looks same)
-- 🔗 Zero extra cost — YouTube thumbnails are free, no API key needed
-- ⚡ No server load — thumbnails are cached by the browser and served from YouTube CDN
-
-### Empty state / fallback
-- If video ID can't be extracted, show a neutral placeholder SVG (video icon + "No thumbnail")
-- If YouTube thumbnail 404s, fall back to the neutral placeholder
-- SSR-friendly: use `<img>` with `onError` for fallback
-
-### Design for non-engineer (Maggie's view)
-
-> I want to see a little thumbnail image next to each YouTube video insight so I can tell which ones I've seen before. Right now all I see is text and I have to read every card to find something interesting. The thumbnail should be a small video preview image at the top of each card.
-
-### Risk
-- YouTube thumbnails may be blocked by some ad blockers — acceptable (show placeholder SVG)
-- Video IDs embedded in links: some insights link to channels or shorts. The fallback path handles this gracefully
-- Lazy loading ensures no performance impact
-
----
-
-## Priority Matrix
-
-| # | Feature | Effort | Impact | Order |
-|---|---|---|---|---|
-| 1 | Browser language detection | Small | Medium | 🥇 |
-| 2 | Sort by stars/upvotes | Medium | High | 🥇 |
-| 3 | Fuzzy search | Medium | High | 🥇 |
-| 4 | AI recommendations | Med-Large | Very High | 🥈 |
-| 5 | AI summaries | Medium | High | 🥈 |
-| 6 | Smarter weekly digest | Medium | High | 🥈 |
-| 7 | Dark mode toggle | Small | Medium | 🥉 |
-| 8 | Bookmark/save | Medium | High | 🥉 |
-| 9 | RSS feeds | Small | Medium | 🥉 |
-| 10 | Sparkline charts | Med-Large | Very High | 🥈 |
-| 12 | Date range filter | Small | Medium | 🥉 |
-| 13 | Granular tags | Medium | Medium | 🥉 |
-| 14 | Trend score deltas | Medium | Very High | 🥈 |
-| **15** | **Detail Page Content Richness** | **Medium** | **Very High** | **🥇** |
-| **16** | **Trends Visual Dashboard + Shareable Snapshot** | **Medium-Large** | **Very High** | **🥇** |
-| **17** | **YouTube Insight Thumbnails** | **Small-Medium** | **High** | **🥇** |
-
----
-
-*Run #17 proposed by JBK (CTO) on 2026-06-21. Focus D /youtube-insights tour: 0 images on page, 9178 chars pure text, low scanability. Solution: free YouTube thumbnails via deterministic URL, zero API cost. Visual scanability 10x.*
+**Solution:** Add a small subdued label or tooltip: "ISO week (Mon–Sun)" or "Data collected Mon 00:00 UTC – Sun 23:59 UTC". Alternatively just change the display to match the query convention more clearly.

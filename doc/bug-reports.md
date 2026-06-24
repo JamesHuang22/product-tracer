@@ -1,5 +1,59 @@
 # Bug Reports — 2026-06-24
 
+## Automated Test Summary (Run #22 — /trends focus)
+- Browser test: All 5 pages HTTP 200, 1 console error (favicon 404)
+- Focal tour: /trends — all 6 H2 sections render (Summary, WoW, Mix, Top Products, Emerging Themes, Video Highlights)
+- ✅ WoW comparison present, ✅ week selector dropdown (1 option — latest week)
+- ✅ 5 top product links to detail pages, ✅ 0 empty/loading sections
+- ✅ Mobile 375px — no overflow on /trends
+- ✅ ZH locale — not checked this run (was full-translated last run)
+- ❌ /favicon.ico 404 (known P2, unchanged)
+- ❌ Top product link text still concatenated (rank+badge+title+WoW blended) — known P2
+- **No new P0/P1 bugs** — site healthy across all routes
+- REQUEST.md has active tasks (not overwritten)
+
+## Product Tour: 2026-06-24T08:22 UTC (Focus: /trends)
+
+### Automated test — all passing
+- ✅ Homepage HTTP 200 — 839 words, H1 present, 1 console error (favicon 404)
+- ✅ /projects HTTP 200 — search, filter, 5 project links
+- ✅ /trends HTTP 200 — 231 words, 6 H2 sections, WoW comparison, 5 top product links
+- ✅ /youtube-insights HTTP 200 — 1177 words, grid/list toggle, 40 clickable elements
+- ✅ /bookmarks HTTP 200
+- ✅ Mobile 375px — no horizontal overflow
+- ✅ ZH locale — nav items translated
+- ❌ /favicon.ico 404 (known P2, unchanged)
+
+### [P3] /trends — VIDEO HIGHLIGHTS section has 0 clickable YouTube links
+- **Description**: The VIDEO HIGHLIGHTS section on /trends shows a prose paragraph summarizing notable YouTube videos (RSI's $4.65B valuation, Claude Opus 4.6, GLM-5.2) but has ZERO clickable links. Users can't navigate to watch any of the mentioned videos. The section is read-only text.
+- **Found**: 2026-06-24T08:22 UTC
+- **Severity**: P3 (minor — the section is a summary, but lacks the obvious next step)
+- **Reproduction**:
+  1. Go to /trends
+  2. Scroll to VIDEO HIGHLIGHTS section
+  3. Count clickable YouTube links
+- **Expected**: Each mentioned video should have a "▶ Watch on YouTube" link or similar
+- **Actual**: 0 links — just a plain `<p>` with summary text
+
+### [P2] /trends — Top product link text concatenation (confirmed still present)
+- **Status**: Confirmed unchanged from previous run
+- The 5 top product links still show concatenated text (e.g., "1INAre You in the Weights?2") instead of clean accessible link text
+
+### [P3] /trends — EMERGING THEMES section has 0 clickable links
+- **Description**: The EMERGING THEMES section lists 8 themes (Recursive Self-Improvement, AI Agent Workflows, Open-Source LLMs, Edge AI, AI Video Generation, Developer Tools, Memory Systems for AI) but none are clickable. An obvious UX improvement would be linking each theme to `/projects?tag=<theme>` or a filtered view.
+- **Found**: 2026-08-22 UTC
+- **Severity**: P3 (nice-to-have — themes are currently just displayed as text tags)
+- **Reproduction**:
+  1. Go to /trends
+  2. Scroll to EMERGING THEMES
+  3. Try to click any theme keyword
+- **Expected**: Each theme links to filtered projects (e.g., `/projects?tag=open-source-llms`)
+- **Actual**: Plain text with no clickable elements
+
+### No new P0/P1 bugs
+- Site is healthy across all routes
+- Known P2 favicon 404 unchanged
+
 ## Automated Test Summary (Run #21 — /projects focus)
 - Browser test: All 5 pages HTTP 200, 1 console error (favicon 404)
 - Focal tour: /projects (search, category filter, detail pages), mobile /projects
