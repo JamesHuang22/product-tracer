@@ -676,3 +676,19 @@ Likely **test-harness false positives** (verify against the live, recovered site
 - No related projects on detail pages (P2)
 - /bookmarks empty state (P2, filed previous run)
 - REQUEST.md has 3 pending tasks (not overwritten)
+
+---
+## Browser Test: 2026-06-24 (2026-06-24 08:52)
+**Focus:** /youtube-insights + mobile
+
+### [P2] /youtube-insights: No view/grid/list toggle with many items
+**Steps:** Look for toggle
+
+### [P2] /youtube-insights: No category filter dropdown
+**Steps:** Look for select/filter element
+
+### [P1] /youtube-insights: Error text visible on page
+**Steps:** Page shows error content
+
+### [P2] https://www.youtube.com/watch?v=bBMJFZ1JRng: No back navigation
+**Steps:** Back link/button should exist
