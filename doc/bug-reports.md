@@ -1,5 +1,47 @@
 # Bug Reports — 2026-06-24
 
+## Browser Test Run #26 (2026-06-24 09:35 UTC) — Focus: /trends + locale
+
+### Automated Test — All 12/12 passing
+- ✅ / HTTP 200, ✅ /projects HTTP 200, ✅ /trends HTTP 200, ✅ /youtube-insights HTTP 200, ✅ /bookmarks HTTP 200
+- ✅ ZH locale footer /locale detection pass
+- ❌ /favicon.ico 404 (known P2, unchanged)
+
+### Product Tour: /trends + Mobile 375px + Locale check
+
+**[P2] /en/trends and /zh/trends return 404 — locale-prefixed routes not supported**
+- **Description**: The locale-prefixed URLs `/en/trends` and `/zh/trends` return HTTP 200 with only 89 chars of content — effectively a 404 page ("This page could not be found."). The /trends page is only available at the root `/trends` path. Other pages like `/zh/` (homepage) work correctly with translated nav items. This means users browsing in ZH locale who navigate to Trends from the nav bar may hit a 404.
+- **Found**: 2026-06-24T09:36 UTC
+- **Severity**: P2 (broken locale routing — breaks the locale consistency of the app)
+- **Reproduction**:
+  1. Visit `https://product-tracer.vercel.app/en/trends` — shows "404 — This page could not be found."
+  2. Visit `https://product-tracer.vercel.app/zh/trends` — same 404 page
+  3. Compare with `https://product-tracer.vercel.app/trends` — correct page with 1389 chars of content
+- **Expected**: `/en/trends` and `/zh/trends` should serve the trends page with appropriate locale (EN nav items on `/en/*`, ZH nav items on `/zh/*`)
+- **Actual**: Both return a 404 page (89 chars, "This page could not be found.")
+- **Impact**: The locale toggle in the nav bar likely links to `/zh/trends` when toggling from /trends. Users who toggle locale on /trends land on a 404. Users who manually add `zh/` to the URL cannot access a translated trends page.
+- **Note**: `/zh/` homepage works fine. This is a route-level issue — the /trends route may not be registered under the `[locale]` dynamic segment.
+
+**[P2] Mobile nav overflow — locale toggle + hamburger clipped at 375px (confirmed on /trends)**
+- **Description**: Confirmed on /trends at 375px viewport: the EN/中文 toggle buttons and hamburger menu are rendered off-screen (x > 375px) and are invisible/unreachable. The nav flex container overflows the viewport width with `overflow-x: clip` hiding the excess.
+- **Found**: Reconfirmed 2026-06-24T09:36 UTC (previously reported in Run #24)
+- **Severity**: P2 (mobile usability — users cannot switch locale or access hamburger nav)
+- **Root cause**: Nav bar uses `sm:` (640px) breakpoint but no responsive behavior for sub-640px widths. At 375px, brand + 5 nav links + locale toggle + hamburger need ~490px total.
+
+**Mobile tap targets < 44px — confirmed**
+- 36 small targets on homepage, 284 on /projects at 375px viewport (known, unchanged).
+
+### /trends week selector — functional with 2 historic weeks
+- ✅ Dropdown shows 2 week options (2026-06-22 and 2026-06-15)
+- ✅ URL updates with `?week=` param on selection
+- ✅ Content updates correctly between weeks (confirmed WoW shows "Are You in the Weights?" for both)
+- ❌ No WoW/change indicators visible in body text (trends page may suppress WoW when both weeks show same top product)
+
+### No new P0/P1 bugs
+- Site is healthy on all main routes
+- /trends has week selector working
+- REQUEST.md has active tasks (not overwritten)
+
 ## Automated Test Summary (Run #23 — /projects + detail page deep-dive)
 
 - **Focus**: /projects — search, tag filtering, detail page content, related projects
