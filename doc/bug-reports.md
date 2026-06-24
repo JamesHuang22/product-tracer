@@ -653,5 +653,111 @@ Bug 2 previously reported "/trends has 0 clickable links to individual trend ite
 - **2 bugs confirmed fixed** (Bug 2 links, Bug 5 empty buttons)
 - **1 bug escalated** (Bug 7+8 merged into Bug 19 — nav overflow on ALL pages)
 
+---
+
+## Browser Test Run #45 (2026-06-24 21:50 UTC) — Focus: /bookmarks end-to-end, detail page bookmark toggle, mobile nav, /youtube-insights re-check
+
+### Automated Test — 12/12 passing (Vercel deployment)
+- ✅ / → HTTP 200
+- ✅ /projects → HTTP 200
+- ✅ /trends → HTTP 200
+- ✅ /youtube-insights → HTTP 200
+- ✅ /bookmarks → HTTP 200
+- ✅ Grid layout w/ 100 project links on /projects
+- ✅ No server errors in any page body
+- ✅ i18n charset check
+
+### Product Tour Findings
+
+**Bookmark flow (end-to-end):**
+- ✅ Empty state on /bookmarks shows 6 links (nav + "Browse all projects") — no bookmark yet
+- ✅ Detail page has "Bookmark" button (126×38px) — clickable, toggles to "Bookmarked" (142×38px)
+- ✅ After clicking Bookmark on detail page → button text changes to "Bookmarked" with `aria-pressed="true"`
+- ✅ /bookmarks page then shows the bookmarked project (odysseus) with tag chips and description
+- ❌ Bookmark button is 38px tall — below WCAG 44px minimum (Bug 12 re-confirmed)
+- ❌ Bookmarked state has no aria-label — only `aria-pressed="true"`
+
+**Detail page structure (odysseus):**
+- ✅ Breadcrumb `<nav aria-label="Breadcrumb">` present
+- ✅ "AI SUMMARY" section present
+- ✅ "CROSS-PLATFORM SIGNALS" section with GitHub + YouTube links
+- ✅ "YOU MIGHT ALSO LIKE" heading present
+- ❌ **"YOU MIGHT ALSO LIKE" has 0 links** — empty section with heading but no related projects (P2)
+- ✅ Tag chips (#self-hosted, #ai, etc.) link to filtered /projects
+
+**/trends — garbled link text (Bug 17 re-confirmed):**
+- ❌ All 5 top product links still garbled: "1INAre You in the Weights?2", "2PHElvin1", "3PHDropmatico1", "4PHKimi K2.7 Code1", "5PHCloudback for Linear1"
+
+**/youtube-insights card content (Bug 13 status change — PARTIALLY FIXED):**
+- ⚠️ Previously: 20/20 blank. Now: 15/20 have insight text; only 5 remain blank
+- ✅ Cards show 🔥-prefixed insight text inside `<article>` elements
+- ❌ Category filter still not functional (Bug 14)
+- ❌ Grid/list toggle still not functional (Bug 15)
+
+**Mobile (375×812) nav overflow:**
+- ✅ Nav `overflow-x` = `visible` this run (not `clip`)
+- ✅ Nav scrollWidth=400 (improved from 490 previously), viewport=375, diff=25px
+- ❌ **EN button (32×24, left=383) — OFF-SCREEN**
+- ❌ **中文 button (31×40, left=415) — OFF-SCREEN**
+- ❌ **Theme toggle (25×28, left=466) — OFF-SCREEN**
+- ❌ Nav links all 20px tall (far below 44px minimum)
+
+**favicon.ico:** ❌ Persistent 404 (every page load)
+
+### New/Updated Bugs This Run
+
+---
+
+## Bug 23 [P2] — "YOU MIGHT ALSO LIKE" section has heading but 0 links
+- **Page**: `/projects/[slug]`
+- **Observed**: `<h2>You might also like</h2>` is rendered but contains zero anchor links. Empty section.
+- **Reproduction**: Visit any project detail → scroll to bottom → see heading → no related projects.
+- **Expected**: 3-5 related project cards based on shared tags/category.
+
+---
+
+## Bug 24 [P3] — Bookmark button 38px tall (below WCAG 44px)
+- **Page**: `/projects/[slug]` detail page
+- **Observed**: Bookmark button measures 126×38px. Toggled "Bookmarked" state also 142×38px.
+- **Expected**: `min-height: 44px` on the toggle button.
+
+---
+
+## Bug 13 status update: PARTIALLY FIXED (P1→P2)
+- Run #41: 20/20 cards blank. Run #45: 5/20 blank. Insight text now renders for 75% of cards.
+- Likely a data issue (old rows without key_insight) rather than rendering bug.
+- Severity downgraded to P2.
+
+---
+
+### Re-confirmed Status (cumulative)
+
+| Bug | Severity | Status | Notes |
+| --- | --- | --- | --- |
+| Bug 10 (DB crash local) | P0 | Unchanged | Local only; Vercel works |
+| Bug 11 (domain hijack) | P0 | Unchanged | producttracer.com → muqid.com |
+| Bug 6 (locale 404) | P1 | ×8 confirmation | All 6 locale routes still 404 |
+| Bug 13 (blank insight cards) | P1→P2 | PARTIALLY FIXED | 5/20 still blank (was 20/20) |
+| Bug 7+19 (nav overflow) | P2 | Slight improve | 400px nav vs 490px previously |
+| Bug 12 (touch targets <44px) | P2 | Re-confirmed | Nav links 20px, Bookmark 38px |
+| Bug 23 (empty related section) | P2 | NEW | Heading but 0 related projects |
+| Bug 14 (filter chips broken) | P3 | Unchanged | |
+| Bug 15 (grid/list toggle) | P3 | Unchanged | |
+| Bug 17 (garbled link text) | P3 | Re-confirmed | |
+| Bug 18 (no WoW delta) | P3 | Unchanged | |
+| Bug 20 (plain themes no links) | P3 | Unchanged | |
+| Bug 21 (video highlights no links) | P3 | Unchanged | |
+| Bug 24 (Bookmark <44px) | P3 | NEW | 38px tall |
+| Bug 25 (favicon 404) | P3 | Persists | Every page load |
+
+### Quick Stats
+- **12/12 automated tests passed** ✅
+- **2 new bugs found** (1× P2, 1× P3)
+- **1 bug downgraded** (Bug 13: P1→P2)
+
 ### Note for next run
-Focus: /bookmarks — test bookmark create/delete flow, check empty state CTA, try localStorage persistence across sessions.
+Focus: /youtube-insights — try clicking category filter chips with URL manipulation, test grid toggle HTML difference, inspect card rendering.
+
+---
+
+_This file is auto-updated by browser test runs._
