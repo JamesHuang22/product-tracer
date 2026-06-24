@@ -1,11 +1,12 @@
 name: collect-github
 
-# Runs the GitHub collector every 4 hours so velocity (T3) has snapshots
-# accumulating without manual runs. Also exposed as a manual trigger.
+# Runs the GitHub collector every 2 hours so velocity has snapshots accumulating
+# (and the richer quality stats stay fresh) without manual runs. Also exposed as
+# a manual trigger.
 
 on:
   schedule:
-    - cron: '0 */4 * * *' # 00:00, 04:00, 08:00, 12:00, 16:00, 20:00 UTC
+    - cron: '0 */2 * * *' # every 2 hours, on the hour, UTC
   workflow_dispatch: {}
 
 concurrency:

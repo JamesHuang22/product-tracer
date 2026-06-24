@@ -22,5 +22,13 @@ export const Project = z.object({
   status: ProjectStatus,
   created_at: z.string(),
   updated_at: z.string(),
+  // Collector-quality stats (migration 0016) — optional; null until collected.
+  last_checked_at: z.string().nullable().optional(),
+  issues_count: z.number().nullable().optional(),
+  open_prs_count: z.number().nullable().optional(),
+  forks_count: z.number().nullable().optional(),
+  topics: z.array(z.string()).nullable().optional(),
+  last_push_at: z.string().nullable().optional(),
+  recent_commits_30d: z.number().nullable().optional(),
 });
 export type Project = z.infer<typeof Project>;
