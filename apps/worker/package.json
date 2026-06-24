@@ -12,6 +12,7 @@
     "dedup": "tsx src/scripts/dedup.ts",
     "weekly:trend": "tsx src/scripts/weekly-trend.ts",
     "summaries:generate": "tsx src/scripts/generate-summaries.ts",
+    "tags:generate": "tsx src/scripts/generate-tags.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

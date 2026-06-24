@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import type { Route } from 'next';
 import {
   createColumnHelper,
@@ -15,7 +16,7 @@ import {
   type PaginationState,
   type SortingState,
 } from '@tanstack/react-table';
-import { ArrowDown, ArrowUp, ArrowUpDown, GitFork, Star } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown, GitFork, Star, X } from 'lucide-react';
 import type { ProjectListItem } from '@/lib/db';
 import { LLM_CATEGORIES, formatCategory } from '@/lib/categories';
 import { fmtCount, cleanOneLiner, localizedText } from '@/lib/format';
@@ -23,6 +24,7 @@ import { useI18n } from '@/lib/i18n-context';
 import type { MessageKey } from '@/lib/i18n';
 import { CategoryBadge } from '@/components/category-badge';
 import { BookmarkButton } from '@/components/bookmark-button';
+import { TagChips } from '@/components/tag-chips';
 
 const ch = createColumnHelper<ProjectListItem>();
 
@@ -101,6 +103,15 @@ function projectHref(p: ProjectListItem): { href: string; external: boolean } {
 
 export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
   const { t, locale } = useI18n();
+  // `?tag=` (set by clicking a tag chip) narrows the table to projects carrying
+  // that tag. Applied before the data reaches tanstack so the count, empty
+  // state, and pager all reflect the tag-filtered set.
+  const searchParams = useSearchParams();
+  const activeTag = searchParams.get('tag');
+  const data = useMemo(
+    () => (activeTag ? projects.filter((p) => p.tags.includes(activeTag)) : projects),
+    [projects, activeTag],
+  );
   const [sorting, setSorting] = useState<SortingState>([{ id: 'github_stars', desc: true }]);
   const [sortValue, setSortValue] = useState('stars-desc');
   const [filter, setFilter] = useState('');
@@ -152,20 +163,16 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
           // The link is anchored here but its ::before pseudo-element stretches
           // across the whole row (the <tr> is position: relative). That makes
           // the entire row a click target while leaving cell text selectable.
-          const { href, external } = projectHref(p);
-          return external ? (
-            <a
-              href={href}
-              target="_blank"
-              rel="noreferrer"
-              className="block min-w-0 before:absolute before:inset-0"
-            >
-              {content}
-            </a>
-          ) : (
-            <Link href={href as Route} className="block min-w-0 before:absolute before:inset-0">
-              {content}
-            </Link>
+          // Tag chips sit outside the anchor (raised above the row overlay) so
+          // they stay independently clickable.
+          const { href } = projectHref(p);
+          return (
+            <>
+              <Link href={href as Route} className="block min-w-0 before:absolute before:inset-0">
+                {content}
+              </Link>
+              {p.tags.length > 0 && <TagChips tags={p.tags} max={4} className="mt-1.5" />}
+            </>
           );
         },
       }),
@@ -225,7 +232,7 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
   );
 
   const table = useReactTable({
-    data: projects,
+    data,
     columns,
     initialState: { columnVisibility: { created_at: false } },
     state: { sorting, globalFilter: filter, columnFilters, pagination },
@@ -308,9 +315,22 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
           </select>
         </div>
         <div className="shrink-0 text-xs tabular-nums text-neutral-500">
-          {t('table.count', { shown: filteredCount, total: projects.length })}
+          {t('table.count', { shown: filteredCount, total: data.length })}
         </div>
       </div>
+
+      {activeTag && (
+        <div className="mb-4 flex items-center gap-2 text-sm">
+          <span className="text-neutral-500">{t('table.filteredByTag')}</span>
+          <Link
+            href="/projects"
+            className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-100 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300"
+          >
+            #{activeTag}
+            <X className="h-3 w-3" aria-hidden />
+          </Link>
+        </div>
+      )}
 
       {/* Desktop table */}
       <div className="hidden overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800 md:block">
@@ -376,15 +396,18 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
       <div className="space-y-3 md:hidden">
         {rows.map((row) => {
           const p = row.original;
-          const cardClass = `block rounded-lg border border-neutral-200 p-4 pr-12 transition-colors hover:border-neutral-400 dark:border-neutral-800 dark:hover:border-neutral-600 ${heatBorderClass(
+          const cardClass = `relative rounded-lg border border-neutral-200 p-4 pr-12 transition-colors hover:border-neutral-400 dark:border-neutral-800 dark:hover:border-neutral-600 ${heatBorderClass(
             p.github_stars,
           )}`;
-          const { href, external } = projectHref(p);
+          const { href } = projectHref(p);
           const oneLiner = localizedText(locale, cleanOneLiner(p.one_liner));
           const aiSummary = localizedText(locale, p.ai_summary);
-          const inner = (
-            <>
-              <div className="min-w-0">
+          // Overlay pattern: the link's `::before` spans the whole card, so the
+          // tag chips and bookmark button can be interactive siblings raised
+          // above it (`relative z-10`) without nesting links inside the anchor.
+          return (
+            <div key={row.id} className={cardClass}>
+              <Link href={href as Route} className="block min-w-0 before:absolute before:inset-0">
                 <div className="flex items-center gap-2">
                   <span className="truncate font-medium">{p.name}</span>
                   <PlatformBadges platforms={p.platforms ?? []} />
@@ -398,7 +421,7 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
                     {aiSummary}
                   </div>
                 )}
-              </div>
+              </Link>
               <div className="mt-3 flex items-center gap-4 text-xs">
                 {p.llm_category && <CategoryBadge category={p.llm_category} />}
                 <span className="inline-flex items-center gap-1 tabular-nums text-neutral-600 dark:text-neutral-400">
@@ -408,19 +431,7 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
                   <GitFork className="h-3 w-3" /> {fmtCount(p.github_forks)}
                 </span>
               </div>
-            </>
-          );
-          return (
-            <div key={row.id} className="relative">
-              {external ? (
-                <a href={href} target="_blank" rel="noreferrer" className={cardClass}>
-                  {inner}
-                </a>
-              ) : (
-                <Link href={href as Route} className={cardClass}>
-                  {inner}
-                </Link>
-              )}
+              {p.tags.length > 0 && <TagChips tags={p.tags} max={5} className="mt-2" />}
               <div className="absolute right-3 top-3">
                 <BookmarkButton slug={p.slug} />
               </div>

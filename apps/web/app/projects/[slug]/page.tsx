@@ -14,6 +14,7 @@ import { translate, DEFAULT_LOCALE, isLocale, LOCALE_COOKIE } from '@/lib/i18n';
 import { CategoryBadge } from '@/components/category-badge';
 import { RelatedProjects } from '@/components/related-projects';
 import { BookmarkButton } from '@/components/bookmark-button';
+import { TagChips } from '@/components/tag-chips';
 
 // Live data — reflect the latest collector run on every request.
 export const dynamic = 'force-dynamic';
@@ -326,6 +327,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
             {translate(locale, 'projects.trackedSince', { date: project.created_at })}
           </span>
         </div>
+        {project.tags.length > 0 && <TagChips tags={project.tags} className="mt-4" />}
       </header>
 
       {aiSummary && (

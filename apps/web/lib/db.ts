@@ -43,6 +43,8 @@ export interface ProjectListItem {
   created_at: string;
   /** Distinct platforms this project has an identity_link on (github, hacker_news, …). */
   platforms: string[];
+  /** AI-generated granular tags (app.project.tags, migration 0015); [] until generated. */
+  tags: string[];
 }
 
 export async function getAllProjects(): Promise<ProjectListItem[]> {
@@ -60,6 +62,7 @@ export async function getAllProjects(): Promise<ProjectListItem[]> {
       latest.stars as github_stars,
       latest.forks as github_forks,
       p.created_at,
+      coalesce(p.tags, '{}') as tags,
       coalesce(
         (select array_agg(distinct il.platform)
          from app.identity_link il where il.project_id = p.id),
@@ -101,6 +104,7 @@ export async function getProjectsByCategory(
       latest.stars as github_stars,
       latest.forks as github_forks,
       p.created_at,
+      coalesce(p.tags, '{}') as tags,
       coalesce(
         (select array_agg(distinct il.platform)
          from app.identity_link il where il.project_id = p.id),
@@ -148,6 +152,7 @@ export async function getProjectsBySlugs(slugs: string[]): Promise<ProjectListIt
       latest.stars as github_stars,
       latest.forks as github_forks,
       p.created_at,
+      coalesce(p.tags, '{}') as tags,
       coalesce(
         (select array_agg(distinct il.platform)
          from app.identity_link il where il.project_id = p.id),
@@ -204,6 +209,7 @@ export async function getLatestProjects(limit: number): Promise<ProjectListItem[
       latest.stars as github_stars,
       latest.forks as github_forks,
       p.created_at,
+      coalesce(p.tags, '{}') as tags,
       coalesce(
         (select array_agg(distinct il.platform)
          from app.identity_link il where il.project_id = p.id),
@@ -435,6 +441,8 @@ export interface ProjectDetail {
   llm_category: string | null;
   primary_url: string | null;
   created_at: string; // YYYY-MM-DD
+  /** AI-generated granular tags (app.project.tags, migration 0015); [] until generated. */
+  tags: string[];
   platforms: ProjectPlatformSnapshot[];
   metrics: ProjectMetricPoint[]; // ascending by date
 }
@@ -457,13 +465,15 @@ export async function getProjectBySlug(slug: string): Promise<ProjectDetail | nu
       llm_category: string | null;
       primary_url: string | null;
       created_at: string;
+      tags: string[];
     }[]
   >`
     select
       p.id, p.slug, p.name, p.one_liner,
       (to_jsonb(p) ->> 'ai_summary') as ai_summary,
       p.category, p.llm_category, p.primary_url,
-      to_char(p.created_at, 'YYYY-MM-DD') as created_at
+      to_char(p.created_at, 'YYYY-MM-DD') as created_at,
+      coalesce(p.tags, '{}') as tags
     from app.project p
     where p.slug = ${slug}
     limit 1
