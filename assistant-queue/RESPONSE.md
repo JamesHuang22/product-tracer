@@ -1,3 +1,21 @@
+# Phase 2 Sprint — Response (2026-06-24)
+
+All 3 Phase 2 tasks shipped via branch → PR → squash-merge → HTTP 200 verify; `pnpm typecheck` (+ `next build` for frontend) before each PR; no direct pushes to main.
+
+| # | Task | PR | Status |
+|---|------|----|--------|
+| 1 | Fix empty homepage insight card (P0 bug) | #68 | ✅ merged, verified (bad card `4y9DR2WwW3o` gone from EN home) |
+| 2 | Historic weekly trends selector | #69 | ✅ merged, verified (`?week=2026-06-15` shows that week) |
+| 3 | Collector quality + migration 0016 | #70 | ✅ code merged, migration applied; ⚠️ workflow run blocked by billing |
+
+- **Task 1**: real cause was an insight whose `key_insight` column held Chinese → EN mode suppressed it (→null) but the card still rendered. Now skipped (no EN→Chinese fallback, per the CJK-suppression rule); query guard + page filter (buffer 8 → 3) + client-side null guard. Verified: the reported card is gone from the EN homepage; all 3 cards have text.
+- **Task 2**: `getTrendWeeks()` + optional `weekStart` on the trend queries; `/trends?week=` validated against the real list, falls back to latest; WoW compares to the preceding week; selector hides with one week. Homepage unchanged. Verified all weeks 200 incl. a garbage param.
+- **Task 3**: migration 0016 applied via Supabase MCP (7 columns confirmed). Collector stores the new fields, freshness-filters discovery (>6mo unpushed unless >1000★), bounded best-effort PR/commit enrichment (≤40/run, coalesced), schedule 4h→2h. Dedup name-pairs gated by same-category / Dice>0.8. Worker + web typecheck clean.
+
+> ⚠️ **GitHub Actions blocked by billing.** The post-merge `collect-github` workflow run could **not start**: *"The job was not started because recent account payments have failed or your spending limit needs to be increased."* This is an account-level GitHub billing/spending-limit issue, **not** a code problem (typecheck + migration verified). It also blocks every other workflow (collectors, llm-classify, dedup, etc.). **Action: resolve GitHub billing / raise the Actions spending limit** in repo Settings → Billing. Note Task 3 raised the collector cadence to every 2h, which increases Actions usage once billing resumes.
+
+---
+
 # Day 2 Sprint — Response (2026-06-23)
 
 > ⚠️ **PRODUCTION P0 — needs your action.** The site-wide HTTP 500s in `doc/bug-reports.md` (BUG-001…005) are **Supabase connection-pool exhaustion** (`EMAXCONNSESSION`, session pooler capped at 15 clients), not a schema/env break. I mitigated it (pool max 2→1 #62; transaction-pooler switch made opt-in after it hung #63/#64) and the site is **stable under normal/light load now** (verified 200). The 15-client ceiling still 500s under heavy concurrency. **Durable fix is operator-side**: raise the Supabase session Pool Size, or point `DATABASE_URL` at the transaction pooler (`:6543`) and set `PG_USE_TRANSACTION_POOLER=1`. Full write-up + which P2 reports are false positives: `doc/bug-reports.md` → "RESOLUTION".

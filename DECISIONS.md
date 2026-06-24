@@ -3,6 +3,16 @@
 > Permanent record of architectural, process, and product decisions.
 > Each entry: date, decision, rationale, alternatives considered.
 
+## 2026-06-24 — Phase 2: empty-insight fix, historic trends, collector quality
+
+**Empty insight card (Task 1)** — The bug's real cause was an insight whose `key_insight` ("English") column actually held Chinese; in EN mode `localizedPair` correctly suppresses it (→ null) but the card rendered anyway. **Decision**: drop any insight with no displayable text in the active locale rather than fall back to the other language. The spec suggested EN→ZH fallback, but that conflicts with the established CJK-suppression rule (no Chinese in the EN UI), so a textless EN card is **skipped**, not back-filled with Chinese. Defence in depth: query guard (skip rows empty in both languages) + page-level filter (fetch a buffer of 8, drop empties, slice to 3 so the strip stays full) + a client-side `InsightCard` null-return for locale switches.
+
+**Historic trends (Task 2)** — Generalised the existing single-week trend queries with an optional `weekStart` (defaulting to latest) instead of adding parallel "by-week" functions, and validated the `?week=` param against the real week list (`getTrendWeeks()`) so a stale/garbage value falls back to latest. The WoW "last week" is the immediately-preceding entry in the week list, not a fixed `getRecentWeeklyTrends(2)`, so the comparison stays correct for any selected week.
+
+**Collector quality (Task 3)** — `open_prs_count` and `recent_commits_30d` aren't on the GitHub repo object, so they need extra API calls (PR count via the rate-limited search API). **Decision**: make enrichment **bounded best-effort** — ≤40 repos/run, each field swallowed to null on any failure/rate-limit, and `coalesce`d on upsert so a non-enriching run never erases a prior value. Coverage accretes across runs rather than risking a rate-limit storm that breaks the whole collector. Freshness filter (skip repos unpushed >6mo unless >1000 stars) is applied to **discovery only**, not to re-snapshots of already-tracked repos (those still get their metrics refreshed). Dedup's stricter gate (same `llm_category` OR Dice name-similarity > 0.8) is applied to **name-key** candidate pairs only — URL-identical matches remain trusted as-is. Schedule bumped 4h→2h per the task; note this increases GitHub Actions usage (currently blocked by an account billing limit — see RESPONSE.md).
+
+---
+
 ## 2026-06-23 — Granular tags: text[] + GIN, LLM-generated, tag links to /projects?tag (U4)
 
 **Decision**: Added `app.project.tags text[]` (migration 0015, GIN-indexed) holding 3–5 LLM-generated lowercase tags per project, on top of the coarse `llm_category`. A new `generate-tags.ts` worker populates them; the frontend renders clickable `#tag` chips that link to `/projects?tag=<tag>`, where the existing projects table filters client-side. Applied the migration via Supabase MCP (user-authorized for this autonomous session) and backfilled all 3,953 active projects.
