@@ -1,5 +1,42 @@
 # Bug Reports — 2026-06-24
 
+## Browser Test Run #39 (2026-06-24 14:35 UTC) — Focus: Mobile tour (375px viewport, all pages)
+
+### Automated Test — 12/12 passing (Vercel deployment)
+- ✅ / → HTTP 200
+- ✅ /projects → HTTP 200
+- ✅ /trends → HTTP 200
+- ✅ /youtube-insights → HTTP 200
+- ✅ /bookmarks → HTTP 200
+- ✅ Grid layout w/ 100 project links on /projects
+- ✅ No server errors in any page body
+- ✅ No horizontal overflow on any page at 375px
+
+### Product Tour Findings
+
+**Mobile (375×812, all pages):**
+- ✅ No horizontal overflow detected on any page (homepage, /projects, /[slug], /youtube-insights, /trends, /bookmarks)
+- ✅ Breadcrumb visible on project detail pages
+- ✅ Bookmark button present on detail page
+- ✅ AI summary found on detail pages
+- ✅ 50 anchor links on homepage (all reachable)
+- 🐞 1 console error: Failed to load resource: 404 (root cause unknown, likely favicon.ico)
+
+---
+
+## Bug 12 [P2] — Nav bar + category filter buttons all have < 44px touch targets at 375px
+- **Page**: `/projects` (and all pages with nav bar)
+- **Severity**: P2 — Major accessibility issue for mobile users
+- **Measured targets** (375px viewport):
+  - Nav links: Product Tracer (67×40), Projects (54×20), Insights (52×20), Trends (46×20), Bookmarks (74×20) — all ≤ 40px tall
+  - Locale toggles: EN button (32×24), 中文 button (31×40)
+  - Theme toggle: 25×28 (icon-only button)
+  - Category pills: #self-hosted (85×23), #ai (34×23)
+- **Impact**: 9 of 9 clickable targets measured are ≤ 40px tall. iOS Safari applies adaptive tap targets but this is not reliable. Android Chrome will treat these as missed taps. Category pills at 23px tall are nearly impossible to tap accurately.
+- **Root cause**: Nav items and filter pills use text-size padding only; no `min-height: 44px` or `py-3` equivalents applied for mobile.
+- **Reproduction**: Open DevTools → set viewport 375px → visit /projects → measure any nav link or category button height. All are below the WCAG 2.5.5 minimum of 44px.
+- **Expected**: All interactive elements should have `min-height: 44px` (or Tailwind `min-h-[44px]`) and sufficient padding on mobile.
+
 ## Browser Test Run #38 (2026-06-24 14:05 UTC) — Focus: /projects search, sort, filter, AI summaries, detail pages
 
 ### Automated Test — 12/12 passing (Vercel deployment)
