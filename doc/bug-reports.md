@@ -81,3 +81,28 @@
 - ZH locale routes (`/zh/*`) return 404 for all pages except `/zh/` homepage
 - No AI summary section on project detail pages
 - Page 2 missing "Prev" pagination link on /youtube-insights (only relevant if site is up)
+
+---
+
+# RESOLUTION — BUG-001…005 (2026-06-23, Claude agent session)
+
+**One root cause for all the 500s (BUG-001/002/003/005), and BUG-004 is a downstream symptom.** The "schema/migration/env" hypotheses are wrong. The Vercel runtime stack trace is:
+
+> `k: (EMAXCONNSESSION) max clients reached in session mode — max clients are limited to pool_size: 15`  (code `XX000`, digest `193943652` / `240242435`)
+
+The app talks to Supabase's **session-mode pooler (port 5432)**, which hands each client a dedicated server connection and caps total clients at **15**. Under enough concurrent server-rendered requests — organic traffic + the automated browser tester + (during the window) concurrent LLM backfills and the agent's own load-testing — the 15-client cap is hit and every DB-backed page 500s. `/bookmarks` survived because it fetches client-side, not in SSR. **BUG-004** ("client-side exception" on a detail page returning HTTP 200) is the same outage seen from the client: the server data fetch failed mid-render. Not a separate bug.
+
+## Status: mitigated — stable under normal/light load; high-concurrency ceiling remains (needs operator action)
+
+Done (merged to main):
+- **#62** — per-instance pool `max` 2→1 (`PG_POOL_MAX` override) to halve each Vercel instance's connection footprint.
+- **#63 / #64** — added an opt-in switch to the **transaction pooler** (`PG_USE_TRANSACTION_POOLER=1`). Turning it on by default made DB requests *hang* (the `:6543` endpoint isn't a working drop-in for this project from Vercel — likely needs Supabase-side config), so it's **opt-in** and live traffic is back on the session pooler. Verified after revert: sequential browsing + light concurrency all HTTP 200.
+
+**Durable fix — operator action required (Supabase/Vercel access the agent doesn't have):** pick one —
+1. Supabase → Database → Connection pooling → **raise the session Pool Size** well above 15 (and/or Postgres `max_connections`); or
+2. Verify the **transaction pooler** for this project (enable the IPv4 add-on if needed), point `DATABASE_URL` at the `:6543` transaction-pooler URL, and set `PG_USE_TRANSACTION_POOLER=1` — transaction mode multiplexes hundreds of clients and is the correct serverless mode.
+
+## On the P2 list — several are false positives from testing during the outage
+- **"No breadcrumb on detail pages"** and **"No AI summary section on detail pages"** — both features **do exist** (breadcrumb shipped in #44; AI summaries render — verified live on e.g. `/projects/cloudflare-ai`). The tester saw empty pages because it ran during the 500 outage, when nothing rendered.
+- **"ZH routes `/zh/*` return 404"** — expected, not a bug: i18n is **cookie-based** (one set of routes, language toggled via the `locale` cookie), there are deliberately no `/zh/*` paths.
+- **`favicon.ico` 404** and the **H1 "signalsfor" spacing** are plausible minor real issues worth a quick follow-up once the connection ceiling is raised.
