@@ -1,5 +1,86 @@
 # Bug Reports — 2026-06-24
 
+## Browser Test Run #48 (2026-06-24 23:20 UTC) — Focus: /youtube-insights card quality, homepage i18n, /trends WoW indicators
+
+### Automated Test — 12/12 passing (Vercel deployment)
+- ✅ / → HTTP 200
+- ✅ /projects → HTTP 200
+- ✅ /trends → HTTP 200
+- ✅ /youtube-insights → HTTP 200
+- ✅ /bookmarks → HTTP 200
+- ✅ Grid layout w/ 100 project links on /projects
+- ✅ No server errors in any page body
+- ✅ i18n charset check passed
+
+### Product Tour Findings
+
+**Homepage:**
+- ✅ Title: "Product Tracer — Cross-platform indie product signals" — clear value prop
+- ✅ H1: "Cross-platform signals for indie products."
+- ✅ 50 links, 14 project links
+- ✅ No horizontal overflow at 800px viewport
+- ❌ **i18n key leak**: Text "home.section.insights.viewAll" rendered as-is on homepage — missing localization for the "View all" link label
+- ✅ Insight section content now renders correctly (🔥-prefixed insight text on all 3 homepage cards)
+
+**/youtube-insights:**
+- ✅ **Bug 13 improvement**: 15/20 cards now have insight text (stable from last run). Previously 20/20 blank.
+- ⚠️ 5/20 cards still blank — all show only emoji + sentiment + category + "▶Watch on YouTube" with 0 insight text
+- Blank cards follow a pattern: they have sentiment (🟢Positive/🟡Neutral) and category labels but no key_insight text
+- ✅ **Bug 25 FIXED**: favicon.ico now returns HTTP 200 — no more console error
+- ❌ **Bug 14 persisting**: Category filter still doesn't filter articles (AI/ML → 20 articles, Tech News → 20 articles, same 20 every time)
+- ❌ **Bug 15 persisting**: Grid/list toggle still produces identical layouts (20 articles each)
+- ❌ Category filter icons: All categories (93), AI/ML (25), Developer Tools (18), Startup/Business (17), Tech News (22), Hardware (2), Security (1), Design (-), Other (6) — "Design" has no count displayed
+
+**/trends:**
+- ❌ **Bug 17 persisting**: Top 5 product links still garbled: "1INAre You in the Weights?2", "2PHElvin1", "3PHDropmatico1", "4PHKimi K2.7 Code1", "5PHCloudback for Linear1"
+- ❌ **Bug 18 persisting**: No WoW position delta indicators (no ↑/↓, no NEW badges)
+- ❌ **Bug 20 persisting**: EMERGING THEMES are plain text (0 clickable links to filtered projects)
+- ❌ **Bug 21 persisting**: VIDEO HIGHLIGHTS are plain prose (only 1 YouTube link on entire page, and it's in nav not content)
+- Week selector still functional with 2 weeks
+
+**/bookmarks:**
+- ✅ Empty state renders with 6 nav/CTA links
+- ✅ No broken elements
+
+**Console/Tech Issues:**
+- ✅ **favicon.ico NOW SERVES successfully** — previously returning 404, now returns HTTP 200
+- ❌ 1 console error: "Failed to load resource: 404" (unknown resource, not favicon anymore)
+- ❌ New 404 resource discovered (not favicon.ico) — likely a font, image, or API endpoint
+
+### New Bug This Run
+
+---
+
+## Bug 26 [P2] — i18n key string "home.section.insights.viewAll" leaked on homepage
+- **Page**: Homepage (`/`)
+- **Severity**: P2 — Visible to users, breaks internationalized UX
+- **Observed**: The text "home.section.insights.viewAll" is rendered as visible text on the homepage, below the "Insights" section heading. This is a localization key that was not resolved to its translated value. It serves as the label for the "View all" link to `/youtube-insights`.
+- **Reproduction**:
+  1. Visit `https://product-tracer.vercel.app/`
+  2. Scroll to the "Insights" section (section idx 7)
+  3. See "home.section.insights.viewAll" as visible text above the insight cards
+- **Expected**: The text should display as "View all" (EN) or "查看全部" (ZH) depending on locale.
+- **Root cause candidate**: The i18n translation function likely failed to resolve the key, or the key is passed directly to a component that uses `t()` but the key doesn't exist in the translation dictionary.
+
+### Bug Status Changes
+| Bug | Old Status | New Status | Notes |
+| --- | --- | --- | --- |
+| Bug 25 (favicon 404) | P3 | ✅ **FIXED** | Returns HTTP 200 now |
+| Bug 26 (i18n key leak) | — | NEW (P2) | Visible unlocalized text on homepage |
+| Bug 13 (blank insight cards) | P2 (5/20) | UNCHANGED | Still 5/20 blank, stable |
+| Bug 14 (filter chips) | P3 | UNCHANGED | Non-functional |
+| Bug 15 (grid/list toggle) | P3 | UNCHANGED | Non-functional |
+| Bug 17 (garbled link text) | P3 | UNCHANGED | /trends top product links garbled |
+| Bug 18 (no WoW delta) | P3 | UNCHANGED | /trends product cards lack WoW |
+| Bug 20 (emerging themes) | P3 | UNCHANGED | Plain text |
+| Bug 21 (video highlights) | P3 | UNCHANGED | Plain text |
+
+### Quick Stats
+- **12/12 automated tests passed** ✅
+- **1 new bug found** (Bug 26 — i18n key leak, P2)
+- **1 bug fixed** (Bug 25 — favicon 404 no longer occurs)
+- **0 critical issues** all Vercel pages serving correctly
+
 ## Browser Test Run #44 (2026-06-24 21:35 UTC) — Focus: /projects grid, search, sort, AI summaries, detail pages
 
 ### Automated Test — 12/12 passing (local HTTP checks)
