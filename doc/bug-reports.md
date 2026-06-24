@@ -975,4 +975,74 @@ Bug 2 previously reported "/trends has 0 clickable links to individual trend ite
 
 ---
 
+## Browser Test Run #49 (2026-06-24 23:35 UTC) — Focus: Mobile (375px) nav overflow, bug re-verification
+
+### Automated Test — 12/12 passing (Vercel deployment)
+- ✅ / → HTTP 200
+- ✅ /projects → HTTP 200
+- ✅ /trends → HTTP 200
+- ✅ /youtube-insights → HTTP 200
+- ✅ /bookmarks → HTTP 200
+- ✅ 5/5 pages HTTP 200
+- ✅ Grid layout w/ 100 project links on /projects
+- ✅ No server errors in any page body
+
+### Product Tour Findings — Mobile nav overflow deep dive, bug status check
+
+**Mobile overflow (375px, Bug 19 re-confirmed):**
+- ❌ ALL pages: scrollWidth=490 > viewport=375 — consistent overflow across every page
+- Nav breakdown at 375px:
+  - ✅ "Product Tracer" brand visible: left=24 right=91
+  - ✅ Projects (left=91→145), Insights (161→212), Trends (228→274), Bookmarks (290→364)
+  - ❌ EN/中文 toggle (left=380→450, 69px wide) — **OFF-SCREEN**, completely unreachable
+  - ❌ Theme toggle icon button (left=466→490, 25×28) — **OFF-SCREEN**
+- Key insight: 8 nav items consume 466px in a 375px viewport. Fix requires hamburger menu or layout collapse below 640px.
+- 0 brand links visible at head of nav (Product Tracer logo/text is clipped from scroll entirely at left=24 with no room)
+
+**Bug 26 (i18n key leak) — STILL PERSISTS:**
+- Text `"home.section.insights.viewAll"` is still visible on the homepage below the "Insights" section heading
+- Context: `"Insights\n\nFresh takeaways from across YouTube\n\nhome.section.insights.viewAll"`
+- Not fixed since Run #48
+
+**Bug 6 (locale 404) — PERSISTS across all 3 ZH routes:**
+- ❌ /zh/trends → 404
+- ❌ /zh/youtube-insights → 404
+- ❌ /zh/bookmarks → 404
+
+**Bug 13 (blank insight cards) — SLIGHT IMPROVEMENT:**
+- ~3 cards potentially blank (was 5 in Run #48, 20 in Run #41)
+- Slow improvement trend, likely data-filling rather than frontend fix
+
+**Bug 17 (garbled link text) — PERSISTS:**
+- All 5 top product links on /trends still garbled:
+  - `"1INAre You in the Weights?2"`
+  - `"2PHElvin1"`
+  - `"3PHDropmatico1"`
+  - `"4PHKimi K2.7 Code1"`
+  - `"5PHCloudback for Linear1"`
+
+**Favicon:** ❌ No `<link rel="icon">` element found in `<head>` — not missing from server, missing from markup entirely
+
+### No New Bugs This Run
+- All findings are re-confirmations of existing bugs (Bug 6, 13, 17, 19, 26)
+- Bug 13 continues improving (3/20 blank vs 5/20)
+- Bug 19 nav overflow is the most impactful issue for mobile users (affects ALL pages)
+
+### Bug Status Changes
+| Bug | Severity | Status | Notes |
+| --- | --- | --- | --- |
+| Bug 6 (locale 404) | P1 | Unchanged | All 3 ZH routes still 404 |
+| Bug 13 (blank cards) | P2 | Slight improvement | ~3 blank (was 5) |
+| Bug 17 (garbled links) | P3 | Unchanged | Still garbled |
+| Bug 19 (nav overflow) | P2 | Unchanged | All pages at 375px |
+| Bug 26 (i18n key leak) | P2 | Unchanged | Still leaking |
+
+### Quick Stats
+- **12/12 automated tests passed** ✅
+- **0 new unique bugs** (all re-confirmations)
+- **0 bugs fixed** this run
+- **Nav overflow** (Bug 19) remains the highest-touch issue affecting all mobile visitors
+
+---
+
 _This file is auto-updated by browser test runs._
