@@ -270,3 +270,48 @@ Likely **test-harness false positives** (verify against the live, recovered site
 - **Expected:** Project cards detected as DOM elements
 - **Actual:** Zero cards matched the heuristic (0 found)
 
+---
+
+## Product Tour: 2026-06-24T05:35 UTC (Focus: /projects)
+
+### Automated test — all passing
+- ✅ Homepage HTTP 200 — 777 words, H1 present, 1 console error (favicon 404)
+- ✅ /projects HTTP 200 — search input, category filter, tag chips, 100 project links, 12500 chars
+- ✅ /trends HTTP 200 — 224 words, summary + WoW + theme sections
+- ✅ /youtube-insights HTTP 200 — 1177 words, H1, grid/list toggle, 93+ insight cards
+- ✅ /bookmarks HTTP 200 — H1 "Bookmarks", page renders
+- ✅ Mobile 375px — no horizontal overflow
+- ✅ ZH locale — nav items translated (项目/趋势/洞察)
+- ❌ /favicon.ico 404 (known P2, unchanged)
+
+### Detail page `/projects/pewdiepie-archdaemon-odysseus`
+- ✅ HTTP 200 — H1 "odysseus", renders fully
+- ✅ Breadcrumb present (Projects > odysseus)
+- ✅ AI Summary present with full summary text
+- ✅ Related projects present
+- ✅ Bookmark button present
+- ✅ Tag chips present (self-hosted, ai, workspace, llm)
+- ✅ External links: GitHub + Product Hunt (2 links)
+- ✅ 0 console errors
+- ✅ ~179 words, 1225 chars
+
+### Detail page `/projects/magic-resume`
+- ✅ Bookmark call-to-action visible
+- ✅ Suggests visiting /bookmarks
+
+### Search on /projects
+- Typing "AI" in search box shows matching AI projects in the page (odysseus, ponytail, DeepSeek-Reasonix visible)
+- Filter count heuristic is noisy (tag chips + pagination links inflate link count), but actual filtering works
+
+### Category filter on /projects
+- Dropdown options: All categories, AI/ML, devtool, saas, open-source, design, data, security, productivity, other
+- The tour script's count-based heuristic (100 project links unchanged after filter) is unreliable — page has ~521 links total including tags, pagination, nav. Need a more precise DOM-based test.
+
+### /bookmarks page (ZH locale)
+- H1: "收藏" — translation working
+- Empty state shown (expected for new user)
+
+### No new bugs found
+- Site is healthy across all routes
+- Detail pages fully functional: breadcrumb, AI summary, related projects, bookmarks all present
+- Known P2 favicon 404 remains

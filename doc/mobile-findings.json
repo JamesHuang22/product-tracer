@@ -15,6 +15,22 @@
           "ts": "2026-06-24T04:51:37.866Z"
         }
       ]
+    },
+    {
+      "ts": "2026-06-24T05:36:55.151Z",
+      "findings": [
+        {
+          "severity": "P2",
+          "page": "/",
+          "desc": "10 tap targets < 44px height on mobile",
+          "steps": [
+            "Open 375px viewport"
+          ],
+          "expected": "All tappable elements >= 44px",
+          "actual": "10 targets too small",
+          "ts": "2026-06-24T05:36:55.151Z"
+        }
+      ]
     }
   ]
 }
