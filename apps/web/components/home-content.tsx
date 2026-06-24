@@ -235,6 +235,11 @@ function InsightCard({ insight }: { insight: VideoInsight }) {
   // EN UI free of stray Chinese.
   const text = localizedPair(locale, insight.key_insight, insight.key_insight_zh);
 
+  // Defensive: never render a textless card (just a "Watch on YouTube" link).
+  // The server already filters these out, but this guards client-side locale
+  // switches where the active language's summary is empty.
+  if (!text || text.trim() === '') return null;
+
   return (
     <a
       href={insight.video_url}

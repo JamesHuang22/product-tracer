@@ -699,6 +699,13 @@ export async function getTopVideoInsights(limit: number): Promise<VideoInsight[]
       (to_jsonb(vi) ->> 'category') as category
     from app.video_insight vi
     where vi.relevance_score >= 7
+      -- Skip insights with no usable summary text in EITHER language — they
+      -- render as an empty card on the home page (just a "Watch on YouTube"
+      -- link). key_insight_zh is read defensively via to_jsonb (migration 0009).
+      and (
+        nullif(btrim(vi.key_insight), '') is not null
+        or nullif(btrim(to_jsonb(vi) ->> 'key_insight_zh'), '') is not null
+      )
     order by vi.published_at desc nulls last, vi.created_at desc
     limit ${limit}
   `;
