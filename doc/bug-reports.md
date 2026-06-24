@@ -1,5 +1,41 @@
 # Bug Reports — 2026-06-24
 
+## Browser Test Run #36 (2026-06-24 13:45 UTC) — Focus: /projects search, sort, filter & detail pages
+
+### Automated Test — 12/12 passing (localhost HTTP checks)
+- ✅ / → HTTP 200
+- ✅ /projects → HTTP 200
+- ✅ /trends → HTTP 200
+- ✅ /youtube-insights → HTTP 200
+- ✅ /bookmarks → HTTP 200
+- ✅ Grid layout references
+
+### ⚠️ Automated test passed HTTP status, but rendered pages are 500 errors
+- The test checked HTTP status codes (all 200), but the **rendered HTML body** contains server-side errors
+- All pages requiring DB queries (/, /projects, /trends) fail on the server
+
+---
+
+## Bug 10 [P0 🔴] — All server-rendered pages crash with Missing DATABASE_URL
+- **Page**: `/`, `/projects`, `/trends`
+- **Status**: 🔴 SITE DOWN for all database-backed routes
+- **Error**: `Missing DATABASE_URL. Check .env (Supabase → Connect → Session pooler URI).`
+- **HTTP status**: Returns 200 because Next.js error boundary catches it, but the rendered page shows "Application error: a server-side exception has occurred"
+- **Root cause**: No `.env`, `.env.local`, or `.env.production` file exists at `/Users/jameshuang/.openclaw/workspace/agents/jbk/apps/web/`. The env.example exists at the project root but hasn't been copied.
+- **Screenshots visible**:
+  - `/` (homepage): renders `<html id="__next_error__">` with error digest `2731443499`
+  - `/projects`: same error — `<html id="__next_error__">`, no project cards rendered
+  - `/trends`: same error — 500 rendered as error page
+- **Working pages** (client-side only, no DB): `/youtube-insights` (200 OK, renders correctly), `/bookmarks` (200 OK)
+- **Reproduction**:
+  1. Visit `http://localhost:3000/` (or `/projects`, `/trends`)
+  2. See "Application error: a server-side exception has occurred"
+  3. Check server-side HTML — `next_error` ID present with error `Missing DATABASE_URL`
+  4. Confirm no `.env` file exists at `apps/web/`
+- **Fix**: Create `apps/web/.env.local` with proper `DATABASE_URL` from Supabase connection string (Session pooler), then restart the Next dev server
+
+---
+
 ## Browser Test Run #35 (2026-06-24 12:35 UTC) — Focus: Mobile responsiveness (390x844 viewport)
 
 ### Automated Test — All 12/12 passing (Vercel deployment)
