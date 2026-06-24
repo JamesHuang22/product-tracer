@@ -192,6 +192,52 @@ Likely **test-harness false positives** (verify against the live, recovered site
 - **Actual:** Resource loading errors found
 
 
+## Product Tour: 2026-06-24T05:20 UTC (Focus: /youtube-insights)
+
+### Automated test — all passing
+- ✅ Homepage HTTP 200 — 777 words, H1 present, 1 console error (favicon 404)
+- ✅ /projects HTTP 200 — search + filter + bookmark + 5 project links
+- ✅ /trends HTTP 200 — 224 words, summary + WoW + theme sections
+- ✅ /youtube-insights HTTP 200 — 1177 words, H1 "Latest insights", 40 clickable elements
+- ✅ /bookmarks HTTP 200 — H1 "Bookmarks", page renders
+- ✅ Mobile 375px — no horizontal overflow, 777 words
+- ✅ ZH locale — H1 "最新洞察" after toggle, 2507 ZH chars, nav items translated
+- ❌ /favicon.ico 404 (known P2, unchanged)
+
+### [P2] /youtube-insights — No internal detail pages (links go directly to YouTube)
+- **Description:** All video insight cards link directly to `youtube.com/watch?v=...` with no intermediate `/youtube-insights/[id]` detail page. Users can't bookmark a specific insight within the app, see AI summary expansion, or share an insight URL within the site.
+- **Found:** 2026-06-24T05:20 UTC
+- **Reproduction:**
+  1. Go to /youtube-insights
+  2. Click any insight card (e.g. "▶ Watch on YouTube" link)
+  3. Observe destination URL
+- **Expected:** Card should link to an internal detail page (e.g. `/youtube-insights/[slug]`) with AI summary, metadata, and related insights
+- **Actual:** All links jump directly to external YouTube URLs. Zero internal `/youtube-insights/` links exist
+- **Count:** 93 insight cards, all external YouTube links
+- **Severity:** P2 — the page is a read-only list; users can't engage deeper within the app
+
+### [P2] /youtube-insights — Grid/List toggle uses <a> links not <button>
+- **Description:** The grid/list view toggle is implemented as `<a>` links with `href` params rather than `<button>` elements. They work functionally (click changes view) but: (1) are not keyboard-triggerable via Space/Enter like buttons, (2) are announced as "links" to screen readers, (3) page navigates when toggling (visible URL change) instead of client-side state toggling.
+- **Found:** 2026-06-24T05:20 UTC
+- **Reproduction:**
+  1. Go to /youtube-insights
+  2. Inspect the "Grid" / "List" toggle elements
+  3. Check their HTML tag
+- **Expected:** Toggle buttons use `<button>` with `aria-pressed` for accessibility
+- **Actual:** Rendered as `<a href="/youtube-insights?view=grid">` links
+
+### [P2] /trends — "Week of" range uses hardcoded Mon–Sun (potential gap)
+- **Description:** The trends page shows "Week of 2026-06-22 – 2026-06-28". This is Sunday to Saturday in ISO week (Mon-Sun in US). The check was done on a Tuesday (2026-06-23) but the week range shows starting Monday (June 22). The previous tour (2026-06-24T04:06 UTC) also showed a Monday start. This suggests the week boundary is Sunday midnight UTC (Mon in local), but the display format doesn't clarify the boundary rule.
+- **Found:** 2026-06-24T05:20 UTC
+- **Reproduction:**
+  1. Go to /trends
+  2. Note the "Week of" date range
+  3. Compare with the actual current day of week
+- **Expected:** Clear convention (ISO week Mon-Sun, or US Sun-Sat) documented in the page UI
+- **Actual:** Displays Mon–Mon without explaining the week boundary convention
+- **Severity:** P3 — minor clarity issue
+
+
 ## Product Tour: 2026-06-24T04:51:37.866Z (Focus: Mobile 375px)
 
 ### [P2] / — Nav links undersized on mobile (<44px tap targets)
