@@ -81,3 +81,54 @@
 - ZH locale routes (`/zh/*`) return 404 for all pages except `/zh/` homepage
 - No AI summary section on project detail pages
 - Page 2 missing "Prev" pagination link on /youtube-insights (only relevant if site is up)
+
+
+## Product Tour: 2026-06-24T03:37:28.678Z (Focus: /projects)
+
+### [P2] /projects
+- **Description:** Search input exists but does not filter results
+- **Found:** 2026-06-24T03:37:06.333Z
+- **Reproduction:**
+  1. Go to /projects
+  2. Type "AI" into search box
+  3. Observe project list
+- **Expected:** Project list should filter to AI-related projects
+- **Actual:** Project count unchanged (100 → 100)
+
+### [P2] /projects
+- **Description:** Category filter "AI/ML" had no effect on results
+- **Found:** 2026-06-24T03:37:08.424Z
+- **Reproduction:**
+  1. Go to /projects
+  2. Select "AI/ML" from dropdown
+  3. Observe project list
+- **Expected:** Results should filter to matching category
+- **Actual:** Project count unchanged (100 → 100)
+
+### [P2] /projects/pewdiepie-archdaemon-odysseus
+- **Description:** Missing breadcrumb navigation
+- **Found:** 2026-06-24T03:37:12.654Z
+- **Reproduction:**
+  1. Go to /projects/pewdiepie-archdaemon-odysseus
+  2. Look for breadcrumb nav
+- **Expected:** Users should see breadcrumb (Home > Projects > Project Name)
+- **Actual:** No breadcrumb element found
+
+### [P2] /projects/pewdiepie-archdaemon-odysseus
+- **Description:** No related projects shown
+- **Found:** 2026-06-24T03:37:12.654Z
+- **Reproduction:**
+  1. Go to /projects/pewdiepie-archdaemon-odysseus
+  2. Scroll for related/similar projects section
+- **Expected:** Related projects help discovery
+- **Actual:** No related/similar text found
+
+### [P2] /projects (ZH)
+- **Description:** ZH locale has 9144 English chars vs 146 Chinese — possible i18n leak
+- **Found:** 2026-06-24T03:37:22.606Z
+- **Reproduction:**
+  1. Set locale=zh cookie
+  2. Go to /projects
+  3. Count Chinese vs English characters
+- **Expected:** Page should be predominantly Chinese
+- **Actual:** 9144 English vs 146 Chinese characters
