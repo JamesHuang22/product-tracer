@@ -144,3 +144,14 @@
 - The vercel.app deployment still works: `product-tracer.vercel.app`
 - Automated tests use the Vercel URL ✓
 - If producttracer.com is the canonical domain, redirect may be intentional; if not, this could break bookmarks, SEO, and shared links.
+
+## Browser Test Run #37 (2026-06-24 13:50 UTC) — Focus: /projects search, sort, filter & detail pages
+
+### Automated Test — 12/12 passing (HTTP status only)
+
+### ⚠️ Re-verified Bug 10 — All DB pages still crash (same P0)
+- The automated test only checks HTTP status codes (all returned 200), but the **rendered HTML body** still shows the same `next_error` server exception
+- Rendered pages show "Application error: a server-side exception has occurred" with digest `2731443499`
+- `/youtube-insights` and `/bookmarks` work (no DB dependency)
+- No .env file found — this has been unresolved since Browser Test Run #36
+- **No new unique bugs found** — the missing search/filter/links on /projects are all downstream of the P0 DB connection failure
