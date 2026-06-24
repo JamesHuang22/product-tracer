@@ -32,12 +32,38 @@ export type SqlClient = Sql;
  */
 const g = globalThis as unknown as { __ptSql?: SqlClient };
 
+/**
+ * Prefer Supabase's **transaction** pooler (port 6543) over the **session**
+ * pooler (5432). Same host + credentials — only the port differs. Session mode
+ * gives every client a dedicated server connection and caps total clients very
+ * low (pool_size 15 here), so a serverless fan-out exhausts it and throws
+ * `EMAXCONNSESSION`; transaction mode multiplexes hundreds of clients over a
+ * small connection set and is the documented choice for serverless. Safe with
+ * this codebase because `prepare: false` is set and no session-scoped features
+ * (LISTEN/NOTIFY, advisory locks, session GUCs) are used. Only rewrites the
+ * exact `*.pooler.supabase.com:5432` case; opt out with `PG_KEEP_SESSION_POOLER=1`.
+ */
+function preferTransactionPooler(url: string): string {
+  if (process.env.PG_KEEP_SESSION_POOLER === '1') return url;
+  try {
+    const u = new URL(url);
+    if (u.hostname.endsWith('.pooler.supabase.com') && u.port === '5432') {
+      u.port = '6543';
+      return u.toString();
+    }
+  } catch {
+    // Not a parseable URL — leave it untouched.
+  }
+  return url;
+}
+
 export function createSqlClient(): SqlClient {
   if (g.__ptSql) return g.__ptSql;
-  const url = process.env.DATABASE_URL;
-  if (!url) {
+  const raw = process.env.DATABASE_URL;
+  if (!raw) {
     throw new Error('Missing DATABASE_URL. Check .env (Supabase → Connect → Session pooler URI).');
   }
+  const url = preferTransactionPooler(raw);
   const max = Math.max(1, Number(process.env.PG_POOL_MAX) || 1);
   g.__ptSql = postgres(url, {
     ssl: 'require',
