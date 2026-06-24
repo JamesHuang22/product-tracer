@@ -3,8 +3,7 @@ import Link from 'next/link';
 import type { Route } from 'next';
 import { cookies } from 'next/headers';
 import {
-  getVideoInsights,
-  getVideoInsightsByCategory,
+  getVideoInsightsByCategories,
   getVideoInsightCount,
   getVideoInsightCategories,
   type VideoInsight,
@@ -125,11 +124,20 @@ export default async function YoutubeInsightsPage({
   const locale = isLocale(raw) ? (raw as Locale) : DEFAULT_LOCALE;
 
   const view: 'list' | 'grid' = viewParam === 'grid' ? 'grid' : 'list';
-  const category =
-    typeof categoryParam === 'string' && categoryParam.length > 0 ? categoryParam : null;
+  // `?category=` is a comma-separated multi-select. Parse → dedupe → keep only
+  // known category values (drops junk / stale params), preserving canonical order.
+  const validCategoryValues = new Set(INSIGHT_CATEGORIES.map((c) => c.value));
+  const selectedCategories = INSIGHT_CATEGORIES.map((c) => c.value).filter((v) =>
+    new Set(
+      (categoryParam ?? '')
+        .split(',')
+        .map((s) => s.trim())
+        .filter((s) => validCategoryValues.has(s)),
+    ).has(v),
+  );
 
   const [total, categoryCounts] = await Promise.all([
-    getVideoInsightCount(category ?? undefined),
+    getVideoInsightCount(selectedCategories),
     getVideoInsightCategories(),
   ]);
 
@@ -139,11 +147,7 @@ export default async function YoutubeInsightsPage({
   const offset = (page - 1) * PAGE_SIZE;
 
   const insights =
-    total === 0
-      ? []
-      : category
-        ? await getVideoInsightsByCategory(category, PAGE_SIZE, offset)
-        : await getVideoInsights(PAGE_SIZE, offset);
+    total === 0 ? [] : await getVideoInsightsByCategories(selectedCategories, PAGE_SIZE, offset);
 
   // Dropdown options (fixed canonical set) annotated with live counts; the "All"
   // count is the unfiltered total across every category bucket.
@@ -163,7 +167,7 @@ export default async function YoutubeInsightsPage({
   const pageHref = (p: number): Route => {
     const params = new URLSearchParams();
     if (view === 'grid') params.set('view', 'grid');
-    if (category) params.set('category', category);
+    if (selectedCategories.length > 0) params.set('category', selectedCategories.join(','));
     if (p > 1) params.set('page', String(p));
     const qs = params.toString();
     return (qs ? `/youtube-insights?${qs}` : '/youtube-insights') as Route;
@@ -183,7 +187,7 @@ export default async function YoutubeInsightsPage({
 
       <InsightsControls
         view={view}
-        category={category}
+        selected={selectedCategories}
         categoryOptions={categoryOptions}
         allLabel={translate(locale, 'insights.categoryAll')}
         allCount={allCount}

@@ -710,11 +710,12 @@ export async function getTopVideoInsights(limit: number): Promise<VideoInsight[]
  * to_jsonb so it can't error if migration 0010 isn't applied yet (it simply
  * matches nothing — the `category` json key is absent — until the column lands).
  */
-export async function getVideoInsightsByCategory(
-  category: string,
+export async function getVideoInsightsByCategories(
+  categories: string[],
   limit: number,
   offset = 0,
 ): Promise<VideoInsight[]> {
+  if (categories.length === 0) return getVideoInsights(limit, offset);
   return await sql<VideoInsight[]>`
     select
       vi.id,
@@ -733,7 +734,7 @@ export async function getVideoInsightsByCategory(
       vi.relevance_score,
       (to_jsonb(vi) ->> 'category') as category
     from app.video_insight vi
-    where (to_jsonb(vi) ->> 'category') = ${category}
+    where (to_jsonb(vi) ->> 'category') = any(${categories})
     order by vi.published_at desc nulls last, vi.created_at desc
     limit ${limit}
     offset ${offset}
@@ -745,14 +746,15 @@ export async function getVideoInsightsByCategory(
  * (drives the /youtube-insights pager). Category filter is to_jsonb-based for
  * migration-0010 resilience.
  */
-export async function getVideoInsightCount(category?: string): Promise<number> {
-  const [row] = category
-    ? await sql<{ n: number }[]>`
+export async function getVideoInsightCount(categories?: string[]): Promise<number> {
+  const [row] =
+    categories && categories.length > 0
+      ? await sql<{ n: number }[]>`
         select count(*)::int as n
         from app.video_insight vi
-        where (to_jsonb(vi) ->> 'category') = ${category}
+        where (to_jsonb(vi) ->> 'category') = any(${categories})
       `
-    : await sql<{ n: number }[]>`select count(*)::int as n from app.video_insight`;
+      : await sql<{ n: number }[]>`select count(*)::int as n from app.video_insight`;
   return row?.n ?? 0;
 }
 
