@@ -342,3 +342,47 @@
 - **Actual**: Plain text with no clickable elements
 
 ### No new P0/P1 bugs
+
+---
+
+## Browser Test Run #31 (2026-06-24 11:35 UTC) — Focus: /projects deep-dive (search, filter, detail pages, mobile)
+
+### Automated Test — All 12/12 passing (production URL)
+- ✅ / HTTP 200, ✅ /projects HTTP 200, ✅ /trends HTTP 200, ✅ /youtube-insights HTTP 200, ✅ /bookmarks HTTP 200
+- ✅ ZH locale baseline check
+- ✅ Grid layout: /projects has 100+ project link references
+- ✅ No server errors in page bodies
+- ❌ /favicon.ico 404 (known P2, unchanged)
+
+### Product Tour: /projects — search, filter, detail page UX
+
+**Search** ✅
+- Search input exists on /projects
+- Typing "ai" returns 120 filtered project links
+- Typing nonexistent string gracefully handled (no crash, empty state renders)
+- Clearing search restores full list
+
+**Category filter** ✅
+- 3 selectors found: Category (All/AI/ML/devtool/...), Sort (Stars/Newest/Name), Per-page (10/50/100)
+- Filtering by "devtool" returns 100+ project links
+
+**Detail page navigation** ✅
+- All project links point to `/projects/[slug]` pattern
+- Clicking first link → detail page loads correctly (no 404)
+- Clicking second link from /projects → detail page loads correctly
+- AI Summary text present in body content
+- Breadcrumb `<nav aria-label="Breadcrumb"><ol>` present
+- Back navigation exists (link back to /projects)
+
+**Mobile responsive (375x812) on detail page** ✅
+- No horizontal overflow detected
+- Header/nav visible on mobile
+- No text below 10px found
+
+### Summary
+- **0 new bugs** this run
+- All previously-reported bugs unchanged (locale routes 404, favicon 404, mobile tap targets)
+- Queue files have active content — not overwritten
+
+### No new P0/P1 bugs
+
