@@ -1,5 +1,113 @@
 # Bug Reports — 2026-06-24
 
+## Browser Test Run #41 (2026-06-24 20:17 UTC) — Focus: /youtube-insights grid/list toggle, category filter, EN/ZH locale, card content
+
+### Automated Test — 12/12 passing (Vercel deployment)
+- ✅ / → HTTP 200
+- ✅ /projects → HTTP 200
+- ✅ /trends → HTTP 200
+- ✅ /youtube-insights → HTTP 200
+- ✅ /bookmarks → HTTP 200
+- ✅ Grid layout w/ 100 project links on /projects
+- ✅ No server errors in any page body
+
+### Product Tour Findings — /youtube-insights
+
+**Page Structure:**
+- ✅ H1 "Latest insights" present
+- ✅ 8 category filter chips (AI/ML, Developer Tools, Startup/Business, Tech News, Hardware, Security, Design, Other)
+- ✅ Grid/List view toggle via query params (?view=grid, ?view=list)
+- ✅ "All categories (93)" link present
+- ✅ Pagination — "Next" link to page 2
+- ✅ 20 video cards all showing
+- ✅ 0 broken images
+- ✅ Nav has working EN/中文 locale buttons (as links)
+
+**Card Content:**
+- ❌ **Every single video card (20/20) has ZERO insight text** — only shows "▶Watch on YouTube" link
+- ❌ Cards on /youtube-insights are completely empty of context: no key_insight, no description, no title
+- ✅ Homepage insight cards DO have context text (🔥 + first words of insight), confirming this is a /youtube-insights-specific rendering issue
+- The first video card starts showing actual content in the body text: "🔥The US Commerce Secretary accuses ASML..." — but this text appears outside the card structure
+
+**Category Filtering:**
+- ✅ Clicking a category chip updates the URL correctly (e.g., /youtube-insights?category=ai_ml)
+- ✅ Active filter chip toggles visual state (background color changes)
+- ❌ **Category filter does NOT actually filter the card list** — card count stays at 20 regardless of selected category
+- ❌ Both "AI/ML (25)" and "Tech News (22)" show 20 cards after clicking
+- All cards remain visible and unfiltered
+
+**Grid/List View Toggle:**
+- ✅ View toggle links exist: `/youtube-insights` (list), `/youtube-insights?view=grid`, `/youtube-insights?view=list`
+- ✅ Both grid and list view URLs render 20 cards
+- ❌ **Grid and list views produce IDENTICAL body text** — the layout toggle doesn't actually change card rendering
+- The body text for both views starts with the same ASML content
+
+**Locale Routes (re-confirmed):**
+- ❌ /zh/youtube-insights → HTTP 404
+- ❌ /en/trends → HTTP 404
+- ❌ /zh/trends → HTTP 404
+- ❌ /en/youtube-insights → HTTP 404
+- ❌ /zh/bookmarks → HTTP 404
+- ❌ /en/bookmarks → HTTP 404
+- All 6 locale-prefixed routes return 404 (persistent across runs)
+
+**Console Errors:**
+- ❌ 2x "Failed to load resource: the server responded with a status of 404 ()" — likely favicon + unknown resource
+
+### Bugs Found This Run
+
+---
+
+## Bug 13 [P1] — All 20 video cards on /youtube-insights have zero insight text content
+- **Page**: `/youtube-insights`
+- **Severity**: P1 — Major usability issue, makes the entire page useless
+- **Observed**: 20/20 cards render with ONLY "▶Watch on YouTube" link — zero text before it. No key_insight, no description, no video title, no channel name.
+- **Root cause candidate**: The insight text (key_insight/key_insight_zh from DB) is likely stored but not passed to the /youtube-insights component, OR the component renders text in a parent wrapper instead of inside each card element. Only 3 cards on the homepage have text; those also come from a different query (getLatestInsights() vs. paginated query).
+- **Reproduction**: Visit `https://product-tracer.vercel.app/youtube-insights` → all 20 cards show only "▶Watch on YouTube" with no insight text.
+- **Expected**: Each card should show the key_insight text (or key_insight_zh), video title, channel, and date — not just a bare YouTube link.
+
+---
+
+## Bug 14 [P3] — Category filter chips do not filter video card list
+- **Page**: `/youtube-insights`
+- **Severity**: P3 — Feature is visually present but non-functional
+- **Observed**: Clicking any category chip (AI/ML, Tech News, etc.) changes URL to `?category=ai_ml` but all 20 cards remain visible. Counts (e.g., "Tech News (22)") suggest enough data to filter, but the frontend doesn't execute the filter.
+- **Reproduction**: Visit /youtube-insights → click "AI/ML (25)" → URL updates but cards don't change. Click "Tech News (22)" → same 20 cards.
+- **Expected**: Clicking a category should filter the visible cards to only those in that category.
+
+---
+
+## Bug 15 [P3] — Grid/List view toggle doesn't change card layout
+- **Page**: `/youtube-insights`
+- **Severity**: P3 — Cosmetic, view toggle is present but inoperative
+- **Observed**: `?view=grid` and `?view=list` produce identical page body content. The visual layout doesn't change between the two modes.
+- **Reproduction**: Visit `/youtube-insights?view=grid` → note card layout. Visit `/youtube-insights?view=list` → same layout.
+- **Expected**: Grid view shows cards in a multi-column grid; list view shows a single-column list with more detail per item.
+
+---
+
+## Bug 16 [P1] — All 6 locale-prefixed routes return 404 (RUN 6 CONFIRMATION)
+- **Page**: `/en/trends`, `/zh/trends`, `/en/youtube-insights`, `/zh/youtube-insights`, `/en/bookmarks`, `/zh/bookmarks`
+- **Severity**: P1 — Full locale feature is broken across 3 pages
+- **Observed**: Consistent 404 on all locale-prefixed routes for non-homepage pages. This is the 6th run confirming this bug.
+- **Previous reports**: Bug 6 (Run #34), frontend queue P2 ticket, Run #38 confirmation, Run #39, Run #40, now Run #41
+- **Expected**: Routes under `[locale]` dynamic segment should serve localized versions of all pages.
+
+---
+
+### Re-confirmed Status (from previous runs)
+
+| Bug | Severity | Status | Notes |
+| --- | --- | --- | --- |
+| Bug 10 (DB crash) | P0 | Persists (local only) | Vercel works fine |
+| Bug 11 (domain hijack) | P0 | Persists | producttracer.com → muqid.com |
+| Bug 6 (locale 404) | P1 | Re-confirmed ×6 | All 6 locale routes 404 |
+| Bug 13 (blank cards) | P1 | NEW | /youtube-insights insightless |
+| Bug 7 (nav overflow) | P2 | Persists | 375px nav off-screen |
+| Bug 12 (touch targets) | P2 | Persists | < 44px on mobile |
+| Bug 14 (filter broken) | P3 | NEW | Category chips don't filter |
+| Bug 15 (view toggle) | P3 | NEW | Grid/list don't differ |
+
 ## Browser Test Run #40 (2026-06-24 18:05 UTC) — Focus: /trends page quality, WoW indicators, week selector
 
 ### Automated Test — 12/12 passing (Vercel deployment)
