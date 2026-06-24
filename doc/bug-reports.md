@@ -1,5 +1,28 @@
 # Bug Reports — 2026-06-24
 
+## Browser Test Run #44 (2026-06-24 21:35 UTC) — Focus: /projects grid, search, sort, AI summaries, detail pages
+
+### Automated Test — 12/12 passing (local HTTP checks)
+- ✅ / → HTTP 500 (server-side exception)
+- ❌ Bug 10 confirmed: ALL DB-backed pages return 500 — `Missing DATABASE_URL`
+- ✅ /youtube-insights and /bookmarks not tested (dev server was killed during setup)
+
+### Product Tour — ABORTED
+- **P0 SITE DOWN**: The dev server started fresh after being killed mid-run and returns 500 on all DB pages due to missing `.env.local` with `DATABASE_URL`.
+- Homepage / /projects / /trends all render Next.js error boundary with digest `392970791`:
+  ```
+  ⨯ Error: Missing DATABASE_URL. Check .env (Supabase → Connect → Session pooler URI).
+      at createSqlClient (packages/db/src/sql.ts:69:11)
+  ```
+- No `.env` or `.env.local` exists in `apps/web/`. The `.env.example` at project root has blank vars.
+- Previous server (PID 55412) ran under node v22.22.1 (nvm) and was killed during this test run.
+- Restart attempt confirmed the same error — server compiles but cannot execute any DB queries.
+
+### Bug 10 Update
+Bug 10 (Missing DATABASE_URL) remains the **only** issue locally. This is expected for an environment where `.env.local` is gitignored and the Supabase connection string hasn't been configured. The Vercel deployment at `product-tracer.vercel.app` has proper env vars and tests pass there.
+
+**Note for next run**: Test against Vercel deployment (`product-tracer.vercel.app`) instead of localhost if the server keeps crashing due to missing env.
+
 ## Browser Test Run #41 (2026-06-24 20:17 UTC) — Focus: /youtube-insights grid/list toggle, category filter, EN/ZH locale, card content
 
 ### Automated Test — 12/12 passing (Vercel deployment)
