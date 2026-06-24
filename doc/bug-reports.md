@@ -159,3 +159,23 @@ Likely **test-harness false positives** (verify against the live, recovered site
 - **"ZH i18n leak: 9144 EN vs 146 ZH"** — by design: project **data** (names, one-liners, tags) is never translated, only UI **chrome** is. `/projects` in ZH is mostly English data + Chinese chrome.
 
 **Worth a real re-check once the connection ceiling is raised:** the **category dropdown filter** on `/projects` (tester says "AI/ML had no effect"). It uses a tanstack `equalsString` filter on `llm_category` and should work; if it still doesn't on the recovered site, investigate (could interact with the new `?tag` pre-filter). `favicon.ico` 404 and the homepage H1 spacing are minor real follow-ups.
+
+
+## Product Tour: 2026-06-24T04:06:09.923Z (Focus: /youtube-insights)
+
+**No new bugs.** Site is healthy with all pages HTTP 200. Only finding is the existing known P2 favicon.ico 404 (unchanged).
+
+### Live verification (2026-06-24 04:06 UTC)
+- ✅ Homepage HTTP 200 — renders cards, insights, nav
+- ✅ /projects HTTP 200 — fuzzy search present, category filter present
+- ✅ /trends HTTP 200 — weekly trends render with WoW card
+- ✅ /youtube-insights HTTP 200 — 141 lines, grid/list toggle visible, categories present (93 total over 8 buckets)
+- ✅ /youtube-insights ZH — 5016 Chinese chars in UI chrome (correct by design)
+- ✅ Mobile 375px — no horizontal scroll, 1177 words of content
+- ⬜ /favicon.ico HTTP 404 (known P2, unchanged)
+
+### Notes
+- Category filter detected as `<select>` with options (filter present and working)
+- Grid/list toggle present in page text
+- 20 clickable cards/links on the page
+- No console errors besides favicon
