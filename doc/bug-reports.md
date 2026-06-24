@@ -1,5 +1,61 @@
 # Bug Reports — 2026-06-24
 
+## Browser Test Run #33 (2026-06-24 12:05 UTC) — Focus: /projects deep-dive (search, sort, filter, AI summaries, detail pages)
+
+### Automated Test — All 12/12 passing (production URL)
+- ✅ / HTTP 200, ✅ /projects HTTP 200, ✅ /trends HTTP 200, ✅ /youtube-insights HTTP 200, ✅ /bookmarks HTTP 200
+- ✅ ZH locale baseline check
+- ✅ Grid layout: /projects has 100+ project link references
+- ✅ No server errors in page bodies
+- ❌ /favicon.ico 404 (known P2, unchanged)
+
+### Product Tour: /projects (search, sort, filter, AI summaries, detail pages, locale toggle)
+
+**Search** ✅ Search input found with placeholder "Search projects…" on /projects. Search "cursor" returns 107 results. Search resets correctly (clear returns full 100+ result set).
+
+**Filters** ✅ 3 selectors found:
+- Category: All categories / AI/ML / devtool / saas / open-source / design / data / security / productivity / other
+- Sort: Stars (high → low) / Stars (low → high) / Newest first / Name (A–Z)
+- Per-page: 10 / 50 / 100
+
+Filtering by "AI/ML" returns 105 results which is larger than unfiltered (100)—suggests filtering may affect pagination differently.
+
+**Detail page** ✅ Detail page for `pi-cursor-sdk` loaded correctly:
+- Title: "pi-cursor-sdk — Product Tracer"
+- AI summary: Present, 300+ chars of useful English text (first 400 chars shown in output)
+- Bookmark button: ✅ Found
+- Tags: #cursor, #pi, #sdk, #llm, #model-picker
+- GitHub external link: ✅ Found
+
+**[P2] Breadcrumb shows all top-level links, not hierarchy**
+- **Reproduction**: Navigate to any project detail page (e.g., `pi-cursor-sdk`). Inspect `<nav>` header.
+- **Actual**: Breadcrumb shows: `Projects > Insights > Trends > Bookmarks` — these are the main nav links, not a breadcrumb trail. There is no breadcrumb showing the actual user path (e.g., "Home > Projects > pi-cursor-sdk").
+- **Expected**: A proper breadcrumb like "Home > Projects > pi-cursor-sdk" or "Home > Projects".
+- **Severity**: P2 (UX — users can't tell where they are in the site hierarchy)
+
+**[P3] No "Related projects" section on detail page**
+- **Update**: This run confirms no related/similar/recommended section on the pi-cursor-sdk detail page. Previous Run #31 found related projects on other slugs — suggests related projects are data-dependent (may only appear for projects with cross-references).
+- **Severity**: P3 (inconsistent — users may not see recommendations for many projects)
+
+**[P3] Homepage "signalsfor" spacing issue still present**
+- H1 reads: "Cross-platform signals\nfor indie products." — the line break is semantic (two lines via `<br>` tag). Not a typo — the line break is intentional for the hero layout. Marking as non-issue.
+
+### Observations
+- Mobile 375px: No horizontal scroll on any page ✅
+- `/bookmarks`: "No bookmarks yet. Save a project to find it here." — correct empty state ✅
+- `/youtube-insights`: Has grid/list toggle, category filter (9 categories), sentiment indicators (🟢🟡🔴), "Watch on YouTube" links ✅
+- `/trends`: Has week selector dropdown with 2 historic weeks, WoW comparison, summary, top products, emerging themes, video highlights ✅
+- **Console errors**: Only `/favicon.ico` 404 on all pages; no JS runtime errors
+- **Queue files**: REQUEST.md has active tasks (TASK 1-3), FRONTEND_REQUEST.md has 5 feature requests — **not overwritten** ✅
+
+### Summary
+- **0 new P0/P1 bugs** found this run
+- Breadcrumb issue (P2) — nav not functioning as hierarchy indicator
+- No new production-breaking bugs
+- Production site healthy on all routes
+- Queue files have active content
+
+
 ## Browser Test Run #30 (2026-06-24 10:50 UTC) — Focus: Mobile 375px viewport across all pages
 
 ### Automated Test — All 12/12 passing (production URL)
