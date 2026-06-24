@@ -1,5 +1,13 @@
 # Bug Reports — 2026-06-24
 
+## Automated Test Summary (Run #20 — /youtube-insights + /trends focus)
+- Browser test: All 5 pages HTTP 200, 1 console error (404 resource, non-blocking)
+- Focal tour: /youtube-insights (grid/list toggle, ZH locale), /trends (data freshness, WoW, detail page), /bookmarks
+- Known P2 remaining: /favicon.ico 404 (unchanged)
+- **New detail bug**: Linked product from /trends had NO related projects section and NO external links
+
+---
+
 ## Automated Test Summary (Run #19 - Mobile focus)
 - Browser test: All 6 pages HTTP 200, 1 console error (404 resource, non-blocking)
 - Focal tour: Mobile 375px viewport — homepage, /projects, detail page, /trends, /bookmarks
@@ -352,8 +360,49 @@ Likely **test-harness false positives** (verify against the live, recovered site
 - WoW comparison shows same top product ("Are You in the Weights?") both weeks
 - Category mix bar renders with AI/ML (40%), Other (30%), design (10%)
 
-### No new bugs found
-- Site healthy across all routes
-- All previously reported P0 bugs (HTTP 500s) are resolved
-- The empty insight card on homepage (BUG-1 in REQUEST.md) remains — one video card has no insight text, just "Watch on YouTube" link — tracked in assistant-queue/REQUEST.md
-- Known P2 favicon 404 remains
+## Product Tour: 2026-06-24T06:35 UTC (Focus: /youtube-insights + /trends)
+
+### Automated test — all passing
+- ✅ Homepage HTTP 200 — 839 words, H1 present, 1 console error (favicon 404)
+- ✅ /projects HTTP 200 — search, filter, 5 project links
+- ✅ /trends HTTP 200 — 231 words, 6 H2 sections (SUMMARY, WEEK OVER WEEK, THIS WEEK'S MIX, TOP PRODUCTS, EMERGING THEMES, VIDEO HIGHLIGHTS)
+- ✅ /youtube-insights HTTP 200 — H1 "Latest insights", grid toggle present, 20 YouTube links, 7993 chars
+- ✅ /bookmarks HTTP 200 — H1 "收藏" (ZH) with empty state, H1 "Bookmarks" (EN)
+- ✅ Mobile 375px — no horizontal overflow
+- ✅ ZH locale — H1 "最新洞察" on /youtube-insights, 2507 ZH chars, nav items translated
+- ❌ /favicon.ico 404 (known P2, unchanged)
+
+### [P2] /trends → /projects/are-you-in-the-weights — Detail page missing "Related projects" section
+- **Description**: Clicking a top product link from /trends leads to a detail page with breadcrumb, AI summary, bookmark, and tags, but NO "Related projects" section and NO external links (GitHub/Product Hunt). Other detail pages (e.g. /projects/pewdiepie-archdaemon-odysseus) DO show related projects. This may vary by project based on whether same-category peers exist.
+- **Found**: 2026-06-24T06:35 UTC
+- **Reproduction**:
+  1. Go to /trends → click first top product link ("Are You in the Weights?")
+  2. Scroll below the AI summary
+  3. Look for "Related projects" or "You might also like" section
+- **Expected**: Related projects section showing same-category products for discovery
+- **Actual**: No related projects section. Zero external GitHub/Product Hunt links.
+- **Note**: Tags include #llm, #recognition, #clustering, #frontier-models, #parallel-query, suggesting it's an AI/ML category project. There are 25 AI/ML projects — peers should exist.
+
+### [P2] /youtube-insights — Grid toggle is an `<a>` link, not a `<button>`
+- **Description**: The grid/list view toggle is implemented as `<a href="/youtube-insights?view=grid">` rather than `<button>` elements. They work functionally (click navigates to ?view=grid) but: (1) not keyboard-triggerable via Space/Enter, (2) announced as "links" to screen readers, (3) causes a full page navigation instead of client-side state toggle.
+- **Found**: 2026-06-24T06:35 UTC
+- **Reproduction**:
+  1. Go to /youtube-insights
+  2. Inspect the "⊞ Grid" toggle element
+  3. Check its HTML tag and behavior
+- **Expected**: `<button>` with `aria-pressed` for accessible toggle
+- **Actual**: `<a href="/youtube-insights?view=grid">` link
+
+### [P2] /youtube-insights — No internal detail pages (all links go to YouTube)
+- **Description**: All 20+ video insight cards link directly to `youtube.com/watch?v=...` with zero internal `/youtube-insights/[id]` links. Users can't bookmark a specific insight within the app, share an insight URL, or see an expanded AI summary.
+- **Found**: 2026-06-24T06:35 UTC (also noted in previous tours)
+- **Reproduction**:
+  1. Go to /youtube-insights
+  2. Check any insight card link href
+- **Expected**: Card links to internal detail page (e.g. `/youtube-insights/[slug]`)
+- **Actual**: All links point to external youtube.com URLs
+
+### Known issues (unchanged from previous tours)
+- /favicon.ico 404 (known P2)
+- Homepage empty insight card (BUG-1 — tracked in assistant-queue/REQUEST.md)
+- No back button on mobile project detail pages
