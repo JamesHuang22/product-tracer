@@ -1,5 +1,53 @@
 # Bug Reports — 2026-06-24
 
+## Browser Test Run #38 (2026-06-24 14:05 UTC) — Focus: /projects search, sort, filter, AI summaries, detail pages
+
+### Automated Test — 12/12 passing (Vercel deployment)
+- ✅ / → HTTP 200
+- ✅ /projects → HTTP 200
+- ✅ /trends → HTTP 200
+- ✅ /youtube-insights → HTTP 200
+- ✅ /bookmarks → HTTP 200
+- ✅ Grid layout w/ 100 project links on /projects
+- ✅ No server errors in any page body
+
+### Product Tour Findings
+
+**Detail page (odysseus):**
+- URL format: `/projects/[slug]` (not `/project/` as previously assumed)
+- ✅ AI summary present
+- ✅ Bookmark button present
+- ✅ 1225 chars of detail content
+- ❌ No breadcrumb (Home link)
+- ❌ No related/similar projects
+- ❌ No star/fork count display shown
+
+**Mobile (375px):**
+- ✅ 100 project links still visible (same as desktop)
+- ✅ No horizontal overflow detected on /projects
+- ✅ 0 console errors
+- ⚠️ Nav overflow at 375px on other pages is still a known issue from Run #35
+
+---
+
+## Bug 11 [P0 🔴] — Production domain producttracer.com hijacked / redirects to muqid.com
+- **Status**: 🔴 CRITICAL — ALL external traffic lost
+- **Detection**: Browser test script correctly uses `product-tracer.vercel.app`, but the canonical domain `producttracer.com` returns HTTP 301 → `http://www.muqid.com`
+- **Evidence**:
+  - `curl -sI https://producttracer.com` → `location: http://www.muqid.com` (Apache server)
+  - `curl -sIL https://producttracer.com` → Final URL: `https://www.muqid.com/`
+  - Headers show `server: Apache` — not Next.js/Vercel
+  - The MUQID site is an unrelated Belgian anti-fraud / risk solutions company
+- **First seen**: This is the first time the domain check was included in a browser test
+- **Impact**: 
+  - All SEO juice and backlinks point to wrong site
+  - Users typing `producttracer.com` see anti-fraud company content
+  - Shared bookmarks/links go to wrong site
+  - Credibility loss
+- **Root cause**: Unknown — could be DNS takeover, Vercel domain config expired, or domain was pointed elsewhere
+- **Reproduction**: Visit `https://producttracer.com` in any browser
+- **Fix needed**: Check Vercel domain settings, DNS records for producttracer.com, and ensure the domain points to Vercel's nameservers/proxy
+
 ## Browser Test Run #36 (2026-06-24 13:45 UTC) — Focus: /projects search, sort, filter & detail pages
 
 ### Automated Test — 12/12 passing (localhost HTTP checks)
