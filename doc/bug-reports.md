@@ -371,3 +371,35 @@ Automated browser test findings.
     404 https://product-tracer.vercel.app/favicon.ico
 - **Expected:** All resources load successfully (2xx)
 - **Actual:** 1 resource(s) returned 404
+
+---
+
+## Product Tour: 2026-06-24 01:35 UTC (Focus: Homepage + ZH Locale Check)
+
+### [P2] All /zh/* routes — Still returning HTTP 404 (unchanged)
+- **Description:** Every `/zh/*` route (/, /projects, /youtube-insights, /trends) returns HTTP 404 with "This page could not be found." The page renders in English with only 2 CJK characters found. Full i18n regression first reported 2026-06-23 12:20, still unfixed.
+- **Reproduction:**
+  1. Navigate to `https://product-tracer.vercel.app/zh`
+  2. HTTP 404 with English "This page could not be found."
+  3. Try /zh/projects, /zh/youtube-insights, /zh/trends — same 404 behavior
+- **Found:** 2026-06-24 01:35 UTC
+
+### [P3] / — H1 typo "signalsfor" missing space (unchanged, 4+ runs)
+- **Description:** H1 reads "Cross-platform signalsfor indie products." — still missing the space between "signals" and "for". First reported ~2026-06-23T17:52. Unfixed for 4+ consecutive tours.
+- **Reproduction:** Visit homepage, inspect `<h1>` text.
+- **Found:** 2026-06-24 01:35 UTC
+
+### [P3] / — favicon.ico returns HTTP 404 (unchanged)
+- **Description:** `GET /favicon.ico → 404` on every page load. Browser tab shows generic document icon. Reported in every tour since the first run.
+- **Found:** 2026-06-24 01:35 UTC
+
+### ✅ Confirmed Fixed This Run
+- **Mobile nav overflow** — Nav spans exactly 375px at iPhone viewport. Previous fix holding.
+- **No console errors** (other than favicon 404) — Homepage, /projects, /youtube-insights all clean.
+- **Project links** — All 10+ sampled links on /projects correctly point to `/projects/[slug]` detail pages.
+- **Page loads** — All EN routes (/, /projects, /youtube-insights) return 200 with correct titles.
+
+### Summary
+- **0 new bugs** found (all issues are long-standing, previously reported)
+- **3 active bugs** (1 P2 ZH locale, 2 P3 cosmetic — H1 typo, favicon 404)
+- **4 verified fixes** holding from previous runs
