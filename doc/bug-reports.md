@@ -54,17 +54,30 @@
 
 ---
 
-## Root Cause Hypothesis
+## BUG-005 [P0] — Site-wide regression: every page returns HTTP 500 (2026-06-24 03:20 UTC)
 
-The 500 errors across `/`, `/trends`, and `/youtube-insights` suggest a shared data layer failure. Given that:
-- All failing pages depend on database queries (Supabase)
-- The project detail page (200 but client-side error) also needs DB data
-- The `/projects` page returns 500 HTTP but serves content (possibly SSR catches a partial error)
+**Description**: Every route on the site (/, /projects, /trends, /youtube-insights) now returns HTTP 500 Internal Server Error. All pages have empty `<title>`. The site is completely non-functional.
 
-**Most likely**: A recent schema change, migration issue, or Vercel environment variable change (e.g., `DATABASE_URL`, Supabase keys) broke the server-side data fetching. The `digest: "193943652"` may help in Vercel logs.
+**Reproduction** (confirmed via Puppeteer headless Chrome):
+1. `https://product-tracer.vercel.app/` → HTTP 500
+2. `https://product-tracer.vercel.app/projects` → HTTP 500
+3. `https://product-tracer.vercel.app/trends` → HTTP 500
+4. `https://product-tracer.vercel.app/youtube-insights` → HTTP 500
+
+**Root cause**: Unknown — likely a Vercel deployment issue, Supabase connectivity failure, or environment variable change. This is a new regression that was NOT present during the previous tour (2026-06-24 02:35 UTC) where /trends and /bookmarks were functional.
 
 ### Immediate actions needed
 1. Check Vercel deployment logs for the actual stack trace
 2. Verify Supabase connection and permissions
 3. Check if a recent migration (`0015_dedup_quality` or similar) altered the schema
 4. Consider reverting the last deploy or running a Vercel redeploy
+
+---
+
+## Known P2 Issues (not yet fixed across multiple tours)
+- `GET /favicon.ico → 404` on every page load (reported since first tour)
+- No breadcrumb navigation on project detail pages (`/projects/[slug]`)
+- H1 typo on homepage: "signalsfor" missing space (reported since 2026-06-23)
+- ZH locale routes (`/zh/*`) return 404 for all pages except `/zh/` homepage
+- No AI summary section on project detail pages
+- Page 2 missing "Prev" pagination link on /youtube-insights (only relevant if site is up)
