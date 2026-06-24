@@ -6,6 +6,22 @@
 | U3 | Backfill llm_category | #52, #53 | ✅ backfilled (1.2% → 99.8%), verified |
 | U2 | Backfill AI summaries | #55 | ✅ backfilled (150 → 4,537), verified |
 | U4 | AI granular tags | #57 | ✅ shipped + backfilled (3,953/3,953 active), verified |
+| U6 | Insight multi-select filter | #59 | ✅ merged, verified |
+| U5 | YouTube insight OG image | #60 | ✅ merged, verified |
+
+### U6 — Insight category filter: multi-select
+
+The `/youtube-insights` single-category dropdown is now a row of toggle chips. Pick any combination; state lives in the URL as comma-separated `?category=a,b,c` (chip toggles add/remove, "All" clears). DB `getVideoInsightsByCategory`/`getVideoInsightCount` generalised to a category array (`= any(...)`); the page validates/dedupes the param against the canonical set. Verified `?category=ai_ml,developer_tools` (+`&view=grid`) → 200.
+
+### U5 — YouTube Insight OG image generation
+
+New dynamic 1200×630 OG card at `/og/youtube-insights` (`next/og` `ImageResponse`, edge runtime, static brand design, day-cached) + Open Graph / Twitter `summary_large_image` metadata on the page pointing at it; `metadataBase` added to the root layout so relative URLs resolve absolute. Insights aren't individually routed, so one static page card (not per-insight images) is the right scope. Verified: `/og/youtube-insights` → `image/png` 200 (57 KB), page emits absolute `og:image` + `twitter:card`; card renders correctly (brand wordmark, ▶, category chips).
+
+---
+
+## All Day 2 tasks (U1–U6) complete
+
+Every task shipped via branch → PR → squash-merge → production verification; `pnpm typecheck` (+ a full `next build` for frontend work) before each PR; no direct pushes to main. Two LLM backfills (categories 1.2%→99.8%, summaries 150→4,537) and a tag backfill (3,953/3,953 active) were run in monitored chunks after an `EMAXCONNSESSION` incident was root-caused and fixed — production held HTTP 200 through every subsequent run. Migration 0015 applied via Supabase MCP (user-authorized for this session).
 
 ### U4 — AI auto-tagging with granular tags
 
