@@ -46,7 +46,9 @@ export default async function HomePage() {
     getNewThisWeek(),
     getActiveSignalCount(),
     getLatestProjects(10),
-    getTopVideoInsights(3),
+    // Fetch a small buffer so the home strip still shows 3 cards after dropping
+    // any whose summary is empty / unusable in the active locale (see below).
+    getTopVideoInsights(8),
     getLatestWeeklyTrend(),
   ]);
 
@@ -61,12 +63,20 @@ export default async function HomePage() {
   const cookieStore = await cookies();
   const rawLocale = cookieStore.get(LOCALE_COOKIE)?.value;
   const locale: Locale = isLocale(rawLocale) ? (rawLocale as Locale) : DEFAULT_LOCALE;
-  const localizedInsights = videoInsights.map((vi) => {
-    const resolved = localizedPair(locale, vi.key_insight, vi.key_insight_zh);
-    return locale === 'zh'
-      ? { ...vi, key_insight: null, key_insight_zh: resolved }
-      : { ...vi, key_insight: resolved, key_insight_zh: null };
-  });
+  // Resolve to the active locale, then DROP any insight with no displayable
+  // text — those rendered as an empty card (just a "Watch on YouTube" link).
+  // `localizedPair` already falls back zh→en in ZH mode; in EN mode it returns
+  // null for empty/Chinese-only text (we deliberately don't leak Chinese into
+  // the EN UI), so such cards are skipped rather than shown blank.
+  const localizedInsights = videoInsights
+    .map((vi) => ({ vi, resolved: localizedPair(locale, vi.key_insight, vi.key_insight_zh) }))
+    .filter(({ resolved }) => resolved != null && resolved.trim() !== '')
+    .slice(0, 3)
+    .map(({ vi, resolved }) =>
+      locale === 'zh'
+        ? { ...vi, key_insight: null, key_insight_zh: resolved }
+        : { ...vi, key_insight: resolved, key_insight_zh: null },
+    );
 
   // One-liners live in a single column that is occasionally Chinese. In English
   // mode, null out predominantly-CJK text *here* (server-side) so it never
