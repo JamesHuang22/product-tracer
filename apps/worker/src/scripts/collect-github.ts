@@ -18,29 +18,54 @@ loadRepoEnv(import.meta.url);
 import { createSqlClient } from '@product-tracer/db';
 import {
   discoverRepos,
+  enrichRepoStats,
   fetchKnownReposByIds,
   isNoiseRepo,
+  isStaleRepo,
   repoSlug,
   type GithubRepo,
+  type RepoStats,
 } from '../collectors/github.js';
 
 const sql = createSqlClient();
 
-async function storeRepo(repo: GithubRepo): Promise<void> {
+// Cap best-effort stats enrichment per run — the PR count uses the search API
+// (~30 req/min), so we enrich a bounded slice and let the rest fill in over
+// subsequent runs rather than risk rate-limiting the core discovery calls.
+const MAX_ENRICH = 40;
+
+async function storeRepo(repo: GithubRepo, stats?: RepoStats): Promise<void> {
   const slug = repoSlug(repo.full_name);
   const category = repo.language ?? repo.topics[0] ?? null;
   const today = new Date().toISOString().slice(0, 10);
 
   // Upsert project. `coalesce` on one_liner preserves anything T1 / a human
-  // wrote — only fills it from GH description if it's still null.
+  // wrote — only fills it from GH description if it's still null. The enriched
+  // PR / commit counts are coalesced too, so a run that didn't enrich this repo
+  // keeps its last known value instead of overwriting it with null.
   const [project] = await sql<{ id: string }[]>`
-    insert into app.project (slug, name, one_liner, category, primary_url, status)
-    values (${slug}, ${repo.name}, ${repo.description}, ${category}, ${repo.html_url}, 'active')
+    insert into app.project (
+      slug, name, one_liner, category, primary_url, status,
+      forks_count, issues_count, open_prs_count, topics,
+      last_push_at, recent_commits_30d, last_checked_at
+    )
+    values (
+      ${slug}, ${repo.name}, ${repo.description}, ${category}, ${repo.html_url}, 'active',
+      ${repo.forks_count}, ${repo.open_issues_count}, ${stats?.open_prs_count ?? null}, ${repo.topics},
+      ${repo.pushed_at}, ${stats?.recent_commits_30d ?? null}, now()
+    )
     on conflict (slug) do update set
-      name        = excluded.name,
-      one_liner   = coalesce(app.project.one_liner, excluded.one_liner),
-      category    = excluded.category,
-      primary_url = excluded.primary_url
+      name               = excluded.name,
+      one_liner          = coalesce(app.project.one_liner, excluded.one_liner),
+      category           = excluded.category,
+      primary_url        = excluded.primary_url,
+      forks_count        = excluded.forks_count,
+      issues_count       = excluded.issues_count,
+      open_prs_count     = coalesce(excluded.open_prs_count, app.project.open_prs_count),
+      topics             = excluded.topics,
+      last_push_at       = excluded.last_push_at,
+      recent_commits_30d = coalesce(excluded.recent_commits_30d, app.project.recent_commits_30d),
+      last_checked_at    = excluded.last_checked_at
     returning id
   `;
   const projectId = project!.id;
@@ -73,9 +98,13 @@ async function main(): Promise<void> {
   console.log(`  per query: ${queryBreakdown}`);
   console.log(`  ${discovered.length} unique after dedupe`);
 
-  // 2. Noise filter
-  const filtered = discovered.filter((r) => !isNoiseRepo(r));
-  console.log(`  ${filtered.length} after noise filter (-${discovered.length - filtered.length})`);
+  // 2. Noise + freshness filter (drop abandoned repos unless clearly notable)
+  const denoised = discovered.filter((r) => !isNoiseRepo(r));
+  const filtered = denoised.filter((r) => !isStaleRepo(r));
+  console.log(
+    `  ${filtered.length} after noise (-${discovered.length - denoised.length}) ` +
+      `+ freshness (-${denoised.length - filtered.length}) filters`,
+  );
 
   // 3. Refresh known repos discovery didn't already cover
   console.log('→ Loading known repos for re-snapshot…');
@@ -106,9 +135,13 @@ async function main(): Promise<void> {
   console.log(`→ Storing ${all.length} repos (${filtered.length} discovered + ${refreshed.length} refreshed)…`);
   let stored = 0;
   let failed = 0;
+  let enriched = 0;
   for (const repo of all) {
     try {
-      await storeRepo(repo);
+      // Best-effort extra stats for the first MAX_ENRICH repos (bounded API cost).
+      const stats = enriched < MAX_ENRICH ? await enrichRepoStats(repo) : undefined;
+      if (stats) enriched++;
+      await storeRepo(repo, stats);
       stored++;
     } catch (err) {
       failed++;
@@ -121,7 +154,7 @@ async function main(): Promise<void> {
     }
   }
 
-  console.log(`✓ Stored ${stored} repos (${failed} failed).`);
+  console.log(`✓ Stored ${stored} repos (${failed} failed, ${enriched} enriched with PR/commit stats).`);
 }
 
 main()

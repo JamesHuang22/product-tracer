@@ -231,6 +231,91 @@ export function isNoiseRepo(repo: GithubRepo): boolean {
 }
 
 // ---------------------------------------------------------------------------
+// Freshness filter — drop long-abandoned repos (unless they're clearly notable)
+// ---------------------------------------------------------------------------
+
+const SIX_MONTHS_MS = 183 * 86_400_000;
+
+/**
+ * A repo is "stale" if it hasn't been pushed to in over 6 months — *unless* it
+ * has > 1000 stars (an established project worth keeping tracked even between
+ * pushes). Keeps the catalogue biased toward currently-active work.
+ */
+export function isStaleRepo(repo: GithubRepo): boolean {
+  if (repo.stargazers_count > 1000) return false;
+  const pushedMs = Date.parse(repo.pushed_at);
+  if (!Number.isFinite(pushedMs)) return false; // unknown push time → don't drop
+  return Date.now() - pushedMs > SIX_MONTHS_MS;
+}
+
+// ---------------------------------------------------------------------------
+// Stats enrichment — open PR count + recent commit velocity (best-effort)
+// ---------------------------------------------------------------------------
+
+export interface RepoStats {
+  open_prs_count: number | null;
+  recent_commits_30d: number | null;
+}
+
+/** Parse the last-page number out of a paginated response's Link header. */
+function lastPageFromLink(link: string | null): number | null {
+  if (!link) return null;
+  const m = link.match(/[?&]page=(\d+)[^>]*>;\s*rel="last"/);
+  return m ? Number(m[1]) : null;
+}
+
+/**
+ * Best-effort extra stats for one repo. Each call is wrapped so a failure or
+ * rate-limit yields `null` for that field rather than aborting the collector —
+ * the columns simply stay unfilled until a future run can afford the calls.
+ *
+ *  - open_prs_count: `search/issues?q=repo:…+is:pr+is:open` → total_count.
+ *  - recent_commits_30d: `commits?since=<30d>&per_page=1`, read the Link header's
+ *    last-page number (commits are one-per-page here, so last page == count).
+ *    Capped at 100 (GitHub stops paginating the count past that) — good enough
+ *    as a velocity signal.
+ */
+export async function enrichRepoStats(repo: GithubRepo): Promise<RepoStats> {
+  const stats: RepoStats = { open_prs_count: null, recent_commits_30d: null };
+
+  try {
+    const q = encodeURIComponent(`repo:${repo.full_name} is:pr is:open`);
+    const res = await ghFetch(`/search/issues?q=${q}&per_page=1`);
+    if (res.ok) {
+      const json = (await res.json()) as { total_count?: number };
+      if (typeof json.total_count === 'number') stats.open_prs_count = json.total_count;
+    } else {
+      await res.text().catch(() => '');
+    }
+  } catch {
+    /* leave null */
+  }
+
+  try {
+    const since = new Date(Date.now() - 30 * 86_400_000).toISOString();
+    const res = await ghFetch(
+      `/repos/${repo.full_name}/commits?since=${since}&per_page=1`,
+    );
+    if (res.ok) {
+      const lastPage = lastPageFromLink(res.headers.get('link'));
+      if (lastPage != null) {
+        stats.recent_commits_30d = lastPage;
+      } else {
+        // No Link header → 0 or 1 commits in the window; count the body length.
+        const arr = (await res.json()) as unknown[];
+        stats.recent_commits_30d = Array.isArray(arr) ? arr.length : null;
+      }
+    } else {
+      await res.text().catch(() => '');
+    }
+  } catch {
+    /* leave null */
+  }
+
+  return stats;
+}
+
+// ---------------------------------------------------------------------------
 // Back-compat: single-query helper kept so older scripts and tests still work
 // ---------------------------------------------------------------------------
 

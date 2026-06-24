@@ -116,6 +116,49 @@ interface ProjectRow {
   primary_url: string | null;
   created_at: string;
   link_count: number;
+  llm_category: string | null;
+}
+
+/**
+ * Sørensen–Dice similarity on character bigrams of the normalised names
+ * (0 = nothing in common, 1 = identical). Dependency-free; used to gate
+ * name-only duplicate candidates so unrelated projects that merely share a
+ * generic name token aren't sent to the LLM.
+ */
+export function nameSimilarity(a: string, b: string): number {
+  const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '');
+  const x = norm(a);
+  const y = norm(b);
+  if (!x || !y) return 0;
+  if (x === y) return 1;
+  if (x.length < 2 || y.length < 2) return 0;
+  const bigrams = (s: string): Map<string, number> => {
+    const m = new Map<string, number>();
+    for (let i = 0; i < s.length - 1; i++) {
+      const g = s.slice(i, i + 2);
+      m.set(g, (m.get(g) ?? 0) + 1);
+    }
+    return m;
+  };
+  const bx = bigrams(x);
+  const by = bigrams(y);
+  let inter = 0;
+  for (const [g, c] of bx) {
+    const d = by.get(g);
+    if (d) inter += Math.min(c, d);
+  }
+  return (2 * inter) / (x.length - 1 + (y.length - 1));
+}
+
+/**
+ * Stricter gate for name-only duplicate candidates (URL matches stay trusted):
+ * keep the pair only when the two share the same LLM category, or their names
+ * are highly similar (Dice > 0.8). Cuts false positives from projects that
+ * merely collide on a generic name key.
+ */
+function namePairLikelyDuplicate(a: ProjectRow, b: ProjectRow): boolean {
+  if (a.llm_category && b.llm_category && a.llm_category === b.llm_category) return true;
+  return nameSimilarity(a.name, b.name) > 0.8;
 }
 
 interface InsightRow {
@@ -288,7 +331,7 @@ async function main(): Promise<void> {
 
   // --- Load active rows -------------------------------------------------
   const projects = await sql<ProjectRow[]>`
-    select p.id, p.slug, p.name, p.one_liner, p.primary_url, p.created_at,
+    select p.id, p.slug, p.name, p.one_liner, p.primary_url, p.created_at, p.llm_category,
       (select count(*)::int from app.identity_link il where il.project_id = p.id) as link_count
     from app.project p
     where coalesce(p.dedup_status, 'active') = 'active' and p.status <> 'dead'
@@ -300,6 +343,8 @@ async function main(): Promise<void> {
   `;
 
   // --- Candidate pairs --------------------------------------------------
+  // URL matches are trusted as-is; name-only matches go through the stricter
+  // same-category / high-similarity gate to cut false positives.
   const projectPairs: Pair<ProjectRow>[] = [];
   const projSeen = new Set<string>();
   pairsFromGroups(
@@ -307,10 +352,13 @@ async function main(): Promise<void> {
     projSeen,
     projectPairs,
   );
-  pairsFromGroups(
-    groupBy(projects, (p) => textKey(p.name)),
-    projSeen,
-    projectPairs,
+  const namePairs: Pair<ProjectRow>[] = [];
+  pairsFromGroups(groupBy(projects, (p) => textKey(p.name)), projSeen, namePairs);
+  const keptNamePairs = namePairs.filter(({ a, b }) => namePairLikelyDuplicate(a, b));
+  for (const pair of keptNamePairs) projectPairs.push(pair);
+  console.log(
+    `[dedup] name-key pairs: ${namePairs.length} → ${keptNamePairs.length} after ` +
+      `same-category / similarity>0.8 gate (-${namePairs.length - keptNamePairs.length}).`,
   );
 
   const insightPairs: Pair<InsightRow>[] = [];
