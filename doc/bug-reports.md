@@ -315,3 +315,45 @@ Likely **test-harness false positives** (verify against the live, recovered site
 - Site is healthy across all routes
 - Detail pages fully functional: breadcrumb, AI summary, related projects, bookmarks all present
 - Known P2 favicon 404 remains
+
+---
+
+## Product Tour: 2026-06-24T05:50 UTC (Focus: /projects + deep HTML analysis)
+
+### Automated test — all passing
+- ✅ Homepage HTTP 200 — 777 words, H1 present, 1 console error (favicon 404)
+- ✅ /projects HTTP 200 — search, category filter, tag chips, 100 project links
+- ✅ /trends HTTP 200 — summary, WoW comparison, category mix, top products, emerging themes
+- ✅ /youtube-insights HTTP 200 — H1 "Latest insights", grid/list toggle, multi-select category chips
+- ✅ /bookmarks HTTP 200 — H1 "Bookmarks"
+- ✅ Mobile 375px — no horizontal overflow
+- ✅ ZH locale — nav items translated, H1 localized
+- ❌ /favicon.ico 404 (known P2, unchanged)
+
+### /projects detail page (`/projects/pewdiepie-archdaemon-odysseus`)
+- ✅ HTTP 200, H1 "odysseus"
+- ✅ Breadcrumb: `Projects > odysseus`
+- ✅ AI Summary present with full prose summary
+- ✅ Related projects ("You might also like") — 4 same-category cards
+- ✅ Bookmark button functional
+- ✅ Tag chips: #self-hosted #ai #workspace #llm
+- ✅ External links: GitHub + Product Hunt (2)
+- ✅ 0 console errors, ~179 words content
+
+### Search and filter
+- Typing "AI" in search shows matching results (odysseus, ponytail, DeepSeek-Reasonix)
+- Category filter shows live button counts: AI/ML (25), Developer Tools (18), Startup/Business (17) — working
+- Grid/List toggle on /youtube-insights present with view=grid param
+- "Next" pagination link present on /youtube-insights
+
+### Trends page
+- All 6 H2 sections render: Summary, Week Over Week, This Week's Mix, Top Products, Emerging Themes, Video Highlights
+- Week of 2026-06-22 – 2026-06-28
+- WoW comparison shows same top product ("Are You in the Weights?") both weeks
+- Category mix bar renders with AI/ML (40%), Other (30%), design (10%)
+
+### No new bugs found
+- Site healthy across all routes
+- All previously reported P0 bugs (HTTP 500s) are resolved
+- The empty insight card on homepage (BUG-1 in REQUEST.md) remains — one video card has no insight text, just "Watch on YouTube" link — tracked in assistant-queue/REQUEST.md
+- Known P2 favicon 404 remains
