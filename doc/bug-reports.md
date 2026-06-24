@@ -459,3 +459,61 @@ Likely **test-harness false positives** (verify against the live, recovered site
 - Detail page has semantic `<nav aria-label="Breadcrumb"><ol>` — verified on odysseus
 - Known P2 /favicon.ico 404 unchanged
 - REQUEST.md has 3 pending tasks (not overwritten)
+
+## Product Tour: 2026-06-24T07:20 UTC (Focus: /projects + detail page deep-dive)
+
+### Automated test — all passing
+- ✅ Homepage HTTP 200 — 839 words, H1 present, 1 console error (favicon 404)
+- ✅ /projects HTTP 200 — search input found, 100 project links (all valid), 3 select dropdowns
+- ✅ /trends HTTP 200
+- ✅ /youtube-insights HTTP 200 — grid/list toggle, 40 clickable elements
+- ✅ /bookmarks HTTP 200
+- ✅ Mobile 375px — no horizontal scroll
+- ✅ ZH locale — nav items translated (项目/洞察/趋势/收藏)
+- ❌ /favicon.ico 404 (known P2, unchanged)
+
+### Detail page deep-dive: /projects/pewdiepie-archdaemon-odysseus
+- ✅ Breadcrumb present (5 breadcrumb/back links)
+- ✅ AI Summary section present
+- ✅ Bookmark button present (1 element)
+- ❌ **No related projects section** (confirmed again from previous run)
+- ❌ **No OG image** meta tag — only description meta present, OG:title missing
+- ❌ **0 images on detail page** — no screenshot, no logo, no GitHub avatar
+- ✅ 0 console errors (page-specific) — only global favicon 404
+
+### Mobile findings (375px viewport)
+- ✅ 100 project links visible, no horizontal scroll
+- ⚠️ **284 small tap targets** (<44px) — nav links "Projects", "Insights", "Trends", "Bookmarks" are too small for touch
+- ⚠️ Nav link text examples: "Product Tracer | Projects | Insights | Trends | Bookmarks"
+
+### [P2] Detail page — No OG image for social sharing
+- **Description**: The project detail page (confirmed on /projects/pewdiepie-archdaemon-odysseus) has a `<meta name="description">` tag but no `<meta property="og:image">`. When sharing a product link on social media (Twitter, Discord, Slack), no preview image will appear.
+- **Found**: 2026-06-24T07:20 UTC
+- **Reproduction**:
+  1. Visit any project detail page
+  2. Inspect `<meta property="og:image">` in page head
+  3. Check meta tags
+- **Expected**: OG image present (either project screenshot, GitHub social preview, or fallback)
+- **Actual**: No og:image meta tag found
+
+### [P2] Mobile — Nav bar tap targets below 44px minimum
+- **Description**: The nav bar links (Projects, Insights, Trends, Bookmarks) on 375px viewport have tap targets smaller than the recommended 44×44px minimum. 284 small targets detected total (includes nav items, filter buttons, footer links). This causes accidental taps on mobile.
+- **Found**: 2026-06-24T07:20 UTC
+- **Reproduction**:
+  1. Open Chrome DevTools, set viewport to 375×812 (iPhone SE/12/13)
+  2. Run `document.querySelectorAll('a, button')` and check `getBoundingClientRect()`
+  3. Many elements have width < 44px or height < 44px
+- **Expected**: All interactive elements ≥44×44px per WCAG 2.5.5
+- **Actual**: 284 elements below 44px threshold
+
+### [P3] Detail page — No images at all (pewdiepie-archdaemon-odysseus)
+- **Description**: Detail page for odysseus has 0 images. No product screenshot, no GitHub avatar, no logo. Combined with no OG image (above), the page feels bare.
+- **Reproduction**: Visit /projects/pewdiepie-archdaemon-odysseus
+- **Expected**: At minimum a GitHub repo avatar or placeholder
+- **Actual**: 0 `<img>` elements on the page
+
+### Known issues remaining
+- /favicon.ico 404 (P2, unchanged)
+- No related projects on detail pages (P2)
+- /bookmarks empty state (P2, filed previous run)
+- REQUEST.md has 3 pending tasks (not overwritten)
