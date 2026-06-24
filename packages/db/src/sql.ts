@@ -33,18 +33,23 @@ export type SqlClient = Sql;
 const g = globalThis as unknown as { __ptSql?: SqlClient };
 
 /**
- * Prefer Supabase's **transaction** pooler (port 6543) over the **session**
- * pooler (5432). Same host + credentials — only the port differs. Session mode
- * gives every client a dedicated server connection and caps total clients very
- * low (pool_size 15 here), so a serverless fan-out exhausts it and throws
- * `EMAXCONNSESSION`; transaction mode multiplexes hundreds of clients over a
- * small connection set and is the documented choice for serverless. Safe with
- * this codebase because `prepare: false` is set and no session-scoped features
- * (LISTEN/NOTIFY, advisory locks, session GUCs) are used. Only rewrites the
- * exact `*.pooler.supabase.com:5432` case; opt out with `PG_KEEP_SESSION_POOLER=1`.
+ * Optionally switch Supabase's **session** pooler (port 5432) to the
+ * **transaction** pooler (6543) — same host + credentials, only the port
+ * differs. Session mode gives every client a dedicated server connection and
+ * caps total clients very low (pool_size 15 here), so a serverless fan-out
+ * exhausts it and throws `EMAXCONNSESSION`; transaction mode multiplexes many
+ * clients over a small connection set and is the documented serverless choice.
+ *
+ * OPT-IN (`PG_USE_TRANSACTION_POOLER=1`) and off by default: enabling it live
+ * caused DB requests to hang on this project (the :6543 endpoint did not behave
+ * as a drop-in for :5432 from Vercel — likely needs Supabase-side config such as
+ * the IPv4 add-on / pooler settings). The durable fix is for an operator to wire
+ * DATABASE_URL to a verified transaction-pooler URL (or raise the session
+ * pool_size) and flip this flag on. Safe codebase-wise: `prepare: false` is set
+ * and no session-scoped features (LISTEN/NOTIFY, advisory locks, GUCs) are used.
  */
 function preferTransactionPooler(url: string): string {
-  if (process.env.PG_KEEP_SESSION_POOLER === '1') return url;
+  if (process.env.PG_USE_TRANSACTION_POOLER !== '1') return url;
   try {
     const u = new URL(url);
     if (u.hostname.endsWith('.pooler.supabase.com') && u.port === '5432') {
