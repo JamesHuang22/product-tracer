@@ -477,5 +477,158 @@ Bug 2 previously reported "/trends has 0 clickable links to individual trend ite
 |----------|-----|--------------|
 | P0       | 0   | 1 (no .env)  |
 | P1       | 1   | 0            |
-| P2       | 1   | 1            |
-| P3       | 2   | 0            |
+| P2       | 3   | 1            |
+| P3       | 4   | 0            |
+
+## Browser Test Run #43 (2026-06-24 20:50 UTC) — Focus: /trends week selector, WoW indicators, top products, mobile overflow
+
+### Automated Test — 12/12 passing (Vercel deployment)
+- ✅ / → HTTP 200
+- ✅ /projects → HTTP 200
+- ✅ /trends → HTTP 200
+- ✅ /youtube-insights → HTTP 200
+- ✅ /bookmarks → HTTP 200
+- ✅ 5/5 pages HTTP 200
+- ✅ Grid layout w/ 100 project links on /projects
+- ✅ No server errors in any page body
+
+### Product Tour Findings — /trends (desktop + mobile)
+
+**Week Selector (verified functional):**
+- ✅ Week selector dropdown present with 2 weeks: `2026-06-22 – 2026-06-28` and `2026-06-15 – 2026-06-21`
+- ✅ Selecting a different week updates URL to `?week=2026-06-15` and refreshes data correctly
+- ✅ Products and summary change when switching weeks
+- ⚠️ Only 2 weeks available — may be a data completeness issue or intentional
+
+**Top Products (5 cards):**
+- ✅ All 5 products link to correct detail pages (`/projects/are-you-in-the-weights`, `/projects/elvin`, etc.)
+- ✅ Bug 2 (no links on /trends) is confirmed **FIXED** — links now exist
+- ❌ **Product link text is garbled**: "1INAre You in the Weights?2" — rank number ("1"), platform code ("IN"/"PH"), and product name are concatenated without separators or whitespace
+- ❌ **No WoW position delta indicators** — no ↑/↓ arrows, no "NEW" badges, no position change text on any product card
+
+**Section Content:**
+- ✅ Summary section loads with weekly stats: "919 new projects tracked"
+- ✅ WoW comparison shows current vs previous week top source/top product
+- ✅ "This week's mix" pie chart data present (AI/ML 40%, Other 30%, etc.)
+- ✅ 6 EMERGING THEMES listed (Recursive Self-Improvement, AI Agent Workflows, etc.) — all plain text
+- ✅ 3 VIDEO HIGHLIGHTS listed (RSI $4.65B, Claude Opus 4.6, GLM-5.2) — all prose, no links
+
+**Locale Routes (7th confirmation):**
+- ❌ /zh/trends → 404
+- ❌ /en/trends → 404
+- ❌ /zh/youtube-insights → 404
+- ❌ /en/youtube-insights → 404
+- ❌ /zh/bookmarks → 404
+- ❌ /en/bookmarks → 404
+- All 6 locale-prefixed routes still return 404
+
+**Mobile (375×812):**
+- ❌ **ALL pages overflow** — scrollWidth=490 vs viewport=375 on /, /projects, /trends, /youtube-insights, and /bookmarks
+- ❌ 10 tap targets under 44px on /trends (nav links, locale buttons)
+- ❌ EN/中文 locale buttons and hamburger off-screen (same persistent issue)
+- ✅ 0 empty buttons found this run (icon buttons now have aria-labels)
+
+**Detail Page (are-you-in-the-weights):**
+- ✅ Breadcrumb present
+- ✅ Bookmark button present (as button with text "Bookmark")
+- The bookmark button has no `aria-label` but visible text "Bookmark" serves as accessible name
+
+**Console Errors:**
+- ❌ 1 persistent 404 for favicon.ico (every page load)
+
+### New Bugs Found This Run
+
+---
+
+## Bug 17 [P3] — Top product link text has no separators (rank+platform+name concatenated)
+- **Page**: `/trends`
+- **Severity**: P3 — Confusing but functional
+- **Observed**: Product link texts appear as `"1INAre You in the Weights?2"` instead of readable format like `#1 PH — Are You in the Weights?`. The "2" at the end is likely a related-project count or platform ID attached without formatting.
+- **Examples all 5 links**:
+  - "1INAre You in the Weights?2"
+  - "2PHElvin1"
+  - "3PHDropmatico1"
+  - "4PHKimi K2.7 Code1"
+  - "5PHCloudback for Linear1"
+- **Pattern**: The number after the title (1) could be related projects count. The platform codes (IN, PH) are attached without whitespace.
+- **Reproduction**: Visit `/trends` → inspect any top 5 product link text.
+- **Expected**: Formatted like `#1 Product Hunt: Are You in the Weights?` with proper spacing and labels.
+
+---
+
+## Bug 18 [P3] — No WoW position delta on individual product cards
+- **Page**: `/trends`
+- **Severity**: P3 — Reduces comparative insight value
+- **Observed**: The WoW comparison section shows aggregate stats (current vs previous week top source and top product), but individual product cards only show rank + platform + name. No position change (↑/↓/NEW/—) is shown.
+- **Reproduction**: Visit `/trends` → scroll to Top Products → each card shows rank number, platform abbreviation, and project name. No delta indicators.
+- **Expected**: Each product card should show WoW position change (e.g., "↑2", "↓1", "NEW", "—") and ideally a numerical change in ranking.
+
+---
+
+## Bug 19 [P2] — All 5 pages overflow horizontally at 375px viewport (nav bar consistently 490px wide)
+- **Page**: `/`, `/projects`, `/trends`, `/youtube-insights`, `/bookmarks` (ALL pages)
+- **Severity**: P2 — Affects all mobile users, every page
+- **Observed**: The nav bar is consistently 490px wide regardless of page. At 375px viewport, `scrollWidth=490` on every page, causing horizontal overflow and off-screen EN/中文 locale buttons + hamburger.
+- **Reproduction**: DevTools → 375×812 → visit ANY page → horizontal scrollbar appears, inspect nav.
+- **Root cause**: Nav items total ~490px (brand + 4 nav links + 2 locale buttons + theme toggle) with `overflow-x: clip` and no responsive collapse below 640px.
+- **Expected**: Nav bar should collapse to hamburger menu OR use compressed layout at < 640px viewport. All interactive elements should be reachable.
+
+---
+
+## Bug 20 [P3] — EMERGING THEMES on /trends are non-clickable plain text
+- **Page**: `/trends`
+- **Severity**: P3 — Missed discovery opportunity
+- **Observed**: 6 themes (Recursive Self-Improvement, AI Agent Workflows, Open-Source LLMs, Edge AI, AI Video Generation, Developer Tools, Memory Systems for AI) are listed as plain prose text with no anchor elements.
+- **Reproduction**: Visit /trends → scroll to EMERGING THEMES section → try clicking any theme → nothing happens.
+- **Expected**: Each theme should link to `/projects?tag=<theme>` or `/projects?q=<theme>` so users can explore projects in that trend.
+
+---
+
+## Bug 21 [P3] — VIDEO HIGHLIGHTS on /trends have no clickable links
+- **Page**: `/trends`
+- **Severity**: P3 — Prose-only, no actionable links
+- **Observed**: 3 notable videos mentioned (RSI $4.65B valuation, Claude Opus 4.6, GLM-5.2) but all are plain text. No "▶ Watch on YouTube" or any anchor links.
+- **Reproduction**: Visit /trends → scroll to VIDEO HIGHLIGHTS → no clickable video links.
+- **Expected**: Each mentioned video should link to its YouTube video or `/youtube-insights` filtered by that video.
+
+---
+
+## Bug 22 [P3] — Week selector only has 2 weeks of data
+- **Page**: `/trends`
+- **Severity**: P3 — Minor (may be data completeness issue)
+- **Observed**: The week selector dropdown offers only 2 options: current week (2026-06-22) and previous week (2026-06-15). No older weeks available.
+- **Reproduction**: Visit /trends → click week selector dropdown → only 2 options visible.
+- **Expected**: If more weekly trend data exists, show all available weeks. If only 2 weeks exist, consider adding a note or waiting for more data accumulation.
+
+### Re-confirmed Status (cumulative)
+
+| Bug | Severity | Status | Notes |
+| --- | --- | --- | --- |
+| Bug 10 (DB crash local) | P0 | Unchanged | Local only; Vercel works |
+| Bug 11 (domain hijack) | P0 | Unchanged | producttracer.com → muqid.com |
+| Bug 6 (locale 404) | P1 | ×7 confirmation | All 6 locale routes still 404 |
+| Bug 13 (blank insight cards) | P1 | Unchanged | /youtube-insights cards still have no text |
+| Bug 7 (nav overflow 390px) | P2 | Escalated → Bug 19 | Confirmed across ALL pages at 375px |
+| Bug 8 (horizontal overflow) | P2 | Merged → Bug 19 | Same root cause (490px nav) |
+| Bug 12 (touch targets <44px) | P2 | Re-confirmed | 10 targets under 44px on /trends |
+| Bug 19 (nav overflow all pages) | P2 | NEW (merged) | All 5 pages, 375px, consistent 490px nav |
+| Bug 2 (no /trends links) | P2 | ✅ **FIXED** | 5 product links now present on /trends |
+| Bug 4 (search count) | P3 | Unchanged | |
+| Bug 5 (empty buttons) | P3 | ✅ **FIXED** | 0 empty buttons found this run |
+| Bug 14 (filter chips) | P3 | Unchanged | Category filter still not filtering |
+| Bug 15 (grid/list toggle) | P3 | Unchanged | View toggle still doesn't change layout |
+| Bug 17 (garbled link text) | P3 | NEW | |
+| Bug 18 (no WoW delta) | P3 | NEW | |
+| Bug 20 (plain themes) | P3 | NEW | |
+| Bug 21 (no video links) | P3 | NEW | |
+| Bug 22 (only 2 weeks) | P3 | NEW | |
+
+### Quick Stats
+- **12/12 automated tests passed** ✅
+- **5 new bugs found** (1× P2, 4× P3) 
+- **1 bug fixed** (Bug 2 — /trends now has clickable links)
+- **2 bugs confirmed fixed** (Bug 2 links, Bug 5 empty buttons)
+- **1 bug escalated** (Bug 7+8 merged into Bug 19 — nav overflow on ALL pages)
+
+### Note for next run
+Focus: /bookmarks — test bookmark create/delete flow, check empty state CTA, try localStorage persistence across sessions.

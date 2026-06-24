@@ -68,3 +68,13 @@ All 3 tasks shipped, each via branch → PR → squash-merge → HTTP 200 verify
 
 ### ⚠️ Open issue
 **GitHub Actions billing block.** The post-merge `collect-github` workflow could not start — *"recent account payments have failed or your spending limit needs to be increased."* This blocks every workflow. **Action needed**: resolve GitHub billing / raise Actions spending limit in repo Settings → Billing. Note Task 3 raised the collector cadence to every 2h, increasing Actions usage once billing resumes.
+
+---
+
+## Queue state (2026-06-24 17:45 UTC)
+- RESPONSE.md: Phase 2 sprint summary (up to date)
+- FRONTEND_RESPONSE.md: Day 2 sprint summary (preserved, no new data)
+- REQUEST.md: Phase 2 sprint instructions (still present)
+- FRONTEND_REQUEST.md: contains P2/P3 feature requests (locale-prefixed routes, mobile nav, WoW indicators, etc.)
+- next-request.md: shutdown notice + suggestions
+- No promotion needed — REQUEST.md and FRONTEND_REQUEST.md are non-empty
