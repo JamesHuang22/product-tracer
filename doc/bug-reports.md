@@ -8,6 +8,59 @@
 
 ---
 
+## Product Tour: 2026-06-24T07:35 UTC (Focus: /trends)
+
+### Automated test — all passing
+- ✅ Homepage HTTP 200 — H1 present, Insights + Projects + Trends sections render
+- ✅ /projects HTTP 200 — search, category filter, 5 project links
+- ✅ /trends HTTP 200 — 6 H2 sections render (Summary, Week over week, This week's mix, Top Products, Emerging Themes, Video Highlights)
+- ✅ /youtube-insights HTTP 200
+- ✅ /bookmarks HTTP 200
+- ✅ Mobile 375px — no horizontal overflow
+- ✅ ZH locale — H1 "本周热门趋势", all 6 H2 sections translated (概要/环比变化/本周构成/热门产品/新兴主题/视频亮点)
+- ✅ ZH week selector — 2 weeks available (2026-06-22 – 2026-06-28, 2026-06-15 – 2026-06-21)
+- ❌ /favicon.ico 404 (known P2, unchanged)
+
+### [P2] /trends — Top product link text contains rank + platform badges (a11y + scraping issue)
+- **Description**: The top product links in the "Top Products" section concatenate rank number + platform badge + title + WoW change into the visible text. E.g. `1INAre You in the Weights?2` instead of `Are You in the Weights?`. This makes links hard to read for screen readers (rank 1, platform IN, title, WoW change all blended) and breaks the product title extraction.
+- **Found**: 2026-06-24T07:35 UTC
+- **Severity**: P2 (accessibility + data quality)
+- **Reproduction**:
+  1. Go to /trends
+  2. Inspect the first top product link (`/projects/are-you-in-the-weights`)
+  3. Check the visible link text (it shows "1INAre You in the Weights?2")
+- **Expected**: Link text should be just "Are You in the Weights?" with rank/change/icon as separate accessible elements
+- **Actual**: All 5 top product links concatenate `rank + badge + title + wowChange` into visible text (e.g., "2PHElvin1", "3PHDropmatico1", "4PHKimi K2.7 Code1", "5PHCloudback for Linear1")
+- **Root cause**: The `<a>` element uses flex layout with visual children (`<span>` for rank, badge, title, WoW badge) but screen readers see the full concatenated text
+
+### [P3] /projects/are-you-in-the-weights — Detail page has no AI Summary section
+- **Description**: The detail page for "Are You in the Weights?" (linked from /trends top product #1) has no "AI Summary" or summary section. The page shows Cross-platform signals, tags, external links, and "You might also like" — but no AI-generated summary prose.
+- **Found**: 2026-06-24T07:35 UTC
+- **Severity**: P3 (minor — rich detail pages do have summaries, this one likely has empty summary data)
+- **Reproduction**:
+  1. Go to /projects/are-you-in-the-weights
+  2. Look for an AI Summary section below the H1
+- **Expected**: AI Summary section with analysis text about the product
+- **Actual**: No summary section present (page jumps from title/bookmark to Cross-platform signals)
+- **Note**: Checked also /projects/pewdiepie-archdaemon-odysseus — that one DOES have an AI Summary. Likely the `ai_summary` field is NULL for this specific project in the database.
+
+### [P3] /projects/are-you-in-the-weights — Only 2 of 5 tags are clickable
+- **Description**: The detail page shows 5 tags (#llm, #recognition, #clustering, #frontier-models, #parallel-query) but only the first 2 appear to link to ?tag= filter pages. Some tags may not be rendered as links.
+- **Found**: 2026-06-24T07:35 UTC
+- **Severity**: P3 (minor UX inconsistency)
+- **Reproduction**:
+  1. Go to /projects/are-you-in-the-weights
+  2. Count the tag links vs displayed tags
+- **Note**: This is likely by-design (space constraint on long tag names) but worth noting
+
+### No new P0/P1 bugs found
+- Site is healthy across all routes
+- /trends has historic week selector (2 weeks available) — feature working correctly
+- ZH locale fully translated on /trends (all 6 H2s, page header, week selector) — excellent localization quality
+- Detail pages from /trends have breadcrumb, related projects, external links, bookmark buttons — all functional
+
+---
+
 ## Automated Test Summary (Run #19 - Mobile focus)
 - Browser test: All 6 pages HTTP 200, 1 console error (404 resource, non-blocking)
 - Focal tour: Mobile 375px viewport — homepage, /projects, detail page, /trends, /bookmarks
