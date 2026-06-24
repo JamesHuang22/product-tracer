@@ -1,5 +1,54 @@
 # Bug Reports — 2026-06-24
 
+## Browser Test Run #30 (2026-06-24 10:50 UTC) — Focus: Mobile 375px viewport across all pages
+
+### Automated Test — All 12/12 passing (production URL)
+- ✅ / HTTP 200, ✅ /projects HTTP 200, ✅ /trends HTTP 200, ✅ /youtube-insights HTTP 200, ✅ /bookmarks HTTP 200
+- ✅ ZH locale baseline check
+- ✅ Grid layout: /projects has 100+ project link references
+- ✅ No server errors in page bodies
+- ❌ /favicon.ico 404 (known P2, unchanged)
+
+### Product Tour: Mobile 375px viewport (iPhone SE/12/13/14) — Homepage → /projects → /[slug] → /trends → /bookmarks
+
+**[P2] Nav overflow at 375px — locale toggle + hamburger still clipped (unchanged from Run #26)**
+- **Description**: At 375px viewport, the nav bar `flex` container is 399px wide but starts at `left: 90.77px`, pushing the locale toggle (EN/中文 buttons) and hamburger button past the right edge of the viewport. These 3 interactive elements (EN button at x=383, 中文 button at x=415, hamburger at x=465) are invisible and unreachable.
+- **Root cause**: Parent container has `max-w-6xl px-4` which centers content, but the nav items (Projects, Insights, Trends, Bookmarks + locale + hamburger) need ~490px total. The body has `overflow-x: clip` which hides the overflow instead of allowing scroll.
+- **Found**: Reconfirmed 2026-06-24T10:50 UTC
+- **Severity**: P2 (mobile usability — locale toggle and hamburger menu are inaccessible)
+- **Reproduction**:
+  1. Open Chrome DevTools, set viewport to 375×812
+  2. Visit any page (homepage, /projects, etc.)
+  3. Inspect nav element — observe that EN/中文 buttons and hamburger are at x>375px
+  4. Attempt to click locale toggle or hamburger — impossible
+- **Expected**: At < 640px viewport, collapse nav items into hamburger menu, or move locale toggle to a reachable position
+- **Actual**: 3 interactive elements clipped off-screen
+
+**[P2] /projects mobile — 290 small tap targets (<44px)**
+- **Description**: When viewing /projects at 375px, 290 interactive elements (links, buttons) have dimensions smaller than Apple's recommended 44×44pt minimum tap target. This is much higher than other pages (homepage: 36, /youtube-insights: 40, /trends: 10, /bookmarks: 9).
+- **Found**: 2026-06-24T10:50 UTC
+- **Severity**: P2 (mobile usability — project cards are dense with many small links)
+- **Reproduction**:
+  1. Chrome DevTools → responsive mode → 375×812
+  2. Visit /projects
+  3. Try to tap individual project cards — likelihood of mis-taps is high
+- **Expected**: All interactive elements should be at least 44×44px
+- **Actual**: 290 elements fail the minimum tap target size
+
+### Confirmed existing bugs (unchanged)
+- **[P2]** /zh/trends, /zh/youtube-insights, /en/trends, /en/youtube-insights, /en/bookmarks, /zh/bookmarks return 404
+- **[P2]** /trends — Top product links have concatenated text (e.g., "1INAre You in the Weights?2")
+- **[P3]** /favicon.ico 404
+- **[P3]** /trends — VIDEO HIGHLIGHTS has 0 clickable YouTube links
+- **[P3]** /trends — EMERGING THEMES has 0 clickable links
+
+### No new P0/P1 bugs
+- Production site healthy on all critical routes
+- REQUEST.md has active tasks — not overwritten
+- FRONTEND_REQUEST.md has 5 feature requests — not overwritten
+
+---
+
 ## Browser Test Run #29 (2026-06-24 10:35 UTC) — Focus: /projects + local dev health
 
 ### Automated Test — All 12/12 passing (production URL)
