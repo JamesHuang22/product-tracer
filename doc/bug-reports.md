@@ -1,5 +1,46 @@
 # Bug Reports — 2026-06-24
 
+## Browser Test Run #29 (2026-06-24 10:35 UTC) — Focus: /projects + local dev health
+
+### Automated Test — All 12/12 passing (production URL)
+- ✅ / HTTP 200, ✅ /projects HTTP 200, ✅ /trends HTTP 200, ✅ /youtube-insights HTTP 200, ✅ /bookmarks HTTP 200
+- ✅ ZH locale baseline check
+- ✅ Grid layout: /projects has 100+ project link references
+- ✅ No server errors in page bodies
+- ❌ /favicon.ico 404 (known P2, unchanged)
+
+### Product Tour: /projects (search, AI summaries, detail pages, locale toggle)
+
+**[P0] Local dev BROKEN — DATABASE_URL missing, all DB-backed pages return 500**
+- **Description**: Running `pnpm web:dev` locally results in HTTP 500 on every server-rendered page because `DATABASE_URL` is not set. The error is thrown at server render time from `createSqlClient()` → `sql<…>` queries. Production on Vercel works fine.
+- **Found**: 2026-06-24T10:35 UTC
+- **Severity**: P0 — site down (local development completely blocked)
+- **Error**: `Missing DATABASE_URL. Check .env (Supabase → Connect → Session pooler URI)`
+- **Reproduction**:
+  1. `pnpm web:dev` (no .env.local present)
+  2. Visit http://localhost:3000 → HTTP 500
+  3. Visit http://localhost:3000/projects → HTTP 500
+  4. Visit http://localhost:3000/trends → HTTP 500
+  5. Visit http://localhost:3000/youtube-insights → HTTP 500
+  6. Visit http://localhost:3000/bookmarks → ✅ HTTP 200 (client-cached, no DB dependency)
+- **Server logs**: All pages crash identically at `createSqlClient()`
+- **Note**: test-product.cjs checks Vercel production URL, so it passes. Only local dev is broken.
+
+**[P3] Empty insight cards on /youtube-insights — 6/20 cards have no text body**
+- **Description**: 6 out of 20 insight cards on page 1 render with NO main text — only sentiment badge, category badge, and "Watch on YouTube" link. Cards: 4y9DR2WwW3o, TnauzVQkmBo, NwjAHbgA0u4, g20t3FKr49k, O-JSjZ7vt1s, 8OOuCnZB-4o.
+- **Found**: 2026-06-24T10:35 UTC
+- **Severity**: P3 (being addressed by REQUEST.md TASK 1)
+
+### Observations
+- /bookmarks: "No bookmarks yet. Save a project to find it here." renders correctly
+- Mobile 375px: no horizontal overflow, scroll-to-bottom works
+- Production site: all 5 critical routes HTTP 200
+- Queue files (REQUEST.md, FRONTEND_REQUEST.md) have active content — not overwritten
+
+### No new P0/P1 production bugs
+
+---
+
 ## Browser Test Run #28 (2026-06-24 10:05 UTC) — Focus: /youtube-insights (deep-dive: new data-driven page)
 
 ### Automated Test — All 12/12 passing
