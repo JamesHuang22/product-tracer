@@ -345,6 +345,57 @@
 
 ---
 
+## Browser Test Run #32 (2026-06-24 11:50 UTC) — Focus: /projects search, detail page breadcrumb, related projects
+
+### Automated Test — All 12/12 passing (production URL)
+- ✅ / HTTP 200, ✅ /projects HTTP 200, ✅ /trends HTTP 200, ✅ /youtube-insights HTTP 200, ✅ /bookmarks HTTP 200
+- ✅ ZH locale baseline check
+- ✅ Grid layout: /projects has 517 project link references
+- ✅ No server errors in page bodies
+
+### Product Tour: /projects deep-dive
+
+**Search** ✅
+- Search input renders and functions
+- 517 project links visible on /projects
+- AI/summary/insight keywords present in body text ('ai', 'insight', 'hot')
+- Sort/filter controls found (category, sort toggles)
+
+**Detail page: odysseus** ✅
+- Detail page loads in 1879ms (production)
+- AI summary present
+- Bookmark button present
+- H1 value prop reads "Cross-platform signalsfor indie products." — minor spacing issue (missing space before 'for')
+
+### New Bugs
+
+**P2 — Console 404 resource load on project detail page**
+- **Reproduction**: Navigate to any project detail page (e.g., `/projects/pewdiepie-archdaemon-odysseus`), observe console
+- **Actual**: `Failed to load resource: the server responded with a status of 404 ()`
+- **Impact**: Missing asset/resource per page load; doesn't block rendering but indicates a stale or missing resource reference
+
+**P3 — No breadcrumb navigation on project detail page**
+- **Reproduction**: Navigate to any project detail page (e.g., `/projects/pewdiepie-archdaemon-odysseus`)
+- **Actual**: No breadcrumb, back button, or "←" navigation element visible
+- **Note**: Previous test run #31 reported breadcrumb as present. Possible regression or difference in data (some projects may lack breadcrumb, others may have it based on route or layout)
+
+**P3 — No "Related projects" section on detail page**
+- **Reproduction**: Navigate to a project detail page, scroll to bottom
+- **Actual**: No "Related", "Similar", or "相关" heading found
+- **Impact**: Users wanting to discover similar products must navigate back to /projects rather than transitioning naturally
+
+### Confirmed Existing P2 Bugs (unchanged)
+- ❌ /favicon.ico 404 on all pages
+- ❌ /zh/projects → 404 (locale-specific routes) [Run #28]
+- ❌ /zh/trends → 404 (locale-specific routes) [Run #28]
+- ❌ Mobile tap targets < 48px on some cards [Run #30]
+
+### Homepage H1 visual note
+- H1 reads: "Cross-platform signalsfor indie products."
+- Missing space between "signals" and "for" — possible typo in hero text copy
+
+---
+
 ## Browser Test Run #31 (2026-06-24 11:35 UTC) — Focus: /projects deep-dive (search, filter, detail pages, mobile)
 
 ### Automated Test — All 12/12 passing (production URL)
