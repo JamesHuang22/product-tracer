@@ -1,5 +1,42 @@
 # Bug Reports — 2026-06-24
 
+## Automated Test Summary (Run #21 — /projects focus)
+- Browser test: All 5 pages HTTP 200, 1 console error (favicon 404)
+- Focal tour: /projects (search, category filter, detail pages), mobile /projects
+- **New bug**: Missing favicon.ico — no `<link rel="icon">` in `<head>` at all
+- **New bug**: RSC prefetch requests aborted on /projects (non-blocking, Next.js internal)
+- **Confirmed existing**: P2 detail page no OG image (validated on 3 detail pages), P2 no related projects, P3 no images
+- **No new P0 bugs** — all pages serving correctly
+- REQUEST.md has active tasks (not overwritten)
+
+---
+
+## Product Tour: 2026-06-24T08:05 UTC (Focus: /projects)
+
+### Automated test — all passing
+- ✅ Homepage HTTP 200 — H1 present, 839 words
+- ✅ /projects HTTP 200 — 100 project links, search input, category filter (9 options)
+- ✅ /trends HTTP 200 — 231 words, no console errors
+- ✅ /youtube-insights HTTP 200 — grid/list toggle, 40 clickable elements, 1177 words
+- ✅ /bookmarks HTTP 200
+- ✅ Mobile 375px — no horizontal overflow on /projects or detail pages
+- ✅ ZH locale — nav items translated (项目/洞察/趋势/收藏), ZH/EN ratio 0.34
+- ❌ /favicon.ico 404 (known P2, unchanged)
+- ❌ No `<link rel="icon">` in `<head>` (no favicon configured at all)
+
+### [P2] Missing favicon — No `<link rel="icon">` in document head
+- **Description**: The site has NO favicon configured in the HTML `<head>`. No `<link rel="icon">`, no `<link rel="shortcut icon">`, no `<link rel="apple-touch-icon">`. Browsers fallback-auto-request `/favicon.ico` which returns 404. No favicon shows in browser tabs, bookmarks, or mobile home screen.
+- **Found**: Confirmed 2026-06-24T08:05 UTC (also present in previous runs)
+- **Severity**: P2 (polish — browser tabs look blank, 404 in console)
+- **Reproduction**:
+  1. Visit any page on product-tracer.vercel.app
+  2. Check `<head>` for `<link rel="icon">` — none found
+  3. Check browser tab — no favicon icon shows
+  4. Check DevTools → Network — `/favicon.ico` request returns 404
+- **Expected**: At minimum a `favicon.ico` or SVG favicon via `<link rel="icon" href="/favicon.svg">`
+
+### [P3] Search 
+
 ## Automated Test Summary (Run #20 — /youtube-insights + /trends focus)
 - Browser test: All 5 pages HTTP 200, 1 console error (404 resource, non-blocking)
 - Focal tour: /youtube-insights (grid/list toggle, ZH locale), /trends (data freshness, WoW, detail page), /bookmarks
