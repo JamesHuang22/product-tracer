@@ -3,6 +3,18 @@
 > Permanent record of architectural, process, and product decisions.
 > Each entry: date, decision, rationale, alternatives considered.
 
+## 2026-06-23 — Granular tags: text[] + GIN, LLM-generated, tag links to /projects?tag (U4)
+
+**Decision**: Added `app.project.tags text[]` (migration 0015, GIN-indexed) holding 3–5 LLM-generated lowercase tags per project, on top of the coarse `llm_category`. A new `generate-tags.ts` worker populates them; the frontend renders clickable `#tag` chips that link to `/projects?tag=<tag>`, where the existing projects table filters client-side. Applied the migration via Supabase MCP (user-authorized for this autonomous session) and backfilled all 3,953 active projects.
+
+**Rationale**: One coarse category (9 buckets) is too blunt for discovery — "devtool" spans 1,465 projects. Tags add a finer, cross-cutting axis (language, runtime, domain, use-case) for browsing. Storing them as a Postgres `text[]` with a GIN index keeps `@>`/`&&` containment fast and avoids a join table for what is read-mostly, low-cardinality-per-row data. Reused the summary backfill's `batch`/`concurrency` worker-pool pattern so the ~4k backfill ran as monitored chunks within the Supabase connection ceiling (the U3 `EMAXCONNSESSION` lesson) — production stayed HTTP 200 throughout.
+
+**Scope cut**: The spec also listed tag-based search in `/api/search`. Skipped — the `/projects?tag=` filter already delivers "click a tag → all projects with that tag", and the search endpoint is name-fuzzy (pg_trgm), a different concern. Can revisit if a dedicated tag-search surface is wanted.
+
+**UI note**: Tag chips and the bookmark button are interactive siblings of the card/row link (raised with `relative z-10` above the link's full-bleed `::before` overlay) rather than nested inside the anchor — keeps valid HTML (no `<a>`-in-`<a>`) while the whole card stays a click target.
+
+---
+
 ## 2026-06-23 — Backfill llm_category catalogue-wide via an opt-in ALL mode (U3)
 
 **Decision**: Added `LLM_CLASSIFY_ALL=1` to `llm-classify.ts` — a one-off mode that classifies **every active unclassified project**, not just the gray zone (rule score 15–39) the daily run targets. Exposed via a `classify_all` + `limit` `workflow_dispatch` input. Backfilled the full catalogue in monitored chunks, lifting active-project category coverage from **1.2% to 99.8%** (~4,490 classified, ~$0.11).
