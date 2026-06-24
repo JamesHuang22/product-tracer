@@ -436,7 +436,26 @@ Likely **test-harness false positives** (verify against the live, recovered site
 - Typing "AI" in search: results update (verified via page text changes)
 - Category filter buttons: EN/中文 locale toggle, Project/Stars/Forks tabs, Prev/Next pagination all functional
 
-### No new bugs found
-- Site healthy across all routes
-- Detail pages fully functional
-- Known P2 favicon.ico 404 unchanged
+### [P2] /bookmarks — Empty state has no helpful message or CTA
+- **Description**: The /bookmarks page shows only the word "Bookmarks" and nothing else when no bookmarks exist. No empty-state illustration, no explanatory text ("You haven't bookmarked any projects yet"), no CTA to discover projects. On mobile it's especially stark: 22 words total, 9 tap targets (nav + theme toggle only).
+- **Found**: 2026-06-24T07:05 UTC
+- **Reproduction**:
+  1. Go to /bookmarks with no bookmarks saved
+  2. Observe the page state
+- **Expected**: A friendly empty-state message + a "Browse projects" CTA link
+- **Actual**: Just the word "Bookmarks"
+
+### [P3] Detail page content sparsity — odysseus only 179 words
+- **Description**: The detail page for odysseus (and potentially other projects without rich data) displays only 179 words. The page has: title, bookmark button, AI summary (~3-5 lines), and no related projects section. No GitHub stats, no category badge, no external links section. The user is left with a very sparse page.
+- **Found**: 2026-06-24T07:05 UTC
+- **Reproduction**:
+  1. Visit /projects/pewdiepie-archdaemon-odysseus
+  2. Scroll through the entire page
+- **Expected**: Rich detail with GitHub stats (stars, forks, last update), category/tags, external links, related projects
+- **Actual**: Just h1, bookmark toggle, AI summary (~100 words), and nav. 179 words total.
+
+### No new bugs found (site healthy)
+- All 8 pages HTTP 200, mobile no overflow, ZH locale active
+- Detail page has semantic `<nav aria-label="Breadcrumb"><ol>` — verified on odysseus
+- Known P2 /favicon.ico 404 unchanged
+- REQUEST.md has 3 pending tasks (not overwritten)

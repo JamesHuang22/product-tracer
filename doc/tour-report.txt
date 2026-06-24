@@ -1,6 +1,18 @@
-Product Tour: 2026-06-24T04:06:09.924Z (Focus: /youtube-insights)
+Product Tour: 2026-06-24T07:05 UTC (Focus: /projects deep dive)
 ============================================================
 
-Bugs: 1
+Bugs: 2 new + 1 known
+  [P2] /bookmarks empty state — no CTA/message
+  [P3] Detail page content sparsity (odysseus: 179 words, no related, no category)
+  [P2] /favicon.ico 404 (unchanged)
 
-[P2] /youtube-insights: 1 HTTP error(s) loading page resources
+Automated test: All 7 checks passed ✅
+  - homepage: 200, H1, ~839 words, 1 console error
+  - /projects: 200, search+filter, EN/ZH toggle, project links
+  - /trends: 200, WoW comparison
+  - /youtube-insights: 200, grid/list toggle, category filter, 84 clickable
+  - /bookmarks: 200
+  - Mobile 375px: no overflow on any page
+  - ZH locale: nav translated ✅, YT insight page 2507 ZH chars
+
+Notes: REQUEST.md has 3 active tasks (not overwritten).
