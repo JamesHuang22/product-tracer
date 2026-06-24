@@ -834,4 +834,64 @@ Bug 2 previously reported "/trends has 0 clickable links to individual trend ite
 
 ---
 
+## Browser Test Run #47 (2026-06-24 22:50 UTC) — Focus: /youtube-insights grid/list toggle, EN/ZH locale, mobile responsiveness
+
+### Automated Test — 12/12 passing (Vercel deployment)
+- ✅ / → HTTP 200
+- ✅ /projects → HTTP 200
+- ✅ /trends → HTTP 200
+- ✅ /youtube-insights → HTTP 200
+- ✅ /bookmarks → HTTP 200
+- ✅ 5/5 pages HTTP 200
+- ✅ Grid layout w/ 100 project links on /projects
+- ✅ No server errors in any page body
+
+### Product Tour Findings — /youtube-insights (EN + ZH) with Puppeteer
+
+**/youtube-insights (EN, 1280px):**
+- ✅ Grid/list toggle links work: `/youtube-insights` (list), `/youtube-insights?view=grid` (grid)
+- ✅ 8 category filter chips present: All categories (93), AI/ML (25), Developer Tools (18), Startup/Business (17), Tech News (22), Hardware (2), Security (1), Design, Other (6)
+- ✅ Category chips update URL correctly (e.g., `?category=ai_ml`)
+- ✅ All categories link works: `/youtube-insights`
+- ✅ EN/中文 locale toggle buttons on nav bar (as BUTTON elements)
+- ✅ 0 broken images
+- ✅ Has trending content
+- ✅ Has visualization references (chart/graph)
+- ❌ **Locale EN/中文 buttons on homepage have empty href="" and lang="en"** — clicking them is a no-op rather than navigating to the locale route. This is a new symptom of Bug 6.
+
+**/zh/youtube-insights — P0 🔴 Returns 404:**
+- ❌ **Page title is the EN title** "Product Tracer — Cross-platform indie product signals" — NOT localized
+- ❌ **Body shows Next.js 404 page**: "This page could not be found."
+- ❌ **EN char ratio: 92.0%** — essentially serving the English 404 template
+- ❌ 1 console error: 404 (likely favicon or missing route handler)
+- This is Bug 6 re-confirmed for the /zh/youtube-insights route specifically (x9 confirmation across runs)
+
+**Mobile (375px — /youtube-insights):**
+- ✅ Viewport meta tag present: `width=device-width, initial-scale=1`
+- ❌ **Horizontal overflow: TRUE** — scrollWidth > viewport (Bug 19 re-confirmed)
+- ❌ Nav items: EN/中文 locale buttons and theme toggle still unreachable off-screen
+
+### Console Errors
+- ❌ 1x 404 (unknown resource — likely favicon)
+
+### Summary of Findings
+
+| Bug | Severity | Status | Notes |
+| --- | --- | --- | --- |
+| Bug 6 (locale 404) | P0 | ×9 confirmation | **P0 escalation** — /zh/youtube-insights hard 404 with 92% EN chars. EN nav locale buttons have empty href="" (clickable but no-op) |
+| Bug 10 (DB crash local) | P0 | Unchanged | Local only; Vercel works |
+| Bug 11 (domain hijack) | P0 | Unchanged | producttracer.com → muqid.com |
+| Bug 19 (nav overflow 375px) | P2 | Re-confirmed | Horizontal overflow on /youtube-insights at 375px |
+| Bug 25 (favicon 404) | P3 | Persists | Every page load, all pages |
+
+### No New Unique Bugs This Run
+- /zh/youtube-insights 404 is a re-confirmation of Bug 6 with higher severity evidence (92% EN chars means ZH rendering is completely broken, not just missing translation)
+- EN locale button with empty href="" is a new symptom of Bug 6
+
+### Quick Stats
+- **12/12 automated tests passed** ✅
+- **0 new unique bugs** (Bug 6 escalated P1→P0)
+
+---
+
 _This file is auto-updated by browser test runs._
