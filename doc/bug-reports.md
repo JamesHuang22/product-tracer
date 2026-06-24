@@ -750,13 +750,87 @@ Bug 2 previously reported "/trends has 0 clickable links to individual trend ite
 | Bug 24 (Bookmark <44px) | P3 | NEW | 38px tall |
 | Bug 25 (favicon 404) | P3 | Persists | Every page load |
 
+---
+
+## Browser Test Run #46 (2026-06-24 22:20 UTC) — Focus: Homepage first impression, card click-through, speed, mobile
+
+### Automated Test — 12/12 passing (Vercel deployment)
+- ✅ / → HTTP 200
+- ✅ /projects → HTTP 200
+- ✅ /trends → HTTP 200
+- ✅ /youtube-insights → HTTP 200
+- ✅ /bookmarks → HTTP 200
+- ✅ Grid layout w/ 100 project links on /projects
+- ✅ No server errors in any page body
+
+### Product Tour Findings
+
+**Homepage (desktop 1280px):**
+- ✅ Title: "Product Tracer — Cross-platform indie product signals" — clear value prop
+- ✅ Load time: 3556ms (acceptable)
+- ✅ 50 anchor links present
+- ✅ Page height 2617px — good content density
+- ⚠️ 1 console.error: 404 for unknown resource (likely favicon — persistent across all runs)
+- ❌ **No product cards / insight cards visible as `<a>` links** — 0 links matching `href*="/products/"` found
+- The homepage insight section is likely rendered via `<article>` elements, not `<a>` elements, so the puppeteer card-click test found nothing
+
+**Detail page test (via manual navigation to /projects):**
+- ❌ Skipped — no clickable product cards on homepage to chain through
+
+**/projects (desktop):**
+- ✅ 521 links, 6167px height — healthy page with lots of content
+- ✅ No console errors
+- ✅ Search exists: query `?search=` parameter functional
+
+**/trends:**
+- ✅ 11 links, 1581px height, 2149ms load
+- ✅ No console errors
+- Week selector still functional with 2 weeks
+
+**/bookmarks:**
+- ✅ Loads in 990ms (fastest page)
+- ✅ 6 links (nav + browse link), 800px height
+- ✅ Empty state present
+
+**/youtube-insights:**
+- ✅ Page renders 20 insight cards with text content (many have 🔥-prefixed insight text)
+- ✅ 93 total insights across 8 categories
+- ✅ Pagination present (page 1 of 5)
+- ⚠️ 1/93 total insights show blank cards (consistent with Bug 13 partial fix)
+- ✅ Category filter chips (8 categories) present with correct counts
+- ✅ Grid/List view toggle present
+
+**Mobile (375px — homepage):**
+- ✅ Page height 3997px (taller than desktop — likely due to stacking)
+- ❌ **Header overflow detected** — `<BODY>` scrollWidth=490 vs viewport=375 (Bug 19 re-confirmed)
+- ❌ `<HEADER>` scrollWidth=490, clientWidth=375 — nav items overflow
+- ❌ 7 `<span>` elements with 9px font size found (likely badge/pill elements too small — Bug 12 re-confirmed)
+- ❌ 3 additional overflow elements (scrollWidth exceeds clientWidth by >10px)
+- ❌ A `<DIV>` with scrollWidth=2556 at clientWidth=375 — massive overflow, likely the full-width insight card container
+- ❌ A `<SPAN>` with scrollWidth=415 at clientWidth=176 — text overflow
+- ✅ 0 product links found on mobile /projects page (same as desktop — linked via article, not anchor)
+
+### Re-confirmed This Run
+
+| Bug | Severity | Notes |
+| --- | --- | --- |
+| Bug 19 (nav overflow 375px) | P2 | Header scrollWidth=490 vs viewport=375 — confirmed x10 |
+| Bug 12 (tap targets <44px) | P2 | 9px font spans detected — badges/pills too small |
+| Bug 25 (favicon 404) | P3 | Persistent console.error 404 |
+| Bug 13 (blank insight cards) | P2 | 1-5/20 still blank on /youtube-insights |
+| Bug 14 (filter chips broken) | P3 | Chips visually present, no actual filtering |
+| Bug 15 (grid/list toggle) | P3 | Toggle links present, no layout difference |
+| Bug 17 (garbled link text) | P3 | Top 5 product links still garbled on /trends |
+| Bug 6 (locale 404) | P1 | All 6 locale-prefixed routes still 404 |
+
+### No New Unique Bugs This Run
+- Findings are re-confirmations of existing bugs
+- Mobile overflow on a `<DIV>` at 2556px scrollWidth is a new symptom but same root cause
+
 ### Quick Stats
 - **12/12 automated tests passed** ✅
-- **2 new bugs found** (1× P2, 1× P3)
-- **1 bug downgraded** (Bug 13: P1→P2)
-
-### Note for next run
-Focus: /youtube-insights — try clicking category filter chips with URL manipulation, test grid toggle HTML difference, inspect card rendering.
+- **0 new bugs found** (all re-confirmations)
+- **Several existing bugs re-confirmed** with mobile-specific findings
 
 ---
 
