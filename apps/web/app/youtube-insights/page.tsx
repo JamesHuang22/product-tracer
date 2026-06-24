@@ -19,9 +19,37 @@ import {
 import { localizedPair } from '@/lib/format';
 import { InsightsControls, type CategoryOption } from './insights-controls';
 
+const OG_TITLE = 'YouTube Insights — Product Tracer';
+const OG_DESCRIPTION =
+  'A bilingual digest of LLM-analysed YouTube videos — key takeaways by category.';
+
+// Content is the same for every visitor (no per-insight pages), so a static
+// metadata object with Open Graph + Twitter cards is enough — both point at the
+// dynamic /og/youtube-insights image so shared links preview with a branded card.
 export const metadata: Metadata = {
-  title: 'YouTube Insights — Product Tracer',
-  description: 'A bilingual digest of LLM-analysed YouTube videos — key takeaways by category.',
+  title: OG_TITLE,
+  description: OG_DESCRIPTION,
+  openGraph: {
+    title: OG_TITLE,
+    description: OG_DESCRIPTION,
+    url: '/youtube-insights',
+    siteName: 'Product Tracer',
+    type: 'website',
+    images: [
+      {
+        url: '/og/youtube-insights',
+        width: 1200,
+        height: 630,
+        alt: 'Product Tracer — YouTube Insights',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: OG_TITLE,
+    description: OG_DESCRIPTION,
+    images: ['/og/youtube-insights'],
+  },
 };
 
 // Live data — reflect the latest analysis run on every request.
