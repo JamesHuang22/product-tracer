@@ -4,13 +4,15 @@ import type { Route } from 'next';
 import { cookies } from 'next/headers';
 import { ArrowRight, ArrowUpRight } from 'lucide-react';
 import {
-  getRecentWeeklyTrends,
+  getLatestWeeklyTrend,
+  getTrendWeeks,
   getTrendCategoryDistribution,
   getTrendTopProducts,
   type TrendDistributionBar,
   type WeeklyTrend,
   type WeeklyTrendProduct,
 } from '@/lib/db';
+import { TrendWeekSelect } from './trend-week-select';
 import { formatCategory } from '@/lib/categories';
 import {
   DEFAULT_LOCALE,
@@ -198,18 +200,31 @@ function WeekColumn({
   );
 }
 
-export default async function TrendsPage() {
+export default async function TrendsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ week?: string }>;
+}) {
   const cookieStore = await cookies();
   const raw = cookieStore.get(LOCALE_COOKIE)?.value;
   const locale: Locale = isLocale(raw) ? (raw as Locale) : DEFAULT_LOCALE;
 
-  const [recent, distribution, topProducts] = await Promise.all([
-    getRecentWeeklyTrends(2),
-    getTrendCategoryDistribution(),
-    getTrendTopProducts(5),
+  // Available weeks (newest first) drive the selector. The `?week=` param picks
+  // one — validated against the real list so a stale/garbage value falls back to
+  // the latest week. The previous week (for the WoW card) is the next entry.
+  const weeks = await getTrendWeeks();
+  const latestWeek = weeks[0]?.week_start;
+  const { week: weekParam } = await searchParams;
+  const selectedWeek = weeks.find((w) => w.week_start === weekParam)?.week_start ?? latestWeek;
+  const selectedIdx = weeks.findIndex((w) => w.week_start === selectedWeek);
+  const prevWeek = selectedIdx >= 0 ? weeks[selectedIdx + 1]?.week_start : undefined;
+
+  const [trend, prev, distribution, topProducts] = await Promise.all([
+    getLatestWeeklyTrend(selectedWeek),
+    prevWeek ? getLatestWeeklyTrend(prevWeek) : Promise.resolve(null),
+    getTrendCategoryDistribution(selectedWeek),
+    getTrendTopProducts(5, selectedWeek),
   ]);
-  const trend = recent[0] ?? null;
-  const prev = recent[1] ?? null;
   const distTotal = distribution.reduce((s, b: TrendDistributionBar) => s + b.count, 0);
 
   return (
@@ -217,11 +232,16 @@ export default async function TrendsPage() {
       <header className="mb-8">
         <h1 className="text-3xl font-semibold tracking-tight">{translate(locale, 'trends.title')}</h1>
         <p className="mt-2 text-sm text-neutral-500">{translate(locale, 'trends.subtitle')}</p>
-        {trend && (
-          <p className="mt-1 text-xs tabular-nums text-neutral-400">
-            {translate(locale, 'trends.weekOf', { start: trend.week_start, end: trend.week_end })}
-          </p>
-        )}
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+          {trend && (
+            <p className="text-xs tabular-nums text-neutral-400">
+              {translate(locale, 'trends.weekOf', { start: trend.week_start, end: trend.week_end })}
+            </p>
+          )}
+          {latestWeek && selectedWeek && (
+            <TrendWeekSelect weeks={weeks} selected={selectedWeek} latest={latestWeek} />
+          )}
+        </div>
       </header>
 
       {!trend ? (
