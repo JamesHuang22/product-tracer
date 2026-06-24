@@ -727,3 +727,43 @@ Likely **test-harness false positives** (verify against the live, recovered site
   2. Run `[...document.querySelectorAll('a,button')].filter(e => e.getBoundingClientRect().height < 44)`
 - **Expected**: All interactive elements ≥44×44px
 - **Actual**: 36 targets on homepage, 284 on /projects below threshold
+
+---
+
+## Product Tour: 2026-06-24T09:20 UTC (Focus: /youtube-insights)
+
+### Automated Test Summary (Run #25)
+- All 12/12 checks passed
+- ✅ / HTTP 200, ✅ /projects HTTP 200, ✅ /trends HTTP 200, ✅ /youtube-insights HTTP 200, ✅ /bookmarks HTTP 200
+- ❌ /favicon.ico 404 (known P2, unchanged)
+
+### /youtube-insights deep dive (desktop 1400px)
+- ✅ H1 "Latest insights" renders correctly
+- ✅ Grid toggle present: `<a href="/youtube-insights?view=grid">`
+- ✅ 20 external YouTube links, page is content-rich (~1036 words)
+- ✅ Grid view toggle navigates correctly
+- ❌ No internal detail page links (`/youtube-insights/[slug]`) — all 20 links go to YouTube (known P2)
+- ❌ Grid/list toggle is `<a>` link not `<button>` (known P2)
+
+### ZH locale
+- ✅ H1 "最新洞察", 2497 Chinese chars in main content
+- ✅ "项目" (projects) in nav
+- ❌ "收藏" (bookmarks) NOT found in /youtube-insights main area — the bookmark nav item may be cut off or not in the main content area on this page
+
+### Mobile 375px (on /youtube-insights)
+- ✅ No horizontal overflow (scroll width = 375px)
+- ✅ All 4 nav links fit: Projects (54px), Insights (52px), Trends (46px), Bookmarks (74px)
+- ❌ **EN toggle button off-screen** — rendered at x=383px (32px wide), viewport ends at 375px
+- ❌ **中文 toggle button off-screen** — rendered at x=415px (31px wide), clipped
+- ❌ **Hamburger button off-screen** — rendered at x=466px (25px wide), clipped
+- ❌ 40 tap targets <44px height on page
+- ⚠️ Nav bar is 400px wide inside 375px parent with `overflow-x: clip` — buttons beyond 375px are invisible and unreachable
+- **Root cause**: `flex items-center gap-4 text-sm sm:gap-6` — no responsive breakpoint below `sm:` (640px). At 375px, locale + hamburger + 4 nav links overflow.
+
+### Pagination
+- ✅ Page 2 loads with 20 YouTube links
+- ❌ No "Prev" link on page 2 (known P2, confirmed still missing)
+
+### New findings this run
+- **[P2]** Mobile nav overflow is page-dependent: on /youtube-insights the brand name is shorter, so 4 nav links fit but 3 buttons (EN, 中文, hamburger) are clipped off-screen. Previously reported 490px overflow on /projects (longer brand title). Root cause same: no breakpoint <640px.
+- **[P3]** ZH "收藏" bookmark nav link absent from /youtube-insights main body text (likely clipped off-screen on all pages, but the test script's regex checks the main element, so it's an artifact of the test method)
