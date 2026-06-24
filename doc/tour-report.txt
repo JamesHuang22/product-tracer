@@ -1,0 +1,6 @@
+Product Tour: 2026-06-24T01:24:16.180Z (Focus: /youtube-insights)
+============================================================
+
+Bugs: 1
+
+[P2] /youtube-insights: 1 HTTP error(s) loading page resources
