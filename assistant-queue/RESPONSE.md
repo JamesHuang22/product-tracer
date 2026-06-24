@@ -5,6 +5,17 @@
 | U1 | Bookmark / save projects | #50 | ✅ merged, verified |
 | U3 | Backfill llm_category | #52, #53 | ✅ backfilled (1.2% → 99.8%), verified |
 | U2 | Backfill AI summaries | #55 | ✅ backfilled (150 → 4,537), verified |
+| U4 | AI granular tags | #57 | ✅ shipped + backfilled (3,953/3,953 active), verified |
+
+### U4 — AI auto-tagging with granular tags
+
+**Outcome: all 3,953 active projects tagged** (3–5 specific tags each), ~$0.13, ~12 min, production HTTP 200 throughout.
+
+- **Schema**: migration `0015_granular_tags.sql` — `app.project.tags text[]` + GIN index, **applied via Supabase MCP** (you authorized MCP application for this autonomous session; file still in the repo).
+- **Worker (PR #57)**: `generate-tags.ts` makes one JSON LLM call per project → normalised lowercase tags (dedupe, strip junk, cap 5). `TAGS_BATCH`/`TAGS_CONCURRENCY` tunables + shared-cursor worker pool; `generate-tags.yml` daily 02:00 with `batch`/`concurrency` dispatch inputs. Backfilled in two monitored chunks (1000, then 2953) at concurrency 6 — 0 failed, 0 empty. Top tags: llm, cli, self-hosted, real-time, ai, productivity, javascript, typescript, open-source, devtool, saas, react.
+- **Frontend**: `TagChips` renders clickable `#tag` chips on `/projects` rows & mobile cards, the detail header, and bookmark cards. Click → `/projects?tag=…`; the table filters client-side (`useSearchParams`) with a dismissable active-tag banner. New i18n key `table.filteredByTag` (EN/ZH). Chips/bookmark are z-raised siblings of the card link (valid HTML, whole card still clickable).
+- **Scope cut**: tag search in `/api/search` skipped — `/projects?tag=` already delivers the click-a-tag UX; `/api/search` is name-fuzzy (pg_trgm), a separate surface.
+- **Verified**: `/projects?tag=llm` → 200; `/projects` HTML emits `/projects?tag=…` chip links across rows.
 
 ### U2 — Backfill AI summaries
 
