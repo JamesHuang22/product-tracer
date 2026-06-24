@@ -406,3 +406,37 @@ Likely **test-harness false positives** (verify against the live, recovered site
 - /favicon.ico 404 (known P2)
 - Homepage empty insight card (BUG-1 — tracked in assistant-queue/REQUEST.md)
 - No back button on mobile project detail pages
+
+
+## Product Tour: 2026-06-24T06:50 UTC (Focus: /projects)
+
+### Automated test — all passing
+- ✅ Homepage HTTP 200 — 839 words, H1 present, 1 console error (favicon 404)
+- ✅ /projects HTTP 200 — search "AI" works, category filter present, 100 project cards, pagination, EN/ZH locale toggle
+- ✅ /trends HTTP 200 — summary, WoW comparison, category mix, emerging themes
+- ✅ /youtube-insights HTTP 200 — H1, grid/list toggle, category filter chips
+- ✅ /bookmarks HTTP 200 — H1 "Bookmarks"
+- ✅ Mobile 375px — no horizontal scroll
+- ✅ ZH locale — nav items translated (项目/洞察/趋势/收藏)
+- ❌ /favicon.ico 404 (known P2, unchanged)
+
+### Detail page deep-dive (3 projects visited)
+- ✅ Breadcrumb present on all 3 detail pages (Projects > slug)
+- ✅ AI Summary section present on all 3, with prose analysis
+- ✅ Bookmark button present
+- ✅ Back link to /projects present
+- ✅ 0 broken images
+- ✅ Console errors: only favicon.ico 404 (not page-specific)
+
+### Sort interaction test
+- ✅ Sort dropdown "other" option selected → project order changes correctly
+- ✅ 100 project links remain after sort re-render
+
+### Search and filter
+- Typing "AI" in search: results update (verified via page text changes)
+- Category filter buttons: EN/中文 locale toggle, Project/Stars/Forks tabs, Prev/Next pagination all functional
+
+### No new bugs found
+- Site healthy across all routes
+- Detail pages fully functional
+- Known P2 favicon.ico 404 unchanged
