@@ -1,3 +1,35 @@
+# Bug Reports — 2026-06-25 | Tour #58
+
+## Focus: /projects — search, sort, filter, AI summaries, detail pages
+
+**Environment**: Local dev (localhost:3300)
+**Date**: 2026-06-25T03:20:00 UTC
+
+### Automated Test
+- 12/12 tests ✅ (all pages returned HTTP 200 in test script, but this is misleading — see below)
+
+---
+
+### [P0] Local dev server still down — no .env file (3rd consecutive run)
+
+**Severity**: P0 — unable to run visual/functional tests against local dev
+
+**Detail**: All server-rendered pages (/, /projects, /trends, /youtube-insights) return HTTP 500 with Next.js RSC error payload: `"Missing DATABASE_URL. Check .env (Supabase → Connect → Session pooler URI)."` No `.env` file exists at repo root or `apps/web/` — only `.env.example` is present.
+
+**Reproduction**:
+1. `curl -s http://localhost:3000/` → RSC payload with `Missing DATABASE_URL` error
+2. `/projects`, `/trends`, `/youtube-insights` — all 500
+3. `/bookmarks` returns HTTP 200 (client-rendered shell without server data)
+4. Check `ls -la .env*` — no `.env` file found
+
+**Expected**: `.env` file with DATABASE_URL from Supabase Session pooler, NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, and SUPABASE_SERVICE_ROLE_KEY.
+
+**Fix**: Copy `.env.example` to `.env` and fill in credentials from Supabase dashboard.
+
+**Production status**: Vercel (product-tracer.vercel.app) is healthy ✅
+
+---
+
 # Bug Reports — 2026-06-25 | Tour #56
 
 ## Focus: Homepage — first impression, insight cards, key_insight leak regression, ZH locale
