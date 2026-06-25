@@ -403,3 +403,38 @@
 - Homepage scrollable end-to-end on mobile
 - No broken images on detail page
 - Breadcrumb + bookmark button present on detail pages
+
+---
+
+## Run: 2026-06-25T02:50:56.247Z
+
+### ⚠️ Local dev environment: DATABASE_URL missing
+
+**Severity**: N/A (dev-only, not a product bug)
+
+**Detail**: The local dev server at localhost:3000 crashed with a 500 error on /, /projects, /trends, and /youtube-insights because `DATABASE_URL` environment variable is not set. This is a **local dev environment configuration issue**, not a production bug.
+
+**Root cause**:
+```
+PAGE_ERROR: Missing DATABASE_URL. Check .env (Supabase → Connect → Session pooler URI).
+```
+
+**Production status**: All 5 pages healthy at https://product-tracer.vercel.app ✅
+- / → HTTP 200, title "Product Tracer — Cross-platform indie product signals"
+- /projects → HTTP 200, 516 project links
+- /trends → HTTP 200, title "Weekly Hot Trends — Product Tracer"
+- /youtube-insights → HTTP 200, title "YouTube Insights — Product Tracer"
+- /bookmarks → HTTP 200, title "Bookmarks — Product Tracer"
+
+**Fix**: Set DATABASE_URL in local .env for dev testing. The variable is required by the Next.js API routes when they SSR.
+
+**Prior bugs (all production) still open**:
+- [P0] Custom domain producttracer.com redirects to muqid.com
+- [P0] key_insight field leaking raw JSON on homepage (regression)
+- [P0] ZH locale homepage (/zh) returns 404
+- [P0] All locale-prefixed routes return 404
+- [P1] Search input / URL query params on /projects non-functional
+- [P2] No empty state for zero-result search on /projects
+- [P3] Multiple rendering/UX issues on /trends (week label spacing, WoW formatting, card text)
+- [P3] Small tap targets, nav overflow on mobile
+
