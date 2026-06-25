@@ -428,6 +428,37 @@ PAGE_ERROR: Missing DATABASE_URL. Check .env (Supabase → Connect → Session p
 
 **Fix**: Set DATABASE_URL in local .env for dev testing. The variable is required by the Next.js API routes when they SSR.
 
+## 2026-06-25 | Tour #57 (cron) — DATABASE_URL missing, all pages 500
+
+**Severity**: P0 — Site Down (dev environment)
+**Focus**: /projects search, filter, AI summaries, detail pages
+**Environment**: Local dev (localhost:3300)
+
+### Bug: Missing DATABASE_URL environment variable
+
+**Severity**: P0
+**Status**: Unresolved — needs James to add .env file
+
+**Symptom**: All server-rendered pages (/, /projects, /trends, /youtube-insights) return HTTP 500 with Next.js error boundary. The `/bookmarks` page returns 200 but may lack data (client-rendered shell).
+
+**Error in RSC payload**:
+```
+{"digest":"154524194","name":"Error","message":"Missing DATABASE_URL. Check .env (Supabase → Connect → Session pooler URI)."}
+```
+
+**Reproduction steps**:
+1. Start dev server with `pnpm web:dev`
+2. Navigate to `http://localhost:3300/`
+3. Observe HTTP 500 error, RSC payload contains `Missing DATABASE_URL`
+4. Same for /projects, /trends, /youtube-insights
+5. /bookmarks returns 200 (client-rendered without server data)
+
+**Root cause**: No `.env` file exists at project root or `apps/web/`. Only `.env.example` is present. The `DATABASE_URL` environment variable must be set for the `createSqlClient()` function to initialize Postgres connection via Neon/driver-adapter.
+
+**Fix**: Copy `.env.example` to `.env` and fill in the Supabase session pooler URI (from Supabase dashboard → Connect → Session pooler). Also needed: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`.
+
+---
+
 **Prior bugs (all production) still open**:
 - [P0] Custom domain producttracer.com redirects to muqid.com
 - [P0] key_insight field leaking raw JSON on homepage (regression)
