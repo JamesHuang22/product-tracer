@@ -131,8 +131,49 @@ function DistributionBar({
   );
 }
 
+/**
+ * Week-over-week rank change badge: ↑n / ↓n when a product moved, — when it held
+ * its rank, NEW when it wasn't in the previous week. `null` (no prior week to
+ * compare) renders nothing.
+ */
+function WowBadge({ wow, locale }: { wow: number | 'new' | null; locale: Locale }) {
+  if (wow === null) return null;
+  if (wow === 'new') {
+    return (
+      <span className="shrink-0 rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
+        {translate(locale, 'trends.wowNew')}
+      </span>
+    );
+  }
+  if (wow === 0) {
+    return <span className="w-7 shrink-0 text-center text-xs text-neutral-400">—</span>;
+  }
+  const up = wow > 0;
+  return (
+    <span
+      className={`w-7 shrink-0 text-center text-xs font-semibold tabular-nums ${
+        up ? 'text-emerald-600 dark:text-emerald-400' : 'text-neutral-400'
+      }`}
+      title={translate(locale, up ? 'trends.wowUp' : 'trends.wowDown', { n: Math.abs(wow) })}
+    >
+      {up ? '↑' : '↓'}
+      {Math.abs(wow)}
+    </span>
+  );
+}
+
 /** A numbered entry in the "Top products" list. */
-function TopProductRow({ rank, product }: { rank: number; product: WeeklyTrendProduct }) {
+function TopProductRow({
+  rank,
+  product,
+  wow,
+  locale,
+}: {
+  rank: number;
+  product: WeeklyTrendProduct;
+  wow: number | 'new' | null;
+  locale: Locale;
+}) {
   return (
     <Link
       href={`/projects/${product.slug}` as Route}
@@ -141,6 +182,7 @@ function TopProductRow({ rank, product }: { rank: number; product: WeeklyTrendPr
       <span className="w-5 shrink-0 text-center text-sm font-semibold tabular-nums text-neutral-400">
         {rank}
       </span>
+      <WowBadge wow={wow} locale={locale} />
       <PlatformBadge platform={product.platform} />
       <span className="min-w-0 flex-1 truncate text-sm font-medium text-neutral-900 dark:text-neutral-50">
         {product.name}
@@ -227,6 +269,23 @@ export default async function TrendsPage({
   ]);
   const distTotal = distribution.reduce((s, b: TrendDistributionBar) => s + b.count, 0);
 
+  // Week-over-week rank map: each product's rank (by score) in the previous
+  // week, so the top-products list can show how far each one moved. Only
+  // available when there's a prior week to compare against.
+  const prevRankBySlug = new Map<string, number>();
+  if (prev) {
+    [...prev.top_products]
+      .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+      .forEach((p, i) => {
+        if (!prevRankBySlug.has(p.slug)) prevRankBySlug.set(p.slug, i + 1);
+      });
+  }
+  const wowFor = (slug: string, currentRank: number): number | 'new' | null => {
+    if (!prev) return null;
+    const pr = prevRankBySlug.get(slug);
+    return pr == null ? 'new' : pr - currentRank; // positive ⇒ moved up
+  };
+
   return (
     <main className="mx-auto max-w-3xl px-6 py-12">
       <header className="mb-8">
@@ -304,7 +363,13 @@ export default async function TrendsPage({
               <SectionHeading>{translate(locale, 'trends.topProducts')}</SectionHeading>
               <div className="space-y-2">
                 {topProducts.map((p, i) => (
-                  <TopProductRow key={`${p.slug}-${i}`} rank={i + 1} product={p} />
+                  <TopProductRow
+                    key={`${p.slug}-${i}`}
+                    rank={i + 1}
+                    product={p}
+                    wow={wowFor(p.slug, i + 1)}
+                    locale={locale}
+                  />
                 ))}
               </div>
             </section>
