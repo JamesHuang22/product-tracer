@@ -94,6 +94,16 @@ function topByScore(products: WeeklyTrendProduct[]): WeeklyTrendProduct | null {
   return best;
 }
 
+/** Normalise an emerging-theme phrase to the lowercase-hyphenated tag form so it
+ *  can link to `/projects?tag=…` (matches how generate-tags normalises tags). */
+function themeSlug(theme: string): string {
+  return theme
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return (
     <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-neutral-500">
@@ -380,12 +390,13 @@ export default async function TrendsPage({
               <SectionHeading>{translate(locale, 'trends.emergingThemes')}</SectionHeading>
               <div className="flex flex-wrap gap-2">
                 {trend.emerging_themes.map((theme) => (
-                  <span
+                  <Link
                     key={theme}
-                    className="inline-flex items-center rounded-full bg-neutral-100 px-3 py-1 text-sm font-medium text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300"
+                    href={`/projects?tag=${encodeURIComponent(themeSlug(theme))}` as Route}
+                    className="inline-flex items-center rounded-full bg-neutral-100 px-3 py-1 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-200 hover:text-neutral-900 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700 dark:hover:text-neutral-100"
                   >
                     {theme}
-                  </span>
+                  </Link>
                 ))}
               </div>
             </section>
