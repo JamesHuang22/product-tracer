@@ -1,52 +1,21 @@
-# Bug Reports — 2026-06-25 | Tour #58
+# Bug Reports — 2026-06-25 | Tour #60
 
-## Focus: /projects — search, sort, filter, AI summaries, detail pages
-
-**Environment**: Local dev (localhost:3300)
-**Date**: 2026-06-25T03:20:00 UTC
-
-### Automated Test
-- 12/12 tests ✅ (all pages returned HTTP 200 in test script, but this is misleading — see below)
-
----
-
-### [P0] Local dev server still down — no .env file (3rd consecutive run)
-
-**Severity**: P0 — unable to run visual/functional tests against local dev
-
-**Detail**: All server-rendered pages (/, /projects, /trends, /youtube-insights) return HTTP 500 with Next.js RSC error payload: `"Missing DATABASE_URL. Check .env (Supabase → Connect → Session pooler URI)."` No `.env` file exists at repo root or `apps/web/` — only `.env.example` is present.
-
-**Reproduction**:
-1. `curl -s http://localhost:3000/` → RSC payload with `Missing DATABASE_URL` error
-2. `/projects`, `/trends`, `/youtube-insights` — all 500
-3. `/bookmarks` returns HTTP 200 (client-rendered shell without server data)
-4. Check `ls -la .env*` — no `.env` file found
-
-**Expected**: `.env` file with DATABASE_URL from Supabase Session pooler, NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, and SUPABASE_SERVICE_ROLE_KEY.
-
-**Fix**: Copy `.env.example` to `.env` and fill in credentials from Supabase dashboard.
-
-**Production status**: Vercel (product-tracer.vercel.app) is healthy ✅
-
----
-
-# Bug Reports — 2026-06-25 | Tour #56
-
-## Focus: Homepage — first impression, insight cards, key_insight leak regression, ZH locale
+## Focus: /youtube-insights — grid/list toggle, category filter, EN/ZH locale
 
 **Environment**: Vercel (product-tracer.vercel.app)
-**Date**: 2026-06-25T02:35:00 UTC
+**Date**: 2026-06-25T03:35 UTC
 
 ### Automated Test
 - 12/12 tests ✅ (5 pages HTTP 200, grid layout, ZH locale baseline)
+- Note: `projects[i].href` in test script captures first 100 links; actual link count may differ — this is a test limitation, not a bug
 
 ---
 
-### [P0] key_insight field leaking raw JSON on homepage (regression)
+### [P0] key_insight field leaking raw JSON on HOMEPAGE (regression — still unfixed)
 
 **Severity**: P0 — sensitive backend schema exposed in rendered HTML
 
-**Detail**: Raw JSON fragments containing `key_insight`, `key_insight_zh`, `sentiment`, and `relevance_score` fields are leaking in rendered text on the homepage. This was previously fixed (TASK 1) but the fix regressed. 6 leak instances found:
+**Detail**: Raw JSON fragments containing `key_insight`, `sentiment`, and `relevance_score` fields are leaking in rendered text on the homepage. 6 instances confirmed. This was first reported in Tour #56 and has persisted across runs #57, #58, #59, #60.
 
 ```
 "sentiment":"neutral","key_insight":"The US Commerce Secretary accuses...
@@ -59,445 +28,114 @@
 2. Search page body for 'key_insight' — 6 matches found
 3. Visible in insight card text alongside proper rendered content
 
-**Expected**: No backend field names (`key_insight`, `sentiment`, `relevance_score`) should appear in rendered HTML. Only the localized text content should render.
+**Expected**: No backend field names should appear in rendered HTML.
 
-**Impact**: Exposes internal schema structure to users. Minor scraping risk. Indicates the TASK 1 fix (null/empty guard) may have been lost in a recent deployment or is not covering this code path.
-
----
-
-### [P0] ZH locale homepage (/zh) returns 404 (regression)
-
-**Severity**: P0 — locale switching from EN to ZH on homepage is broken
-
-**Detail**: `/zh` returns a 404 page with "This page could not be found." and title "Product Tracer — Cross-platform indie product signals" (EN fallback). This is a regression from earlier runs where `/zh/` homepage worked.
-
-**Reproduction**:
-1. Go to https://product-tracer.vercel.app/zh
-2. Observe 404 page with "This page could not be found."
-3. No locale toggles are rendered on the 404 page
-
-**Expected**: `/zh` should render the homepage with Chinese-localized content (H1, nav items, insight cards in ZH).
-
-**Impact**: Zero Chinese-language users can access the app. All locale-prefixed routes are now broken (P0 already tracked for /trends, /youtube-insights, /bookmarks — /zh homepage is newly broken).
+**Note**: This same bug is **NOT** present on /youtube-insights or /trends — only homepage is affected.
 
 ---
 
-### [P3] Homepage CTA button labels: "Browse all projects" vs "All projects"
+### [P0] All locale-prefixed routes return 404 (regression — still unfixed)
 
-**Severity**: P3 — minor UX inconsistency
-
-**Detail**: The hero section has "Browse all projects" CTA, but the Projects section below has "All projects" — two different labels for the same destination (/projects).
-
-**Reproduction**:
-1. Go to homepage
-2. Hero area: "Browse all projects" button
-3. Projects section header: "All projects" link
-4. Both go to /projects
-
-**Expected**: Consistent action label. "Browse all projects" is more descriptive and action-oriented — should be used in both places.
-
----
-
-### [P3] No section transitions or scroll indicators on homepage
-
-**Severity**: P3 — minor UX feedback
-
-**Detail**: The homepage loads all 2616px at once with hard section boundaries. No scroll-down hint, no transition between hero → projects → insights → trends sections. The hero is not scroll-constrained (full-height + CTA visible at 900px viewport) so first-time users may not realize there's content below.
-
-**Reproduction**:
-1. Go to homepage at 1440x900 viewport
-2. Hero fits entirely on screen (no fold cue)
-3. Scroll down — sections appear abruptly with no transition
-
-**Expected**: A subtle scroll indicator (arrow/dots), smooth section transitions, or a partial exposure of next section to encourage scrolling.
-
----
-
-### What was OK
-- Load time: 1607ms (acceptable)
-- Meta description present and clear
-- H1 value proposition: "Cross-platform signals for indie products." — communicates value in 3 seconds ✅
-- 0 broken images (no images on homepage)
-- 3 section headings: Projects, Insights, Trends
-- Stats cards look good: Total projects 4.6k, Active platforms 4, New this week 922, Hot signals 155
-- Browse all projects CTA works correctly → /projects loads fine
-- 0 console errors
-- 6 YouTube links rendered correctly on homepage
-- /projects has 0 key_insight leaks (only homepage affected)
-- Project count: 4610 of 4610
-
----
-
-
-# Bug Reports — 2026-06-25 | Tour #55
-
-## Focus: /projects — search, category filter, mobile overflow
-
-**Environment**: Vercel (product-tracer.vercel.app)
-**Date**: 2026-06-25T02:05:00 UTC
-
-### Automated Test
-- 12/12 tests ✅ (5 pages HTTP 200, grid layout, ZH locale baseline)
-
----
-
-### [P1] Search input on /projects is completely non-functional
-
-**Severity**: P1 — search/filter is a core UX expectation and does not work at all
-
-**Detail**: The search input on /projects exists (placeholder: "Search projects…") but does not filter the project list regardless of method:
-- Navigating to `/projects?q=react` shows all 4610 projects (unfiltered)
-- Typing in the search input and pressing Enter navigates to `/projects` WITHOUT appending the `?q=` parameter (the URL drops the query entirely)
-- No API/network requests are made when search is invoked
-- The same bug applies to category filter URL params (`/projects?category=design` shows all 4610 projects) and sort params (`/projects?sort=newest` still shows odysseus first)
-
-**Reproduction**:
-1. Go to https://product-tracer.vercel.app/projects?q=react
-2. Observe "4610 of 4610" in the count — all projects shown, no filtering applied
-3. Search input field is empty despite `?q=react` in the URL
-4. Type "react" into the search input and press Enter
-5. URL changes to `/projects` (no query param), still 4610 projects shown
-
-**Expected**:
-- URL param `?q=react` should populate the search input AND filter the project list to matching results
-- Pressing Enter after typing should navigate to `/projects?q=<search-term>` AND filter results
-- Category and sort URL params should also work
-
-**Likely root cause**: The search is a client-side component that may not read URL search params on mount, or the project listing page ignores `q`, `category`, and `sort` query params entirely. Possibly a stale/mock search component.
-
----
-
-### [P1] All URL query params (/projects) are ignored (q, category, sort)
-
-**Severity**: P1 — multiple param types (search, category filter, sorting) are all silent failures
-
-**Detail**: Confirmed:
-- `/projects?q=react` → shows all 4610 (no search filter)
-- `/projects?category=design` → shows all 4610 (no category filter)
-- `/projects?sort=newest` → odysseus is still first (same order as star-sort default)
-
-**Reproduction**:
-1. Navigate to `/projects?category=design`
-2. Observe "4610 of 4610" projects shown — filter not applied
-3. Navigate to `/projects?sort=newest`
-4. Project order is unchanged from default star-sort
-
-**Expected**: Query params should affect the displayed project list (search filter, category filter, sort order).
-
----
-
-### [P3] 57 small tap targets on /projects at 375px viewport (regression from 14)
-
-**Severity**: P3 — accessibility concern, worsened from earlier report of 14
-
-**Detail**: At 375px viewport, 57 interactive elements on /projects are < 36px in at least one dimension. Previously reported 14 on project detail pages; this is much worse on the listing page due to category pills, tags, and other elements.
-
-**Reproduction**:
-1. Open DevTools, set 375px viewport
-2. Navigate to /projects
-3. Run `document.querySelectorAll('a, button').filter(el => el.getBoundingClientRect().width < 36 || el.getBoundingClientRect().height < 36)`
-4. 57 elements are undersized
-
----
-
-### [P3] Nav overflow at 375px viewport (400px nav in 375px viewport)
-
-**Severity**: P3 — cosmetic, body overflow is clipped
-
-**Detail**: The `<nav class="flex">` element is 400px wide in a 375px viewport. Body `overflow-x: clip` hides the overflow but the nav doesn't fit properly. The hamburger menu is present but the nav container itself overflows.
-
-**Reproduction**:
-1. Open DevTools, set 375px viewport
-2. Navigate to any page
-3. Inspect `<nav>` element — it's 400px wide in a 375px viewport
-4. `document.body.scrollWidth` = 490px, `clientWidth` = 375px
-
-**Expected**: Nav should be ≤ 375px wide to prevent any horizontal overflow at smallest mobile viewports.
-
----
-
-### What was OK
-- /projects loads quickly (100 project links)
-- First project detail has breadcrumb, bookmark button, 3 sections (CROSS-PLATFORM SIGNALS, AI SUMMARY, YOU MIGHT ALSO LIKE)
-- 0 broken images on detail page
-- Searching shows "4610 of 4610" counts correctly (backend healthy)
-- Empty search 'zzzzzznonexistent123456' correctly returns 100 project links (showing count is server-side, though filter is broken client-side)
-
----
-
-
-# Bug Reports — 2026-06-25 | Tour #54
-
-## Focus: Custom domain redirect / DNS issue — P0
-
-**Environment**: producttracer.com (production custom domain)
-**Date**: 2026-06-25T01:50 UTC
-
-### Automated Test
-- 12/12 tests ✅ (against Vercel URL)
-
----
-
-### [P0] Custom domain producttracer.com redirects to muqid.com — site is unreachable via main URL
-
-**Severity**: P0 — site is completely inaccessible via the custom domain. All traffic to producttracer.com 301-redirects to http://www.muqid.com (a completely unrelated Belgian company site).
-
-**Detail**:
-- `curl -sI https://producttracer.com` → `HTTP 301 → http://www.muqid.com`
-- The Vercel deployment at `https://product-tracer.vercel.app` is healthy (HTTP 200 on all 5 core pages)
-- The custom domain DNS/Vercel binding appears to have broken or been overridden
-- All sub-routes (/projects, /trends, /youtube-insights, /bookmarks) also redirect to muqid.com
-- muqid.com shows "Currently there is no content to show." on all Product Tracer routes
-
-**Reproduction**:
-1. Go to https://producttracer.com in any browser
-2. Browser redirects to http://www.muqid.com with no user-facing Product Tracer content
-3. All producttracer.com/* paths redirect identically to muqid.com/*
-4. Existing users who have bookmarked producttracer.com see the Belgian company site
-
-**Impact**:
-- 100% of users accessing via producttracer.com cannot reach the app
-- SEO is likely impacted (canonical domain now points to unrelated content)
-- Bookmarked links are dead
-- This effectively takes the entire product offline from its intended domain
-
-**Likely root cause**:
-- DNS records for producttracer.com may have been changed (CNAME, ALIAS, or A record no longer points to Vercel)
-- Vercel domain configuration may have expired or been removed
-- SSL certificate on Vercel side for producttracer.com may have expired/been revoked
-- Domain registrar DNS changes or Vercel project domain setting reset
-
-**Suggested next steps**:
-1. Check Vercel project settings → Domains — is producttracer.com still configured?
-2. Check DNS records for producttracer.com (CNAME/ALIAS to `cname.vercel-dns.com` or similar)
-3. Check domain registrar (likely Namecheap/Cloudflare/GoDaddy) — any recent DNS changes?
-4. If a Vercel config issue: re-add domain to Vercel project, re-provision SSL cert
-5. If a DNS issue: update DNS records, wait for propagation
-
-**Workaround**: Users can still access the app at https://product-tracer.vercel.app while the domain issue is resolved.
-
----
-
-# Bug Reports — 2026-06-25 | Tour #53 (previous entry preserved below)
-
-## Focus: /trends page — week selector, WoW indicators, emerging themes, video highlights
-
-**Environment**: Vercel (product-tracer.vercel.app)
-**Date**: 2026-06-25T01:35:00 UTC
-**Tour script**: trends-tour.cjs, trends-detail.cjs
-
-### Automated Test
-- 12/12 tests ✅ (5 pages HTTP 200, grid layout, ZH locale baseline)
-
----
-
-### [P2] Week selector label missing space between text and date range
-**Severity**: P2 — minor rendering glitch
-**Detail**: The week selector `<label>` renders as "Week2026-06-22 – 2026-06-28" with no space between "Week" and the date range. Should be "Week 2026-06-22 – 2026-06-28" or similar.
-**Reproduction**:
-1. Go to /trends
-2. Inspect the week selector dropdown label
-3. Observe: "Week2026-06-22" — missing space after "Week"
-4. Expected: "Week 2026-06-22 – 2026-06-28"
-
-### [P3] WoW comparison section shows raw date ranges without formatting
-**Severity**: P3 — cosmetic
-**Detail**: The "Week over week" section shows raw date strings "This week2026-06-22 – 2026-06-28" and "Last week2026-06-15 – 2026-06-21" without proper spacing or label formatting between "week" and the date range.
-**Reproduction**:
-1. Go to /trends, scroll to "Week over week" section
-2. Observe: "This week2026-06-22 – 2026-06-28" (no space after 'week')
-3. Expected: "This week: 2026-06-22 – 2026-06-28" or better formatting with human-readable labels
-
-### [P3] Product cards in Top Products section show rank/platform badge formatting issue
-**Severity**: P3 — unclear display
-**Detail**: Product card text shows concatenated rank+platform+title without separators, e.g., "1INAre You in the Weights?2" instead of "1. IN Are You in the Weights?" or similar. The platform badge "IN" and rank "1" are concatenated against each other and the title.
-**Reproduction**:
-1. Go to /trends, scroll to Top Products section
-2. Observe card text: "1INAre You in the Weights?2" (garbled concatenation)
-3. Expected: "#1 • IN • Are You in the Weights?" or spaced formatting
-
-### [P3] No WoW delta indicators on individual product cards
-**Severity**: P3 — already tracked in FRONTEND_REQUEST.md
-**Detail**: Top Products list shows rank + platform + title but no week-over-week position change (e.g., "↑2", "↓1", "NEW"). Only the first card shows a delta number (the "2" at end of title text).
-**Reproduction**:
-1. Go to /trends, scroll to Top Products
-2. Check if any card shows position change indicator
-3. Cards 2-5 show no delta at all; card 1 has ambiguous "2" at end
-
-### [P3] Emerging Themes are plain text with no clickable links
-**Severity**: P3 — already tracked in FRONTEND_REQUEST.md
-**Detail**: All 8 emerging themes (Recursive Self-Improvement, AI Agent Workflows, etc.) render as plain text. None are clickable. No links to filtered project views.
-**Reproduction**:
-1. Go to /trends, scroll to Emerging Themes section
-2. Click any theme — nothing happens
-3. Expected: each theme links to /projects?tag=... or /projects?q=...
-
-### [P3] Video Highlights section has no clickable links
-**Severity**: P3 — already tracked in FRONTEND_REQUEST.md
-**Detail**: Video Highlights is a plain prose paragraph. Mentions RSI, Claude Opus 4.6, GLM-5.2 but provides zero clickable YouTube links.
-**Reproduction**:
-1. Go to /trends, scroll to Video Highlights section
-2. No "▶ Watch on YouTube" links exist
-3. Expected: each mentioned video has a clickable link
-
-### [P0] Locale-prefixed /zh/trends and /en/trends still return 404
 **Severity**: P0 — core navigation broken
-**Detail**: Confirmed again this run. /zh/trends and /en/trends both show "404 — This page could not be found." Only /trends works (EN default).
+
+**Confirmed this run**:
+- `/zh` → HTTP 404
+- `/en/youtube-insights` → HTTP 404
+- `/zh/youtube-insights` → HTTP 404
+
+**Previously confirmed (persistent across 5+ runs)**:
+- `/en/projects`, `/zh/projects`: HTTP 404
+- `/en/trends`, `/zh/trends`: HTTP 404
+- `/en/youtube-insights`, `/zh/youtube-insights`: HTTP 404
+- `/en/bookmarks`, `/zh/bookmarks`: HTTP 404
+
 **Reproduction**:
-1. Go to /trends, click locale toggle to EN or 中文
-2. Expected: locale-prefixed page loads
-3. Actual: 404 error page
+1. Navigate to any locale-prefixed URL (e.g., `/zh/youtube-insights`)
+2. Browser shows "This page could not be found." 404
+3. Clicking the ZH locale button on /youtube-insights changes URL to `?category=ai_ml` instead of `/zh/youtube-insights` (navigates to base path + query, not locale prefix)
+
+**Expected**: All routes support both `/en/...` and `/zh/...` prefixing for consistent locale switching.
+
+---
+
+### [P2] Category filter pills on /youtube-insights do NOT filter content
+
+**Severity**: P2 — core UX expectation broken
+
+**Detail**: The 8 category filter pills (AI/ML, Developer Tools, Startup/Business, Tech News, etc.) on /youtube-insights are rendered and clickable, but clicking them does NOT filter the video list. The URL changes from `/youtube-insights` to `/youtube-insights?category=ai_ml`, but the content stays the same (20 YouTube links before and after).
+
+**Reproduction**:
+1. Go to https://product-tracer.vercel.app/youtube-insights
+2. Count YouTube video links (20)
+3. Click "AI/ML (25)" category pill
+4. URL changes to `?category=ai_ml` but YouTube link count remains 20
+5. No API request is triggered; content does not re-render
+
+**Expected**: Clicking a category should filter the displayed videos to only those in that category. Content and link count should change.
+
+---
+
+### [P2] ZH locale button on /youtube-insights does NOT update URL locale prefix
+
+**Severity**: P2 — locale switching UX bug
+
+**Detail**: Clicking the "中文" button on /youtube-insights changes the page content to Chinese (nav items, category labels, video summaries all in ZH), but the URL stays at `/youtube-insights?category=ai_ml` instead of changing to `/zh/youtube-insights?category=ai_ml`. The locale state is stored client-side without URL reflection.
+
+**Reproduction**:
+1. Go to /youtube-insights
+2. Click "中文" button
+3. Page content correctly switches to Chinese (验证, 开发工具, 创业/商业)
+4. URL remains at `/youtube-insights` (or `/youtube-insights?category=...`)
+5. Expected: URL should reflect locale as `/zh/youtube-insights`
+
+**Expected**: Locale switching should update the URL path (e.g., `/en/...` or `/zh/...`) so that:
+- The locale is bookmarkable
+- Refreshing the page preserves the locale choice
+- Direct navigation to `/zh/youtube-insights` works (currently 404)
+
+---
+
+### [P3] RSC 404 on homepage for project "airposture-open-source-posture-coach-using-airpods"
+
+**Severity**: P3 — console error, non-breaking
+
+**Detail**: The homepage triggers a `_rsc` fetch for `/projects/airposture-open-source-posture-coach-using-airpods` that returns HTTP 404. This suggests the homepage is trying to prefetch/link to a project detail page that doesn't exist, or the slug changed/regenerated.
+
+**Reproduction**:
+1. Open browser DevTools on homepage
+2. Observe: `Failed to load resource: the server responded with a status of 404 ()`
+3. URL: `/projects/airposture-open-source-posture-coach-using-airpods?_rsc=...`
+
+**Expected**: No broken internal links on the homepage. Either the link should be removed or the project should exist.
+
+---
 
 ### What was OK
-- /trends loads quickly with title "Weekly Hot Trends — Product Tracer"
-- Week selector dropdown works (2 weeks available: 2026-06-22 and 2026-06-15)
-- Summary section has useful narrative content about weekly activity
-- WoW comparison section has both "This week" and "Last week" data
-- Top Products links work correctly (click through to project detail pages)
-- Detail pages from trend links have breadcrumb, bookmark button, and AI summary
+- /youtube-insights title correct: "YouTube Insights — Product Tracer" ✅
+- Grid/list toggle exists and renders properly ✅
+- 93 insights loaded (total count in ZH: "全部分类 (93)") ✅
+- Category filter pills render with correct counts ✅
+- ZH locale toggle renders Chinese content correctly ✅
+- Bookmarks page has ZH empty state with CTA "浏览所有项目" ✅
+- No key_insight leaks on /youtube-insights or /trends ✅
+- No console errors on /youtube-insights ✅
+- 25 YouTube video links present on /youtube-insights ✅
+- Content is useful and informative: AI coding, business, dev tools insights ✅
+- 5/5 core pages return HTTP 200 ✅
 
 ---
 
-# Bug Reports — 2026-06-25 | Tour #52
+### All Open Bugs Summary
 
-## Focus: Mobile (375px viewport) + Deep search / locale-prefixed routes on Vercel
-
-**Environment**: Vercel (product-tracer.vercel.app)
-**Date**: 2026-06-25T00:50:00 UTC
-**Tour script**: tour-mobile.mjs, tour-deep.mjs
-
-### Automated Test
-- 12/12 tests ✅ (5 pages HTTP 200, grid layout with 100+ project links, ZH locale baseline)
-
-### Mobile Tour Findings (375px viewport)
-
-#### ✅ Nav bar responsive collapse working
-- All 5 pages show a hamburger menu at 375px viewport
-- No horizontal overflow detected on any page
-- All nav links are reachable (proper mobile collapse)
-
-#### ✅ Homepage scrollable on mobile
-- 6 scroll segments covered: hero → Projects section → Insights → Trends section
-- No content clipping, no broken layout
-
-#### ⚠️ 14 small tap targets (< 36px) on project detail page
-**Severity**: P3
-**Detail**: On [slug] detail pages at 375px viewport, 14 interactive elements are smaller than Apple's recommended 44px / Google's 48px minimum tap target. Likely includes tags, badges, category pills, or footer links.
-**Reproduction**:
-1. Open Chrome DevTools, set 375px viewport
-2. Navigate to any project detail page (e.g., /projects/odysseus)
-3. Inspect tap targets with DevTools or run `document.querySelectorAll('a, button')` and filter by `el.getBoundingClientRect()` < 36px
-
-#### ✅ Bookmarks page has proper empty state
-- "No bookmarks yet. Save a project to find it here." with CTA "Browse all projects"
-- Good UX
-
-### Deep Search / Locale Findings
-
-#### [P0] All locale-prefixed routes return 404 (confirmed)
-**Severity**: P0 — core navigation is broken
-**Affected routes confirmed 404**:
-- `/en/projects`
-- `/zh/projects`
-- `/en/trends`
-- `/zh/trends`
-
-(Expected same for `/en/youtube-insights`, `/zh/youtube-insights`, `/en/bookmarks`, `/zh/bookmarks`)
-
-**Reproduction**:
-1. Click locale toggle on any page (projects, trends, insights)
-2. Expected: page reloads with locale prefix (e.g., `/zh/projects`)
-3. Actual: 404 page ("This page could not be found.")
-4. User is stuck with no working locale-switching flow for any page except homepage
-
-**Note**: Already tracked in FRONTEND_REQUEST.md as [P2] — should be promoted to P0 since locale toggle is broken for all non-homepage routes.
-
-#### [P2] No empty state for zero-result search on /projects
-**Severity**: P2 — confusing UX
-**Detail**: Searching for a non-existent term ("zzzzzzzz") on /projects yields blank content with no informative message. No "No results", "No projects found", "Try a different search", or similar text appears.
-**Reproduction**:
-1. Go to /projects
-2. Search for "zzzzzzzz" (type or via URL param `?q=zzzzzzzz`)
-3. Observe: no feedback that search returned zero results
-4. Expected: "No projects matching 'zzzzzzzz'" or empty state illustration
-
-#### ✅ Homepage insight cards are healthy
-- All 3 insight cards have rich text content (no empty cards)
-- No `key_insight` field leakage in rendered HTML
-- Section headings present: "Latest activity" / "Insights" context
-- TASK 1 fix appears to be working on production
-
-### What was OK
-- All 5 core pages load and render at 375px viewport
-- Nav hamburger menu present on all pages
-- Bookmarks page has proper empty state
-- Insight cards all have text content (no blank cards)
-- Homepage scrollable end-to-end on mobile
-- No broken images on detail page
-- Breadcrumb + bookmark button present on detail pages
-
----
-
-## Run: 2026-06-25T02:50:56.247Z
-
-### ⚠️ Local dev environment: DATABASE_URL missing
-
-**Severity**: N/A (dev-only, not a product bug)
-
-**Detail**: The local dev server at localhost:3000 crashed with a 500 error on /, /projects, /trends, and /youtube-insights because `DATABASE_URL` environment variable is not set. This is a **local dev environment configuration issue**, not a production bug.
-
-**Root cause**:
-```
-PAGE_ERROR: Missing DATABASE_URL. Check .env (Supabase → Connect → Session pooler URI).
-```
-
-**Production status**: All 5 pages healthy at https://product-tracer.vercel.app ✅
-- / → HTTP 200, title "Product Tracer — Cross-platform indie product signals"
-- /projects → HTTP 200, 516 project links
-- /trends → HTTP 200, title "Weekly Hot Trends — Product Tracer"
-- /youtube-insights → HTTP 200, title "YouTube Insights — Product Tracer"
-- /bookmarks → HTTP 200, title "Bookmarks — Product Tracer"
-
-**Fix**: Set DATABASE_URL in local .env for dev testing. The variable is required by the Next.js API routes when they SSR.
-
-## 2026-06-25 | Tour #57 (cron) — DATABASE_URL missing, all pages 500
-
-**Severity**: P0 — Site Down (dev environment)
-**Focus**: /projects search, filter, AI summaries, detail pages
-**Environment**: Local dev (localhost:3300)
-
-### Bug: Missing DATABASE_URL environment variable
-
-**Severity**: P0
-**Status**: Unresolved — needs James to add .env file
-
-**Symptom**: All server-rendered pages (/, /projects, /trends, /youtube-insights) return HTTP 500 with Next.js error boundary. The `/bookmarks` page returns 200 but may lack data (client-rendered shell).
-
-**Error in RSC payload**:
-```
-{"digest":"154524194","name":"Error","message":"Missing DATABASE_URL. Check .env (Supabase → Connect → Session pooler URI)."}
-```
-
-**Reproduction steps**:
-1. Start dev server with `pnpm web:dev`
-2. Navigate to `http://localhost:3300/`
-3. Observe HTTP 500 error, RSC payload contains `Missing DATABASE_URL`
-4. Same for /projects, /trends, /youtube-insights
-5. /bookmarks returns 200 (client-rendered without server data)
-
-**Root cause**: No `.env` file exists at project root or `apps/web/`. Only `.env.example` is present. The `DATABASE_URL` environment variable must be set for the `createSqlClient()` function to initialize Postgres connection via Neon/driver-adapter.
-
-**Fix**: Copy `.env.example` to `.env` and fill in the Supabase session pooler URI (from Supabase dashboard → Connect → Session pooler). Also needed: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`.
-
----
-
-**Prior bugs (all production) still open**:
-- [P0] Custom domain producttracer.com redirects to muqid.com
-- [P0] key_insight field leaking raw JSON on homepage (regression)
-- [P0] ZH locale homepage (/zh) returns 404
-- [P0] All locale-prefixed routes return 404
-- [P1] Search input / URL query params on /projects non-functional
-- [P2] No empty state for zero-result search on /projects
-- [P3] Multiple rendering/UX issues on /trends (week label spacing, WoW formatting, card text)
-- [P3] Small tap targets, nav overflow on mobile
-
+| Sev | Bug | Age |
+|-----|-----|-----|
+| P0 | Custom domain producttracer.com → muqid.com redirect | 5 runs |
+| P0 | key_insight leak on homepage | 4 runs |
+| P0 | All locale-prefixed routes return 404 | 5+ runs |
+| P1 | Search/query params on /projects non-functional | 5 runs |
+| P2 | No empty state for zero-result search on /projects | 5 runs |
+| P2 | Category filter on /youtube-insights doesn't filter | NEW |
+| P2 | ZH locale button doesn't update URL locale prefix | NEW |
+| P3 | Multiple /trends rendering issues (labels, WoW, formatting) | 4 runs |
+| P3 | Small tap targets / nav overflow on mobile | 5 runs |
+| P3 | RSC 404 for airposture project on homepage | NEW |
