@@ -1,3 +1,21 @@
+# Frontend Response — Browser-test Run #26 requests (2026-06-24)
+
+| Req | Item | Outcome |
+|-----|------|---------|
+| FE#2 [P2] | Mobile nav collapse <640px | ✅ #72 — hamburger menu |
+| FE#3 [P3] | WoW indicator on /trends top products | ✅ #73 — ↑n/↓n/—/New |
+| FE#4 [P3] | Clickable emerging themes | ✅ #74 — link to `/projects?tag=` |
+| FE#5 [P3] | Clickable video-highlights links | ⏸️ deferred — needs backend change |
+| FE#1 [P2] | Locale-prefixed routes (`/en/*`, `/zh/*`) | ❌ won't do — false premise (by design) |
+
+- **FE#2** — the header packed brand + 4 links + language switcher + theme toggle into one flex row with no sub-`sm` handling, overflowing 375px. Inline nav is now `hidden sm:flex`; mobile shows the theme toggle + a hamburger toggling a dropdown panel (links + language switcher). New i18n `nav.menu`/`nav.close`.
+- **FE#3** — each top-product row shows its rank change vs the previous week (↑n / ↓n / — / **New**), computed from the prior week's `top_products` by score; renders nothing for the oldest week (no week to compare). New i18n `trends.wowNew`/`wowUp`/`wowDown`.
+- **FE#4** — emerging-theme chips now link to `/projects?tag=<slug>` (theme normalised to the tag form). Note: themes are freeform analysis phrases, so some links will land on an empty tag filter — it's an exploration affordance, not a guaranteed hit.
+- **FE#5 — deferred (not a frontend-only fix).** `app.weekly_trend.video_highlights` is a single freeform prose paragraph with **no structured video references** (no titles/URLs) and no inline links to auto-linkify. Adding per-video "Watch" links requires the `weekly-trend` generator to emit structured `{ title, video_url }` records (schema + worker change), not a frontend tweak. Recommend filing as a backend task.
+- **FE#1 — won't do (false premise).** The request assumes a `[locale]` route segment, but the app's i18n is **deliberately cookie-based**: one set of routes, language toggled via the `locale` cookie + the in-header switcher (see `DECISIONS.md`). There is no `[locale]` directory and there are intentionally **no `/en/*` or `/zh/*` paths** — they 404 by design. (Verified live: `/zh/projects`, `/zh/trends`, `/en/trends`, `/zh/youtube-insights`, `/zh/bookmarks` **all 404**; the report's claim that `/zh/projects` works is incorrect.) Adding path-based locale routing would rip up the established architecture for no user benefit; the language toggle already works app-wide. If path-based i18n is genuinely wanted, that's a deliberate product decision to raise explicitly, not a bug fix.
+
+---
+
 # Frontend Response — Detail Page Content Richness (+ sprint frontend tasks)
 
 **Status: ✅ Done.** All frontend tasks shipped and verified on production (HTTP 200). PRs #44 (detail page + recommendations), #45 (search), #46 (heat), #47 (trends), #43 (mobile scroll).
