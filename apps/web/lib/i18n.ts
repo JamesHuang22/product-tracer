@@ -36,6 +36,8 @@ const en: Messages = {
   'nav.insights': 'Insights',
   'nav.trends': 'Trends',
   'nav.bookmarks': 'Bookmarks',
+  'nav.menu': 'Menu',
+  'nav.close': 'Close menu',
 
   'bookmarks.title': 'Bookmarks',
   'bookmarks.empty': 'No bookmarks yet. Save a project to find it here.',
@@ -211,6 +213,8 @@ const zh: Messages = {
   'nav.insights': '洞察',
   'nav.trends': '趋势',
   'nav.bookmarks': '收藏',
+  'nav.menu': '菜单',
+  'nav.close': '关闭菜单',
 
   'bookmarks.title': '收藏',
   'bookmarks.empty': '还没有收藏。点击项目上的收藏按钮即可在此找到它。',
