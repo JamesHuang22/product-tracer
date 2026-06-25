@@ -1,3 +1,102 @@
+# Bug Reports — 2026-06-25 | Tour #56
+
+## Focus: Homepage — first impression, insight cards, key_insight leak regression, ZH locale
+
+**Environment**: Vercel (product-tracer.vercel.app)
+**Date**: 2026-06-25T02:35:00 UTC
+
+### Automated Test
+- 12/12 tests ✅ (5 pages HTTP 200, grid layout, ZH locale baseline)
+
+---
+
+### [P0] key_insight field leaking raw JSON on homepage (regression)
+
+**Severity**: P0 — sensitive backend schema exposed in rendered HTML
+
+**Detail**: Raw JSON fragments containing `key_insight`, `key_insight_zh`, `sentiment`, and `relevance_score` fields are leaking in rendered text on the homepage. This was previously fixed (TASK 1) but the fix regressed. 6 leak instances found:
+
+```
+"sentiment":"neutral","key_insight":"The US Commerce Secretary accuses...
+"sentiment":"positive","key_insight":"Getting your first 10 customers re...
+"sentiment":"neutral","key_insight":"An AI lab with no product yet rais...
+```
+
+**Reproduction**:
+1. Go to https://product-tracer.vercel.app/
+2. Search page body for 'key_insight' — 6 matches found
+3. Visible in insight card text alongside proper rendered content
+
+**Expected**: No backend field names (`key_insight`, `sentiment`, `relevance_score`) should appear in rendered HTML. Only the localized text content should render.
+
+**Impact**: Exposes internal schema structure to users. Minor scraping risk. Indicates the TASK 1 fix (null/empty guard) may have been lost in a recent deployment or is not covering this code path.
+
+---
+
+### [P0] ZH locale homepage (/zh) returns 404 (regression)
+
+**Severity**: P0 — locale switching from EN to ZH on homepage is broken
+
+**Detail**: `/zh` returns a 404 page with "This page could not be found." and title "Product Tracer — Cross-platform indie product signals" (EN fallback). This is a regression from earlier runs where `/zh/` homepage worked.
+
+**Reproduction**:
+1. Go to https://product-tracer.vercel.app/zh
+2. Observe 404 page with "This page could not be found."
+3. No locale toggles are rendered on the 404 page
+
+**Expected**: `/zh` should render the homepage with Chinese-localized content (H1, nav items, insight cards in ZH).
+
+**Impact**: Zero Chinese-language users can access the app. All locale-prefixed routes are now broken (P0 already tracked for /trends, /youtube-insights, /bookmarks — /zh homepage is newly broken).
+
+---
+
+### [P3] Homepage CTA button labels: "Browse all projects" vs "All projects"
+
+**Severity**: P3 — minor UX inconsistency
+
+**Detail**: The hero section has "Browse all projects" CTA, but the Projects section below has "All projects" — two different labels for the same destination (/projects).
+
+**Reproduction**:
+1. Go to homepage
+2. Hero area: "Browse all projects" button
+3. Projects section header: "All projects" link
+4. Both go to /projects
+
+**Expected**: Consistent action label. "Browse all projects" is more descriptive and action-oriented — should be used in both places.
+
+---
+
+### [P3] No section transitions or scroll indicators on homepage
+
+**Severity**: P3 — minor UX feedback
+
+**Detail**: The homepage loads all 2616px at once with hard section boundaries. No scroll-down hint, no transition between hero → projects → insights → trends sections. The hero is not scroll-constrained (full-height + CTA visible at 900px viewport) so first-time users may not realize there's content below.
+
+**Reproduction**:
+1. Go to homepage at 1440x900 viewport
+2. Hero fits entirely on screen (no fold cue)
+3. Scroll down — sections appear abruptly with no transition
+
+**Expected**: A subtle scroll indicator (arrow/dots), smooth section transitions, or a partial exposure of next section to encourage scrolling.
+
+---
+
+### What was OK
+- Load time: 1607ms (acceptable)
+- Meta description present and clear
+- H1 value proposition: "Cross-platform signals for indie products." — communicates value in 3 seconds ✅
+- 0 broken images (no images on homepage)
+- 3 section headings: Projects, Insights, Trends
+- Stats cards look good: Total projects 4.6k, Active platforms 4, New this week 922, Hot signals 155
+- Browse all projects CTA works correctly → /projects loads fine
+- 0 console errors
+- 6 YouTube links rendered correctly on homepage
+- /projects has 0 key_insight leaks (only homepage affected)
+- Project count: 4610 of 4610
+
+---
+
+
 # Bug Reports — 2026-06-25 | Tour #55
 
 ## Focus: /projects — search, category filter, mobile overflow
