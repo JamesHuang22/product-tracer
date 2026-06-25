@@ -1,3 +1,100 @@
+# Bug Reports — 2026-06-25 | Tour #55
+
+## Focus: /projects — search, category filter, mobile overflow
+
+**Environment**: Vercel (product-tracer.vercel.app)
+**Date**: 2026-06-25T02:05:00 UTC
+
+### Automated Test
+- 12/12 tests ✅ (5 pages HTTP 200, grid layout, ZH locale baseline)
+
+---
+
+### [P1] Search input on /projects is completely non-functional
+
+**Severity**: P1 — search/filter is a core UX expectation and does not work at all
+
+**Detail**: The search input on /projects exists (placeholder: "Search projects…") but does not filter the project list regardless of method:
+- Navigating to `/projects?q=react` shows all 4610 projects (unfiltered)
+- Typing in the search input and pressing Enter navigates to `/projects` WITHOUT appending the `?q=` parameter (the URL drops the query entirely)
+- No API/network requests are made when search is invoked
+- The same bug applies to category filter URL params (`/projects?category=design` shows all 4610 projects) and sort params (`/projects?sort=newest` still shows odysseus first)
+
+**Reproduction**:
+1. Go to https://product-tracer.vercel.app/projects?q=react
+2. Observe "4610 of 4610" in the count — all projects shown, no filtering applied
+3. Search input field is empty despite `?q=react` in the URL
+4. Type "react" into the search input and press Enter
+5. URL changes to `/projects` (no query param), still 4610 projects shown
+
+**Expected**:
+- URL param `?q=react` should populate the search input AND filter the project list to matching results
+- Pressing Enter after typing should navigate to `/projects?q=<search-term>` AND filter results
+- Category and sort URL params should also work
+
+**Likely root cause**: The search is a client-side component that may not read URL search params on mount, or the project listing page ignores `q`, `category`, and `sort` query params entirely. Possibly a stale/mock search component.
+
+---
+
+### [P1] All URL query params (/projects) are ignored (q, category, sort)
+
+**Severity**: P1 — multiple param types (search, category filter, sorting) are all silent failures
+
+**Detail**: Confirmed:
+- `/projects?q=react` → shows all 4610 (no search filter)
+- `/projects?category=design` → shows all 4610 (no category filter)
+- `/projects?sort=newest` → odysseus is still first (same order as star-sort default)
+
+**Reproduction**:
+1. Navigate to `/projects?category=design`
+2. Observe "4610 of 4610" projects shown — filter not applied
+3. Navigate to `/projects?sort=newest`
+4. Project order is unchanged from default star-sort
+
+**Expected**: Query params should affect the displayed project list (search filter, category filter, sort order).
+
+---
+
+### [P3] 57 small tap targets on /projects at 375px viewport (regression from 14)
+
+**Severity**: P3 — accessibility concern, worsened from earlier report of 14
+
+**Detail**: At 375px viewport, 57 interactive elements on /projects are < 36px in at least one dimension. Previously reported 14 on project detail pages; this is much worse on the listing page due to category pills, tags, and other elements.
+
+**Reproduction**:
+1. Open DevTools, set 375px viewport
+2. Navigate to /projects
+3. Run `document.querySelectorAll('a, button').filter(el => el.getBoundingClientRect().width < 36 || el.getBoundingClientRect().height < 36)`
+4. 57 elements are undersized
+
+---
+
+### [P3] Nav overflow at 375px viewport (400px nav in 375px viewport)
+
+**Severity**: P3 — cosmetic, body overflow is clipped
+
+**Detail**: The `<nav class="flex">` element is 400px wide in a 375px viewport. Body `overflow-x: clip` hides the overflow but the nav doesn't fit properly. The hamburger menu is present but the nav container itself overflows.
+
+**Reproduction**:
+1. Open DevTools, set 375px viewport
+2. Navigate to any page
+3. Inspect `<nav>` element — it's 400px wide in a 375px viewport
+4. `document.body.scrollWidth` = 490px, `clientWidth` = 375px
+
+**Expected**: Nav should be ≤ 375px wide to prevent any horizontal overflow at smallest mobile viewports.
+
+---
+
+### What was OK
+- /projects loads quickly (100 project links)
+- First project detail has breadcrumb, bookmark button, 3 sections (CROSS-PLATFORM SIGNALS, AI SUMMARY, YOU MIGHT ALSO LIKE)
+- 0 broken images on detail page
+- Searching shows "4610 of 4610" counts correctly (backend healthy)
+- Empty search 'zzzzzznonexistent123456' correctly returns 100 project links (showing count is server-side, though filter is broken client-side)
+
+---
+
+
 # Bug Reports — 2026-06-25 | Tour #54
 
 ## Focus: Custom domain redirect / DNS issue — P0
