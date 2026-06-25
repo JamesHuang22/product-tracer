@@ -71,10 +71,10 @@ All 3 tasks shipped, each via branch → PR → squash-merge → HTTP 200 verify
 
 ---
 
-## Queue state (2026-06-24 17:45 UTC)
-- RESPONSE.md: Phase 2 sprint summary (up to date)
-- FRONTEND_RESPONSE.md: Day 2 sprint summary (preserved, no new data)
-- REQUEST.md: Phase 2 sprint instructions (still present)
-- FRONTEND_REQUEST.md: contains P2/P3 feature requests (locale-prefixed routes, mobile nav, WoW indicators, etc.)
+## Queue state (2026-06-25 05:15 UTC)
+- RESPONSE.md: Phase 2 sprint summary (up to date, unchanged since last check)
+- FRONTEND_RESPONSE.md: Updated with Run #26 browser-test completion (mobile nav FE#2 #72, WoW FE#3 #73, clickable themes FE#4 #74; FE#5 deferred, FE#1 wontfix)
+- REQUEST.md: Phase 2 sprint instructions (still present, non-empty)
+- FRONTEND_REQUEST.md: P2/P3 requests still present (non-empty)
 - next-request.md: shutdown notice + suggestions
-- No promotion needed — REQUEST.md and FRONTEND_REQUEST.md are non-empty
+- No promotion needed — REQUEST.md and FRONTEND_REQUEST.md are both non-empty

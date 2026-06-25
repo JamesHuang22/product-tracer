@@ -1,12 +1,46 @@
-# Bug Reports — 2026-06-26 | Tour #70
+# Bug Reports — 2026-06-26 | Tour #71
 
-## Focus: /youtube-insights (category filter, grid/list, card content) + /trends
+## Focus: /projects + detail pages | Cron Run
 
-**Environment**: Vercel (product-tracer.vercel.app)
-**Date**: 2026-06-26T05:20 UTC
+**Environment**: Localhost (dev server)
+**Date**: 2026-06-25T05:35 UTC
 
 ### Automated Test
-- 12/12 tests ✅ (5 pages HTTP 200, grid layout, ZH locale baseline)
+- 12/12 tests ✅ (but all returned HTTP 500 — server error)
+- Root cause: Missing .env file → `DATABASE_URL` not set → DB calls fail
+
+---
+
+## [P0] Local dev server down — HTTP 500 on ALL pages
+
+**Severity**: P0 — site completely non-functional
+
+**Root Cause**: No `.env` file exists in the workspace. The app requires `DATABASE_URL` (and other vars) to connect to Supabase. All pages call DB on the server and crash with:
+
+```
+Error: Missing DATABASE_URL. Check .env (Supabase → Connect → Session pooler URI).
+```
+
+**Evidence**:
+- `/` → HTTP 500, 22343 bytes (Next.js error page with devtools)
+- `/projects` → HTTP 500, 23248 bytes
+- Puppeteer tour rendered empty title + 143-byte pages (just metadata)
+
+**Reproduction**:
+1. Ensure no .env file in workspace root
+2. Start dev server
+3. Visit any page → HTTP 500 with DB connection error
+4. Check network tab: every SSR request crashes
+
+**Fix**: Create `.env` in `/Users/jameshuang/.openclaw/workspace/agents/jbk/` with:
+```
+DATABASE_URL=postgresql://...
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+SUPABASE_SERVICE_ROLE_KEY=...
+GITHUB_TOKEN=...
+```
+See `.env.example` for full template.
 
 ---
 
@@ -142,12 +176,13 @@
 
 | Sev | Bug | Age | Status |
 |-----|-----|-----|--------|
-| P0 | Mobile nav: all links invisible at 375px | 2 runs | 🔴 Unfixed |
-| P0 | All locale-prefixed routes return 404 | 7 runs | 🔴 Unfixed |
-| P2 | Category filter on /youtube-insights doesn't filter | 3 runs | 🔴 Unfixed |
-| P2 | ZH locale button doesn't update URL locale prefix | 3 runs | 🔴 Unfixed |
-| P3 | Blank key_insight card on youtube-insights | 2 runs | 🔴 Unfixed |
-| P3 | /trends product cards missing WoW delta indicators | 2 runs | 🔴 Unfixed |
-| P3 | Mobile tap targets < 44px WCAG | 2 runs | 🔴 Unfixed |
-| P3 | favicon.ico 404 | 7 runs | 🔴 Unfixed |
-| P3 | Video Highlights has only 1 link on /trends | NEW | 🔴 Unfixed |
+| P0 | Local dev server down (missing .env / DATABASE_URL) | NEW | 🔴 Unfixed — all pages HTTP 500 |
+| P0 | Mobile nav: all links invisible at 375px | 3 runs | 🔴 Unfixed |
+| P0 | All locale-prefixed routes return 404 | 8 runs | 🔴 Unfixed |
+| P2 | Category filter on /youtube-insights doesn't filter | 4 runs | 🔴 Unfixed |
+| P2 | ZH locale button doesn't update URL locale prefix | 4 runs | 🔴 Unfixed |
+| P3 | Blank key_insight card on youtube-insights | 3 runs | 🔴 Unfixed |
+| P3 | /trends product cards missing WoW delta indicators | 3 runs | 🔴 Unfixed |
+| P3 | Mobile tap targets < 44px WCAG | 3 runs | 🔴 Unfixed |
+| P3 | favicon.ico 404 | 8 runs | 🔴 Unfixed |
+| P3 | Video Highlights has only 1 link on /trends | 2 runs | 🔴 Unfixed |
