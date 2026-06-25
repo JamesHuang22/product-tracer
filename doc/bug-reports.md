@@ -1,16 +1,16 @@
-# Bug Reports — 2026-06-25 | Tour #69
+# Bug Reports — 2026-06-26 | Tour #70
 
-## Focus: Mobile (375×812) + Detail Page QA
+## Focus: /youtube-insights (category filter, grid/list, card content) + /trends
 
-**Environment**: Vercel (product-tracer.vercel.app) | Local dev server up (port 3000)
-**Date**: 2026-06-25T05:00 UTC
+**Environment**: Vercel (product-tracer.vercel.app)
+**Date**: 2026-06-26T05:20 UTC
 
 ### Automated Test
 - 12/12 tests ✅ (5 pages HTTP 200, grid layout, ZH locale baseline)
 
 ---
 
-## [P0] Mobile nav collapse: ALL nav links invisible at 375px viewport (previously unreported)
+## [P0] Mobile nav collapse: ALL nav links invisible at 375px viewport
 
 **Severity**: P0 — site unusable on mobile (iPhone SE/12/13/14)
 
@@ -23,47 +23,67 @@
 4. Hamburger SVG icon IS present but only 28×28px — hard to tap
 5. Tapping hamburger — no visible menu opens (content doesn't change)
 
-**Evidence (this run)**:
-- `/`: 0/7 nav links visible, nav is 0×0px bounding box
-- `/youtube-insights`: nav collapsed, hamburger 28×28px
-- `/trends`: only 5/16 interactive elements meet 44px threshold
-
-**Expected**: Mobile nav fully functional at 375px. Hamburger toggles a slide-out menu with all nav items. OR nav items collapse into a properly-sized hamburger.
+**Expected**: Mobile nav fully functional at 375px. Hamburger toggles a slide-out menu with all nav items.
 
 ---
 
-## [P3] All 35 mobile tap targets on /youtube-insights below 44px WCAG threshold
+## [P0] All locale-prefixed routes return 404
 
-**Severity**: P3 — accessibility violation at 375px viewport
+**Severity**: P0 — locale toggle breaks for all non-homepage routes
 
-**Detail**: Confirmed this run: 35/35 visible interactive elements have tap targets below 44×44px. Even the hamburger menu (28×28px) and filter pills (87×26px, 132×26px) fall short.
+**Confirmed this run**: /zh/trends, /en/trends, /zh/youtube-insights, /en/youtube-insights, /zh/bookmarks, /en/bookmarks all return "This page could not be found."
 
 **Reproduction**:
-1. DevTools → 375×812 viewport
-2. `/youtube-insights`
-3. `document.querySelectorAll('a, button').forEach(el => { if(el.offsetParent !== null) { const r=el.getBoundingClientRect(); if(r.w<44||r.h<44) console.log(el.tagName, el.textContent.trim().slice(0,20), r.w, r.h); } })`
-4. All elements reported sub-44px
-
-**Sample (this run)**:
-- Brand "Product Tracer": 112×20px
-- Hamburger: 28×28px
-- Grid/List toggle: 32×32px
-- "All categories (93)": 132×26px
-- "AI/ML (25)": 87×26px
-
-**Expected**: All interactive elements ≥ 44×44px.
+1. Visit https://product-tracer.vercel.app/zh/youtube-insights
+2. Observe 404 page
 
 ---
 
-## [P3] Key insight card tap targets on homepage also below 44px on mobile
+## [P2] Category filter on /youtube-insights doesn't filter
 
-**Detail**: On homepage at 375px, 31/48 interactive elements are below 44px threshold. This affects nav, insight cards, project cards — essentially the entire page.
+**Severity**: P2 — core filtering UX broken
+
+**Detail**: Clicking category pills (AI/ML, Tech News, etc.) shows same 20 articles regardless of filter selection. URL updates to ?category=ai_ml but content doesn't change.
+
+**Reproduction (this run)**:
+1. Visit /youtube-insights
+2. Click "AI/ML (25)" pill
+3. URL becomes /youtube-insights?category=ai_ml
+4. Content still shows 20 articles (same as unfiltered view)
+5. Try "Tech News" pill — same result
+
+**Expected**: Filtering reduces articles to only matching category.
 
 ---
 
-## [P3] /trends product cards missing WoW delta indicators (confirmed this run)
+## [P2] ZH locale button doesn't update URL locale prefix on non-homepage routes
 
-**Detail**: Top 5 product list shows rank + platform + title but NO WoW position change indicator (e.g., "↑2", "↓1", "NEW"'). Products: Are You in the Weights?, Elvin, Dropmatico, Kimi K2.7 Code, Cloudback for Linear.
+**Severity**: P2 — cannot navigate ZH locale on sub-pages
+
+**Detail**: Clicking "中文" button on /youtube-insights, /trends, or /bookmarks either does nothing or 404s. On / (homepage), ZH locale toggle works because /zh/ exists.
+
+---
+
+## [P3] Homepage insight card with blank key_insight re-confirmed
+
+**Severity**: P3 — broken card in insights section
+
+**Detail**: Card[1] (idx 1) on /youtube-insights shows only "🟢PositiveAI/ML▶Watch on YouTube" with no insight text (32 bytes total, no key_insight populated). This is the same bug described in REQUEST.md TASK 2.
+
+**Reproduction**:
+1. Visit /youtube-insights
+2. Scroll to the 2nd insight card
+3. Observe card with icon + sentiment + category + YouTube link but zero insight text
+
+**Expected**: Cards with empty key_insight should be hidden (SQL guard) or fall back to the other locale's text.
+
+---
+
+## [P3] /trends product cards missing WoW delta indicators
+
+**Severity**: P3 — useful feature missing
+
+**Detail**: Top 5 product list shows rank + platform + title but NO WoW position change indicator (e.g., "↑2", "↓1", "NEW").
 
 **Reproduction**:
 1. Go to /trends
@@ -74,74 +94,60 @@
 
 ---
 
-## [P3] Emerging Themes link to filtered projects — CONFIRMED WORKING ✅
+## [P3] Mobile tap targets < 44px WCAG threshold
 
-The 8 emerging themes (Recursive Self-Improvement, AI Agent Workflows, etc.) now link to `/projects?tag=...` with proper URLs. ✅
+**Severity**: P3 — accessibility violation
 
----
+**Detail**: On /trends at 375px viewport, 12/12 visible interactive elements are below 44×44px. Affects nav links, filter pills, grid/list toggle, hamburger.
 
-## [P3] Trends week selector EXISTS and works ✅
-
-A `<select>` dropdown with 2 weeks available:
-- "2026-06-22 – 2026-06-28"
-- "2026-06-15 – 2026-06-21"
-
-Switching weeks changes the data visually. ✅
+**Reproduction**: DevTools → 375×812 → /trends → `document.querySelectorAll('a, button').forEach(el => { if(el.offsetParent!==null) { const r=el.getBoundingClientRect(); if(r.w<44||r.h<44) console.log(el.tagName, el.textContent.slice(0,20), r.w, r.h); } })`
 
 ---
 
-## [P3] Detail page end-to-end verification — PASSING ✅
+## [P3] favicon.ico returns 404
+
+**Severity**: P3
+
+**Detail**: All pages request /favicon.ico and get 404. This is a known issue in FRONTEND_REQUEST.md (TASK 5).
+
+---
+
+## [P3] Video Highlights section on /trends has only 1 link
+
+**Severity**: P3 — missed opportunity
+
+**Detail**: The VIDEO HIGHLIGHTS prose paragraph mentions several videos (RSI, Claude Opus 4.6, GLM-5.2) but only 1 link exists. Users can't click to watch individual videos.
+
+**Reproduction**: Visit /trends → scroll to VIDEO HIGHLIGHTS → see paragraph text with only 1 anchor link
+
+**Expected**: Each mentioned video has a clickable "▶ Watch on YouTube" link.
+
+---
+
+## ✅ What was OK this run
 
 | Feature | Status |
 |---------|--------|
-| AI Summary section | ✅ Present and renders full text |
-| Bookmark button (client-side toggle) | ✅ "Bookmark" ↔ "Bookmarked" works |
-| "You might also like" — 4 project links | ✅ Present with clickable links |
-| "Projects" back link | ✅ Present |
-| Tag links (#ai-agent, #llm, etc.) | ✅ Clickable, link to filtered /projects |
-| Visit site link | ✅ Present |
-| Tracked since date | ✅ Present |
+| All 5 pages HTTP 200 | ✅ |
+| /youtube-insights grid/list toggle works | ✅ |
+| /youtube-insights EN locale content + ZH locale on /zh/youtube-insights | ✅ (ZH works) |
+| /trends week selector (2 weeks available) | ✅ |
+| /trends emerging themes linked to /projects?tag=... | ✅ |
+| Detail page: AI summary, bookmark, related projects | ✅ |
+| No horizontal scroll at 375px on any page | ✅ |
+| Bookmark button toggle works client-side | ✅ |
+| /projects search returns results | ✅ |
 
----
-
-## [P0] key_insight "leak" — RE-ASSESSED: FALSE ALARM ✅
-
-**Previous reports**: 6 instances of `key_insight` in visible body text.
-
-**This run investigation**: All 6 instances are in Next.js RSC payload `<script>` tags (`self.__next_f.push(...)`). **Zero instances** appear in non-script rendered text or visible UI elements. The field names `key_insight`, `sentiment`, `relevance_score` are in server serialization data only — they are NOT visible to users.
-
-**Recommendation**: Downgrade this from P0 bug report. This is standard Next.js behavior. Consider removing from bug tracking.
-
----
-
-## [P0] Locale-prefixed routes return 404 — CONFIRMED STILL BROKEN
-
-**This run**: Re-checked `/zh/youtube-insights` → "This page could not be found."
-
-**Recommendation**: This is the highest-priority actionable bug (6 runs unfixed).
-
----
-
-## All Open Bugs Summary (this update)
+## All Open Bugs Summary
 
 | Sev | Bug | Age | Status |
 |-----|-----|-----|--------|
-| P0 | Mobile nav: all links invisible at 375px | NEW | 🔴 Unfixed |
-| P0 | All locale-prefixed routes return 404 | 6 runs | 🔴 Unfixed |
-| P2 | Category filter on /youtube-insights doesn't filter | 2 runs | 🔴 Unfixed |
-| P2 | ZH locale button doesn't update URL locale prefix | 2 runs | 🔴 Unfixed |
-| P3 | Mobile tap targets < 44px WCAG (35/35 on /youtube-insights) | 2 runs | 🔴 Unfixed |
-| P3 | /trends product cards missing WoW delta | NEW | 🔴 Unfixed |
-| ~~P0~~ | ~~key_insight leak~~ reassessed — RSC script only | — | ⛔ FALSE ALARM |
-| — | — | — | — |
-
-## What was OK this run
-- All 5 pages HTTP 200 ✅
-- Detail page: AI summary, bookmark, related projects, tags all work ✅
-- Trends week selector exists and works ✅
-- Emerging themes are clickable links (fixed since last report) ✅
-- Bookmark button toggles "Bookmark" ↔ "Bookmarked" client-side ✅
-- /projects search (`?q=ai`) returns 100 results ✅
-- ZH locale toggle on /youtube-insights works (content + categories translate) ✅
-- No horizontal scroll on any page at 375px ✅
-- Detail page /projects/elvin renders correctly ✅
+| P0 | Mobile nav: all links invisible at 375px | 2 runs | 🔴 Unfixed |
+| P0 | All locale-prefixed routes return 404 | 7 runs | 🔴 Unfixed |
+| P2 | Category filter on /youtube-insights doesn't filter | 3 runs | 🔴 Unfixed |
+| P2 | ZH locale button doesn't update URL locale prefix | 3 runs | 🔴 Unfixed |
+| P3 | Blank key_insight card on youtube-insights | 2 runs | 🔴 Unfixed |
+| P3 | /trends product cards missing WoW delta indicators | 2 runs | 🔴 Unfixed |
+| P3 | Mobile tap targets < 44px WCAG | 2 runs | 🔴 Unfixed |
+| P3 | favicon.ico 404 | 7 runs | 🔴 Unfixed |
+| P3 | Video Highlights has only 1 link on /trends | NEW | 🔴 Unfixed |
