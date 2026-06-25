@@ -1,4 +1,4 @@
-# Product Tracer — Phase 2 Sprint
+# Product Tracer — Collector Quality + Data Quality Sprint
 
 ## Agent Session Rules
 
@@ -8,17 +8,17 @@ You are a continuously-running agent. Follow these rules:
 1. Every 20 minutes: `git fetch origin main && git diff HEAD origin/main -- assistant-queue/REQUEST.md assistant-queue/FRONTEND_REQUEST.md`
 2. If diff is non-empty: git pull --rebase, implement new tasks
 3. If empty: increment idle counter
-4. After 15 consecutive idle polls: write shutdown notice to next-request.md and stop
+4. After 15 consecutive idle polls: write shutdown notice and stop
 
 ### Manual trigger
-If you see "pull now" in the conversation: immediately poll.
+Say "pull now" → immediately poll queue files.
 
-### Supabase MCP
+### Supabase MCP (installed)
 Migrations via: `psql "$DATABASE_URL" -f packages/db/migrations/XXXX_name.sql`
 
 ### Vercel verify after every merge
 ```
-curl -sI https://product-tracer.vercel.app/ → 200
+curl -sI https://product-tracer.vercel.app/  → 200
 curl -s -o /dev/null -w "%{http_code}" https://product-tracer.vercel.app/projects → 200
 curl -s -o /dev/null -w "%{http_code}" https://product-tracer.vercel.app/trends → 200
 curl -s -o /dev/null -w "%{http_code}" https://product-tracer.vercel.app/youtube-insights → 200
@@ -37,63 +37,27 @@ curl -s -o /dev/null -w "%{http_code}" https://product-tracer.vercel.app/youtube
 
 ---
 
-## IMPORTANT: Only implement these 3 tasks. Do NOT do anything else.
+## IMPORTANT: Execute tasks in order. Do not skip to later tasks.
 
 ---
 
-### TASK 1 [P0 BUG] — Fix empty YouTube insight card on homepage
+### TASK 1 [HIGH] — Revisit GitHub collector for higher quality data
 
-**Bug**: The homepage insights section shows a broken empty card. The card has no text, just a "Watch on YouTube" link pointing to `https://www.youtube.com/watch?v=4y9DR2WwW3o`. The insight text (key_insight or key_insight_zh) is blank.
-
-**Fix**:
-1. In `apps/web/lib/db.ts`, find the `getLatestInsights()` query
-2. Add a guard: `WHERE key_insight IS NOT NULL AND key_insight != ''`
-3. In the homepage insight card component (check `apps/web/app/page.tsx` for the insights section), add client-side null/empty check so the card is NOT rendered if the locale-appropriate text field is empty
-4. Locale logic: EN shows `key_insight`, ZH shows `key_insight_zh`. If the preferred field is empty/null, try the other language. If BOTH are empty, skip rendering the card entirely.
-
-**Files to touch**: `apps/web/lib/db.ts`, `apps/web/app/page.tsx` (insight section)
-
-**Verify**: Visit homepage — all insight cards have text content. No empty cards.
-
----
-
-### TASK 2 [FEATURE] — Historic weekly trends selector
-
-**Current**: `/trends` shows only the most recent week's data.
-
-**Goal**: Let users browse historic weekly trends. Homepage always shows latest week.
-
-**Backend** (`apps/web/lib/db.ts`):
-1. Add query `getTrendWeeks()` — returns `SELECT DISTINCT week_start, week_end FROM app.weekly_trend ORDER BY week_start DESC`
-2. Modify existing trend queries to accept optional `weekStart` parameter — if provided, filter by that week; if omitted, default to latest week
-
-**Frontend** (`apps/web/app/trends/page.tsx`):
-1. Add a week selector dropdown at top of /trends — populated from `getTrendWeeks()`
-2. Default: show most recent week
-3. On selection change: re-query data for that week (use `useSearchParams` or `router.push` with `?week=YYYY-MM-DD`)
-4. URL reflects selected week: `/trends?week=2026-06-15`
-5. Homepage always shows only latest week (no changes needed there)
-
-**No migration needed** — `week_start` column exists.
-
-**Files to touch**: `apps/web/lib/db.ts`, `apps/web/app/trends/page.tsx`, `apps/web/lib/i18n.ts`
-
-**Verify**: /trends shows dropdown with available weeks → pick a past week → data changes to that week's trends.
-
----
-
-### TASK 3 [FEATURE] — Revisit collectors for data quality
+**Background**: Currently scraped projects lack depth. We need richer data points and better freshness filtering. Product Hunt, HN, and YouTube collectors are adequate. GitHub is where data quality needs most improvement.
 
 **A. GitHub collector improvement** (`apps/worker/src/collectors/github.ts`):
-1. Add more data to the snapshot: `issues_count`, `open_prs_count`, `forks_count`, `topics text[]`, `last_push_at`, `recent_commits_30d`
-2. Add freshness filter: skip repos with `pushed_at > 6 months ago` unless stars > 1000
-3. Make the collector run more frequently (check `.github/workflows/collect-github.yml` schedule)
+1. Add more data points to the snapshot:
+   - `issues_count` (open issues)
+   - `open_prs_count` (open pull requests)
+   - `forks_count` (fork count)
+   - `topics` (repo topics as text array)
+   - `last_push_at` (last push timestamp)
+   - `recent_commits_30d` (commit count in last 30 days — fetch via GitHub commits API)
+2. Add freshness filter: skip repos with NO push in the last 6 months AND stars < 1000. These are dead projects.
+3. Increase GitHub API call frequency — check `.github/workflows/collect-github.yml` schedule, make it run more often if possible
+4. Make sure `description` (the repo's README/about description) is populated — fallthrough to `one_liner` if null
 
-**B. Dedup pipeline improvement** (`apps/worker/src/scripts/dedup.ts`):
-1. Stricter matching: require same `llm_category` OR name similarity > 0.8
-2. Reduce false positives
-
-**C. Migration** (`packages/db/migrations/0015_collector_quality.sql`):
+**B. Migration** (`packages/db/migrations/0016_collector_quality.sql`):
 ```sql
 alter table app.project add column if not exists last_checked_at timestamptz;
 alter table app.project add column if not exists issues_count int;
@@ -104,21 +68,79 @@ alter table app.project add column if not exists last_push_at timestamptz;
 alter table app.project add column if not exists recent_commits_30d int;
 ```
 
-**Note**: Migration 0015 (granular_tags.sql) already exists. Name this one `0016_collector_quality.sql`.
+**C. Update types** (`packages/types/src/index.ts`):
+- Add new fields to `RawSnapshot` type
 
 **Files to touch**:
 - `packages/db/migrations/0016_collector_quality.sql` (NEW)
-- `apps/worker/src/collectors/github.ts` — add data points + freshness filter
-- `apps/worker/src/scripts/dedup.ts` — stricter matching
-- `.github/workflows/collect-github.yml` — revisit schedule
-- `packages/types/src/index.ts` — update types if needed
+- `apps/worker/src/collectors/github.ts`
+- `.github/workflows/collect-github.yml` (review + increase frequency)
+- `packages/types/src/index.ts`
 
-**Verify**: Run `pnpm --filter @product-tracer/worker typecheck`. Migration applied via psql. Workflow runs.
+**Verify**: `pnpm --filter @product-tracer/worker typecheck` passes. Migration applied via Supabase MCP. After next GitHub collector run, queries show new columns populated.
 
 ---
 
-### After completing all 3 tasks
+### TASK 2 [P0 BUG] — Fix empty YouTube insight card on homepage
+
+**Bug**: Homepage insights section shows a broken empty card. The card has no text, just a "Watch on YouTube" link pointing to `https://www.youtube.com/watch?v=4y9DR2WwW3o`. The insight text (key_insight or key_insight_zh) is blank.
+
+**Fix**:
+1. In `apps/web/lib/db.ts`, find the `getLatestInsights()` query
+2. Add a SQL guard: `WHERE key_insight IS NOT NULL AND key_insight != ''`
+3. In the homepage insight card component (check `apps/web/app/page.tsx` for the insights section), add client-side null/empty check
+4. Locale logic: EN → `key_insight`, ZH → `key_insight_zh`. If preferred field is empty/null, try the other language. If BOTH are empty, skip rendering.
+
+**Files to touch**: `apps/web/lib/db.ts`, `apps/web/app/page.tsx`
+
+**Verify**: Visit homepage — all insight cards have text content. No empty cards.
+
+---
+
+### TASK 3 [FEATURE] — Historic weekly trends selector
+
+**Current**: `/trends` shows only the most recent week's data.
+
+**Goal**: Let users browse historic weekly trends. Homepage always shows latest week.
+
+**Backend** (`apps/web/lib/db.ts`):
+1. Add query `getTrendWeeks()` — `SELECT DISTINCT week_start, week_end FROM app.weekly_trend ORDER BY week_start DESC`
+2. Modify existing trend queries to accept optional `weekStart` param
+
+**Frontend** (`apps/web/app/trends/page.tsx`):
+1. Week selector dropdown at top of /trends
+2. Default: show most recent week. On change: re-query with `?week=YYYY-MM-DD`
+3. Homepage unchanged (always latest week)
+
+**No migration needed** — `week_start` column already exists.
+
+**Files to touch**: `apps/web/lib/db.ts`, `apps/web/app/trends/page.tsx`, `apps/web/lib/i18n.ts`
+
+**Verify**: /trends shows dropdown → pick a past week → data changes.
+
+---
+
+### TASK 4 [P2] — Fix locale-prefixed routes for /trends, /youtube-insights, /bookmarks
+
+**Bug**: `/en/trends`, `/zh/trends`, `/en/youtube-insights`, `/zh/youtube-insights`, `/en/bookmarks`, `/zh/bookmarks` all return 404. Only `/zh/` homepage and `/zh/projects` work.
+
+**Fix**: Register these pages under the `[locale]` dynamic segment or fix middleware routing.
+
+**File**: FRONTEND_REQUEST.md has full details.
+
+---
+
+### TASK 5 [P3] — Minor UI improvements
+- Add WoW delta to /trends top product list
+- Clickable theme links on /trends
+- Clickable YouTube links on /trends video highlights
+- `favicon.ico` 404
+
+**File**: FRONTEND_REQUEST.md has full details.
+
+---
+
+### After completing all tasks
 1. Update CHANGELOG.md, DECISIONS.md
-2. Update both RESPONSE.md files
-3. Write a summary to next-request.md
-4. The agent will continue polling. If no new tasks appear for 15 consecutive polls, it auto-shuts down.
+2. Update RESPONSE.md + FRONTEND_RESPONSE.md
+3. Write summary to next-request.md
