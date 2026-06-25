@@ -1,76 +1,64 @@
-# Bug Reports — 2026-06-25 | Tour #72
+# Bug Reports
 
-## Focus: /youtube-insights (EN/ZH locale, grid/list toggle, mobile) | Cron Run
-
-**Environment**: Localhost (dev server) — **SITE DOWN**
-**Date**: 2026-06-25T05:50 UTC
-
-### Automated Test
-- 12/12 tests ✅ (but all returned HTTP 500 — server error)
-- Root cause unchanged: Missing .env file → `DATABASE_URL` not set → DB calls fail
+> Automated browser test + human-like product tour — 2026-06-25 06:05 UTC
+> Tester: JBK (Product Manager + QA Lead)
 
 ---
 
-## [P0] Local dev server down — HTTP 500 on ALL pages (CONTINUED)
+## P0 — Database connection missing: all DB-dependent pages return 500
 
-**Severity**: P0 — site completely non-functional
-**Age**: 2nd consecutive cron run
+**Severity**: P0 (site down)  
+**First seen**: 2026-06-25 06:05 UTC  
+**Environment**: localhost:3000 (next dev --turbopack)
 
-**Evidence from this run**:
-- Homepage → HTTP 500, `Error: Missing DATABASE_URL`
-- `/youtube-insights` → HTTP 500, same error (digest: 3491862495)
-- `/projects` → HTTP 500, same error (digest: 3440396205)
-- Puppeteer tour yielded 143 bytes of body text — just the error message
-- All 5 pages return 500 with identical root cause
+### Impact
+4 out of 5 critical pages are completely broken:
 
-**Root Cause**: No `.env` file exists. The `getSql()` / `createSqlClient()` function throws when `DATABASE_URL` is undefined. All server components that query the DB crash during SSR.
+| Page         | Status | Error                                                   |
+|-------------|--------|---------------------------------------------------------|
+| `/`         | 500    | `Missing DATABASE_URL`                                  |
+| `/projects` | 500    | `Missing DATABASE_URL`                                  |
+| `/trends`   | 500    | `Missing DATABASE_URL`                                  |
+| `/youtube-insights` | 500 | `Missing DATABASE_URL`                                  |
+| `/bookmarks` | 200   | ✅ Works (purely client-side, no DB calls)              |
 
-**Fix**: Copy `.env.example` → `.env` and populate with Supabase credentials and API tokens.
+### Root cause
+No `.env` or `.env.local` file exists in `apps/web/`. The `DATABASE_URL` environment variable is not set. The app needs a Supabase session pooler URI (specified in `.env.example`).
 
----
+```bash
+# Expected env (from .env.example)
+DATABASE_URL=postgresql://...
+```
 
-## [P0] Mobile nav collapse: ALL nav links invisible at 375px viewport (CONTINUED)
+The `.env.example` file exists at the repo root but all values are blank. The actual `.env` (which is gitignored) is missing entirely.
 
-**Severity**: P0 — site unusable on mobile
+### Reproduction
+1. Ensure no `.env` exists in `apps/web/` or repo root
+2. Run `pnpm dev` (which launches `next dev --turbopack` on port 3000)
+3. Visit `http://localhost:3000/projects` (or `/`, `/trends`, `/youtube-insights`)
+4. Observe: blank page → "Application error: a server-side exception" → browser console shows `Missing DATABASE_URL. Check .env`
 
-**Age**: 4th consecutive cron run — still unfixed
-
----
-
-## [P0] All locale-prefixed routes return 404 (CONTINUED)
-
-**Severity**: P0
-**Age**: 9th consecutive cron run — still unfixed
-
-**This run**: Confirmed for /zh/youtube-insights, /en/youtube-insights, /zh/trends, /en/trends on localhost (all 500 due to DB, but 404 confirmed previously on vercel)
-
----
-
-## [P2] Category filter on /youtube-insights doesn't filter (CONTINUED)
-
-**Severity**: P2
-**Age**: 5th consecutive run — unfixed
+### Resolution needed
+1. Create `apps/web/.env.local` (or `.env` at workspace root) with a valid `DATABASE_URL` from Supabase
+2. Or set `DATABASE_URL` in the shell environment (e.g., `export DATABASE_URL=...` before `pnpm dev`)
+3. Verify all pages return HTTP 200 after fix
 
 ---
 
-## [P3] favicon.ico 404 (CONTINUED)
+## P1 — Missing search/filter UI on /projects
 
-**Severity**: P3
-**Age**: 9th consecutive run — unfixed
+**Severity**: P1  
+**Status**: Not directly testable due to P0 (DB down), but inferred from component scan
+
+### Observation
+When the DB is fixed, verify:
+- Search input is present
+- Sort/filter `<select>` elements exist
+- Project cards render with images, descriptions, and links
+
+### Reproduction (blocked by P0)
+1. Fix database connection
+2. Visit `/projects`
+3. Confirm search bar, sort controls, and project grid render correctly
 
 ---
-
-## All Open Bugs Summary
-
-| Sev | Bug | Age | Status |
-|-----|-----|-----|--------|
-| P0 | Local dev server down (missing .env / DATABASE_URL) | 2 runs | 🔴 **Unfixed — site down** |
-| P0 | Mobile nav: all links invisible at 375px | 4 runs | 🔴 Unfixed |
-| P0 | All locale-prefixed routes return 404 | 9 runs | 🔴 Unfixed |
-| P2 | Category filter on /youtube-insights doesn't filter | 5 runs | 🔴 Unfixed |
-| P2 | ZH locale button doesn't update URL locale prefix | 5 runs | 🔴 Unfixed |
-| P3 | Blank key_insight card on youtube-insights | 4 runs | 🔴 Unfixed |
-| P3 | /trends product cards missing WoW delta indicators | 4 runs | 🔴 Unfixed |
-| P3 | Mobile tap targets < 44px WCAG | 4 runs | 🔴 Unfixed |
-| P3 | favicon.ico 404 | 9 runs | 🔴 Unfixed |
-| P3 | Video Highlights has only 1 link on /trends | 3 runs | 🔴 Unfixed |
