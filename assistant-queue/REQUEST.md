@@ -1,4 +1,4 @@
-# Product Tracer — Collector Quality + Data Quality Sprint
+# Product Tracer — Remaining Tasks
 
 ## Agent Session Rules
 
@@ -8,10 +8,10 @@ You are a continuously-running agent. Follow these rules:
 1. Every 30 minutes: `git fetch origin main && git diff HEAD origin/main -- assistant-queue/REQUEST.md assistant-queue/FRONTEND_REQUEST.md`
 2. If diff is non-empty: git pull --rebase, implement new tasks
 3. If empty: increment idle counter
-4. After 15 consecutive idle polls: write shutdown notice and stop
+4. After 6 consecutive idle polls (3 hours): write shutdown notice and stop
 
 ### Manual trigger
-Say "pull now" → immediately poll queue files.
+"pull now" → immediately fetch and diff queue files, reset idle counter.
 
 ### Supabase MCP (installed)
 Migrations via: `psql "$DATABASE_URL" -f packages/db/migrations/XXXX_name.sql`
@@ -33,90 +33,11 @@ curl -s -o /dev/null -w "%{http_code}" https://product-tracer.vercel.app/youtube
 3. Verify HTTP 200 on all critical paths
 4. Apply DB migrations via psql (Supabase MCP)
 5. Update CHANGELOG.md, DECISIONS.md
-6. Write summary to assistant-queue/RESPONSE.md
+6. Write summary to assistant-queue/RESPONSE.md (backend) or FRONTEND_RESPONSE.md (frontend)
 
 ---
 
-## IMPORTANT: Execute tasks in order. Do not skip to later tasks.
-
----
-
-### TASK 1 [HIGH] — Revisit GitHub collector for higher quality data
-
-**Background**: Currently scraped projects lack depth. We need richer data points and better freshness filtering. Product Hunt, HN, and YouTube collectors are adequate. GitHub is where data quality needs most improvement.
-
-**A. GitHub collector improvement** (`apps/worker/src/collectors/github.ts`):
-1. Add more data points to the snapshot:
-   - `issues_count` (open issues)
-   - `open_prs_count` (open pull requests)
-   - `forks_count` (fork count)
-   - `topics` (repo topics as text array)
-   - `last_push_at` (last push timestamp)
-   - `recent_commits_30d` (commit count in last 30 days — fetch via GitHub commits API)
-2. Add freshness filter: skip repos with NO push in the last 6 months AND stars < 1000. These are dead projects.
-3. Increase GitHub API call frequency — check `.github/workflows/collect-github.yml` schedule, make it run more often if possible
-4. Make sure `description` (the repo's README/about description) is populated — fallthrough to `one_liner` if null
-
-**B. Migration** (`packages/db/migrations/0016_collector_quality.sql`):
-```sql
-alter table app.project add column if not exists last_checked_at timestamptz;
-alter table app.project add column if not exists issues_count int;
-alter table app.project add column if not exists open_prs_count int;
-alter table app.project add column if not exists forks_count int;
-alter table app.project add column if not exists topics text[];
-alter table app.project add column if not exists last_push_at timestamptz;
-alter table app.project add column if not exists recent_commits_30d int;
-```
-
-**C. Update types** (`packages/types/src/index.ts`):
-- Add new fields to `RawSnapshot` type
-
-**Files to touch**:
-- `packages/db/migrations/0016_collector_quality.sql` (NEW)
-- `apps/worker/src/collectors/github.ts`
-- `.github/workflows/collect-github.yml` (review + increase frequency)
-- `packages/types/src/index.ts`
-
-**Verify**: `pnpm --filter @product-tracer/worker typecheck` passes. Migration applied via Supabase MCP. After next GitHub collector run, queries show new columns populated.
-
----
-
-### TASK 2 [P0 BUG] — Fix empty YouTube insight card on homepage
-
-**Bug**: Homepage insights section shows a broken empty card. The card has no text, just a "Watch on YouTube" link pointing to `https://www.youtube.com/watch?v=4y9DR2WwW3o`. The insight text (key_insight or key_insight_zh) is blank.
-
-**Fix**:
-1. In `apps/web/lib/db.ts`, find the `getLatestInsights()` query
-2. Add a SQL guard: `WHERE key_insight IS NOT NULL AND key_insight != ''`
-3. In the homepage insight card component (check `apps/web/app/page.tsx` for the insights section), add client-side null/empty check
-4. Locale logic: EN → `key_insight`, ZH → `key_insight_zh`. If preferred field is empty/null, try the other language. If BOTH are empty, skip rendering.
-
-**Files to touch**: `apps/web/lib/db.ts`, `apps/web/app/page.tsx`
-
-**Verify**: Visit homepage — all insight cards have text content. No empty cards.
-
----
-
-### TASK 3 [FEATURE] — Historic weekly trends selector
-
-**Current**: `/trends` shows only the most recent week's data.
-
-**Goal**: Let users browse historic weekly trends. Homepage always shows latest week.
-
-**Backend** (`apps/web/lib/db.ts`):
-1. Add query `getTrendWeeks()` — `SELECT DISTINCT week_start, week_end FROM app.weekly_trend ORDER BY week_start DESC`
-2. Modify existing trend queries to accept optional `weekStart` param
-
-**Frontend** (`apps/web/app/trends/page.tsx`):
-1. Week selector dropdown at top of /trends
-2. Default: show most recent week. On change: re-query with `?week=YYYY-MM-DD`
-3. Homepage unchanged (always latest week)
-
-**No migration needed** — `week_start` column already exists.
-
-**Files to touch**: `apps/web/lib/db.ts`, `apps/web/app/trends/page.tsx`, `apps/web/lib/i18n.ts`
-
-**Verify**: /trends shows dropdown → pick a past week → data changes.
+## IMPORTANT: TASK 1-3 already completed (PR #68/#69/#70 merged). Start from TASK 4.
 
 ---
 
@@ -124,23 +45,45 @@ alter table app.project add column if not exists recent_commits_30d int;
 
 **Bug**: `/en/trends`, `/zh/trends`, `/en/youtube-insights`, `/zh/youtube-insights`, `/en/bookmarks`, `/zh/bookmarks` all return 404. Only `/zh/` homepage and `/zh/projects` work.
 
-**Fix**: Register these pages under the `[locale]` dynamic segment or fix middleware routing.
+**Context**: The app uses cookie-based i18n (not path-based). If the user explicitly visits `/en/trends` or `/zh/trends`, they get 404. Fix by adding route handling for these paths — either middleware redirect or registering routes.
 
-**File**: FRONTEND_REQUEST.md has full details.
+**Files**: FRONTEND_REQUEST.md has full details.
 
 ---
 
 ### TASK 5 [P3] — Minor UI improvements
-- Add WoW delta to /trends top product list
-- Clickable theme links on /trends
-- Clickable YouTube links on /trends video highlights
-- `favicon.ico` 404
+- Add WoW delta to /trends top product list (already done in PR #73? verify)
+- Clickable theme links on /trends (already done in PR #74? verify)
+- Clickable YouTube links on /trends video highlights (deferred — needs trend generator change)
+- `favicon.ico` 404 (check if fixed)
 
-**File**: FRONTEND_REQUEST.md has full details.
+**Verify**: Visit /trends, check which features are present, skip already-done ones.
+
+---
+
+### TASK 6 [NEW] — Re-enable all collectors after GitHub Actions unblocked
+
+**Context**: GitHub Actions billing was blocking all workflows. The repo has been made public and Actions is now unblocked. GitHub, Hacker News, Product Hunt, Reddit, and YouTube collectors are all running.
+
+**Do**: Verify that the following workflows ran successfully or are scheduled:
+1. collect-github.yml
+2. collect-hackernews.yml
+3. collect-producthunt.yml
+4. collect-reddit.yml
+5. collect-youtube.yml
+6. youtube-insights.yml
+7. dedup.yml
+8. llm-classify.yml
+
+Check run history: `gh run list --limit 10`
+If any show "failure" due to the old billing block, they can be re-triggered: `gh workflow run <workflow-name>`
+
+**Note**: YouTube collector may fail with OAuth (token expired). Check its logs — if `invalid_grant`, skip it (the refresh script has been updated to auto-remind every 6 days).
 
 ---
 
 ### After completing all tasks
-1. Update CHANGELOG.md, DECISIONS.md
-2. Update RESPONSE.md + FRONTEND_RESPONSE.md
-3. Write summary to next-request.md
+1. If all tasks done with nothing pending → write to next-request.md: "all tasks complete, queue clean"
+2. Update CHANGELOG.md, DECISIONS.md
+3. Write summary to RESPONSE.md
+4. Continue polling for new work (idle timer resets)
