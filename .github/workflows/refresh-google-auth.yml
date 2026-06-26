@@ -1,0 +1,50 @@
+name: Refresh Google OAuth
+
+# Every 6 days, generates a new re-authorization link and sends it as a
+# Telegram notification so you can mint a fresh GOOGLE_REFRESH_TOKEN before
+# the Testing-app 7-day expiry kicks in.
+#
+# After re-authorizing, update the GitHub secret:
+#   gh secret set GOOGLE_REFRESH_TOKEN --body "<new_token>"
+# or paste it via GitHub Settings → Secrets and variables → Actions.
+
+on:
+  schedule:
+    - cron: '0 12 */6 * *'  # Every 6 days at noon UTC
+  workflow_dispatch: {}
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate re-authorization URL
+        id: gen-url
+        run: |
+          CLIENT_ID="${{ secrets.GOOGLE_CLIENT_ID }}"
+          SCOPE="https://www.googleapis.com/auth/youtube.readonly%20https://www.googleapis.com/auth/gmail.send"
+          REDIRECT="http%3A%2F%2Flocalhost"
+          AUTH_URL="https://accounts.google.com/o/oauth2/v2/auth?client_id=${CLIENT_ID}&redirect_uri=${REDIRECT}&response_type=code&scope=${SCOPE}&access_type=offline&prompt=consent"
+          echo "url=$AUTH_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Print re-auth instructions
+        run: |
+          echo ""
+          echo "╔══════════════════════════════════════════════════════════════╗"
+          echo "║      GOOGLE OAUTH TOKEN EXPIRING — RE-AUTHORIZE NOW        ║"
+          echo "╚══════════════════════════════════════════════════════════════╝"
+          echo ""
+          echo "Open this link in your browser to re-authorize:"
+          echo ""
+          echo "  ${{ steps.gen-url.outputs.url }}"
+          echo ""
+          echo "After approving, run:"
+          echo "  curl -sS https://oauth2.googleapis.com/token \\"
+          echo "    -d client_id=\$GOOGLE_CLIENT_ID \\"
+          echo "    -d client_secret=\$GOOGLE_CLIENT_SECRET \\"
+          echo "    -d code=<CODE> \\"
+          echo "    -d grant_type=authorization_code \\"
+          echo "    -d redirect_uri=http://localhost"
+          echo ""
+          echo "Then: gh secret set GOOGLE_REFRESH_TOKEN --body \"<refresh_token>\""
