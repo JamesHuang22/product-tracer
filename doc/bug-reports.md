@@ -156,3 +156,31 @@ Known deferred (no re-report):
 - Video Highlights clickable links — tracked in FRONTEND_REQUEST P3 (needs trend generator changes)
 - WoW delta on top product cards — tracked in FRONTEND_REQUEST P3
 - Mobile nav collapse at 375px — tracked in FRONTEND_REQUEST P2
+
+---
+
+> Weekly product tour — 2026-06-26 22:30 UTC (Focus: 4 — /trends)
+> JBK (Product Manager + QA Lead)
+
+### Result: No new bugs
+
+All critical pages return HTTP 200 on Vercel:
+- ✅ `/` — 200, hero stats, 4.9k projects, activity feed
+- ✅ `/projects` — 200, search/filter/sort, cards with tags/stars
+- ✅ `/[slug]` — 200, breadcrumb, AI summary, platform signals, related projects
+- ✅ `/trends` — 200, week selector (2 weeks), WoW comparison cards, category mix chart, top 5 products (all clickable with platform badges and signal counts), emerging themes (7 clickable tags linking to `/projects?tag=...`), video highlights summary, footer stats (919 projects · 170 signals · 83 insights)
+- ✅ `/youtube-insights` — 200
+
+**Trends deep-dive**:
+- Week selector renders two options (current + previous week)
+- WoW comparison shows top source (PH) and top product for both this/last week
+- Category mix bar chart shows AI/ML (40%), Other (30%), design/devtool/saas (10% each)
+- Top 5 products: rank #, WoW change indicator (all show "—" = unchanged), platform badge, product name link, signal count badge
+- Emerging themes: 7 tags as clickable `<a>` links — Recursive Self-Improvement, AI Agent Workflows, Open-Source LLMs, Edge AI, AI Video Generation, Developer Tools, Memory Systems for AI
+- Video Highlights: prose summary (no clickable links — deferred)
+- No regressions, no 500s, no console errors detectible from HTTP fetch
+
+Known deferred (no re-report):
+- Video Highlights clickable links — tracked in FRONTEND_REQUEST P3
+- WoW rank change arrows (all show "—" this week but feature not implemented) — tracked in FRONTEND_REQUEST P3
+- `/en/* /zh/*` 404 — intentional (cookie-based i18n)
