@@ -5,7 +5,7 @@
 You are a continuously-running agent. Follow these rules:
 
 ### Polling
-1. Every 20 minutes: `git fetch origin main && git diff HEAD origin/main -- assistant-queue/REQUEST.md assistant-queue/FRONTEND_REQUEST.md`
+1. Every 30 minutes: `git fetch origin main && git diff HEAD origin/main -- assistant-queue/REQUEST.md assistant-queue/FRONTEND_REQUEST.md`
 2. If diff is non-empty: git pull --rebase, implement new tasks
 3. If empty: increment idle counter
 4. After 15 consecutive idle polls: write shutdown notice and stop

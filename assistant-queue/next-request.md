@@ -1,3 +1,35 @@
+# Agent Session — Shutdown Notice (2026-06-26)
+
+Reached **6 consecutive empty queue polls (3 hours idle)** across two consecutive
+goal cycles — no new tasks in `REQUEST.md` or `FRONTEND_REQUEST.md` since the
+prior session completed all queued work. The queue files still hold only the
+already-triaged Run #26 items (FE#2 shipped #72; FE#1 declined by design).
+Shutting down per the agent-session protocol (Rule 6).
+
+## State at shutdown
+
+- Local `main` in sync with `origin/main`; working tree clean.
+- No task in progress (no open branch/PR awaiting merge or verify).
+- All previously queued work shipped and verified (see prior notice below).
+
+## Still open — operator action required (cannot fix from code)
+
+1. **Production P0 — Supabase `EMAXCONNSESSION`** (`doc/bug-reports.md`). Session
+   pooler capped at 15 clients; mitigated (#62 pool max 1; #63/#64 transaction
+   pooler opt-in), stable under normal load. **Durable fix:** raise the Supabase
+   session Pool Size, or point `DATABASE_URL` at the `:6543` transaction pooler
+   and set `PG_USE_TRANSACTION_POOLER=1`.
+2. **GitHub Actions blocked by billing** — workflows can't start: *"recent
+   account payments have failed or your spending limit needs to be increased."*
+   Resolve in repo Settings → Billing.
+
+## To resume
+
+Add tasks to `REQUEST.md` / `FRONTEND_REQUEST.md` and start a new agent session
+(or say "pull now").
+
+---
+
 # Agent Session — Shutdown Notice (2026-06-24)
 
 Reached **15 consecutive empty queue polls** (no new tasks in `REQUEST.md` /
@@ -30,18 +62,6 @@ All via branch → PR → squash-merge → HTTP 200 verify; typecheck (+ `next b
 for frontend) before each PR; no direct pushes to main. Docs in CHANGELOG /
 DECISIONS / RESPONSE / FRONTEND_RESPONSE.
 
-## ⚠️ OPEN — operator action required (cannot fix from code)
-
-1. **Production P0 — Supabase `EMAXCONNSESSION`** (`doc/bug-reports.md`). Session
-   pooler capped at 15 clients; mitigated (#62 pool max 1; #63/#64 transaction
-   pooler made opt-in after it hung), stable under normal load. **Durable fix:**
-   raise the Supabase session Pool Size, or point `DATABASE_URL` at the `:6543`
-   transaction pooler and set `PG_USE_TRANSACTION_POOLER=1`.
-2. **GitHub Actions blocked by billing** — the `collect-github` run (and all
-   workflows) can't start: *"recent account payments have failed or your spending
-   limit needs to be increased."* Resolve in repo Settings → Billing. (Task 3
-   raised the collector cadence to 2h, increasing Actions usage once restored.)
-
 ## Recurring tester false positives (already triaged — not bugs)
 
 - `key_insight` "leak" on the homepage — it's the normal Next.js RSC props
@@ -50,8 +70,3 @@ DECISIONS / RESPONSE / FRONTEND_RESPONSE.
 - `/en/* /zh/*` 404 — by design (cookie-based i18n; no `[locale]` segment).
 - "missing breadcrumb / related / AI summary / search filter" — all present;
   reported while the site was 500ing during the connection-pool incident.
-
-## To resume
-
-Add tasks to `REQUEST.md` / `FRONTEND_REQUEST.md` and start a new agent session
-(or say "pull now").
