@@ -82,3 +82,45 @@ Known deferred items (no re-report):
 - Video Highlights clickable links on /trends — already tracked in FRONTEND_REQUEST P3 (deferred, needs trend generator change)
 - WoW delta on top product cards — tracked in FRONTEND_REQUEST P3
 - Mobile nav collapse at 375px — tracked in FRONTEND_REQUEST P2
+
+---
+
+> Weekly product tour — 2026-06-26 17:30 UTC (Focus: 1 — /projects)
+> JBK (Product Manager + QA Lead)
+
+### P3 — Missing favicon.ico (404)
+
+**Severity**: P3 (minor — cosmetic)
+**First seen**: 2026-06-26 17:30 UTC
+**Environment**: Vercel production
+
+### Impact
+`https://product-tracer.vercel.app/favicon.ico` returns HTTP 404. Browser tabs and bookmark icons show a generic document icon instead of the Product Tracer brand mark.
+
+### Reproduction
+1. Visit `https://product-tracer.vercel.app/favicon.ico`
+2. Observe: HTTP 404 response
+
+### Expected
+`favicon.ico` should exist (or a `<link>` to a PNG/SVG favicon should be set in the layout).
+
+### Resolution needed
+Add a favicon file (`.ico`, `.png`, or `.svg`) to the `public/` directory and reference it in the root layout metadata.
+
+---
+
+### Result for this week
+- ✅ `https://product-tracer.vercel.app/` — 200, hero stats, cards, latest activity
+- ✅ `/projects` — 200, search/filter/sort works, cards with tags, categories, stars
+- ✅ `/trends` — 200, week selector, WoW comparison, mix chart, top 5 products, clickable emerging theme tags
+- ✅ `/youtube-insights` — 200, video cards with sentiment labels
+- ✅ `/[slug]` — 200, breadcrumb, AI summary, platform signals
+- ❌ `/favicon.ico` — 404 (new, tracked above)
+
+**No regressions on existing pages. /projects search, filter, sort, and tag rendering all functional.**
+
+Known deferred (no re-report):
+- `/en/* /zh/*` 404 — intentional (cookie-based i18n)
+- Video Highlights clickable links — tracked in FRONTEND_REQUEST P3 (needs trend generator changes)
+- WoW delta on top product cards — tracked in FRONTEND_REQUEST P3
+- Mobile nav collapse at 375px — tracked in FRONTEND_REQUEST P2
