@@ -62,3 +62,23 @@ When the DB is fixed, verify:
 3. Confirm search bar, sort controls, and project grid render correctly
 
 ---
+
+> Weekly product tour — 2026-06-26 16:30 UTC (Focus: 0 — Homepage)
+> JBK (Product Manager + QA Lead)
+
+### Result: No new bugs
+
+All critical pages return HTTP 200 on Vercel:
+- ✅ `/` — Hero stats render (4.9k projects, 4 platforms, 1k new, 108 signals), cards present, latest activity populated
+- ✅ `/projects` — Project cards render with descriptions, tags, stars/forks. Search/filter UI present. 4,624 projects browsable.
+- ✅ `/trends` — Summary, WoW comparison, This week's mix (bar chart), Top Products (5 items with rank + platform badge + signal count), Emerging Themes (7 clickable tags), Video Highlights section present. Week selector works.
+- ✅ `/youtube-insights` — Video cards render with sentiment labels (Negative/Positive/Neutral/Neutral), descriptions, Watch on YouTube links.
+- ✅ `/[slug]` — Detail pages show breadcrumb, AI summary, cross-platform signal cards (GH stars/forks, YT views/likes), related links.
+
+**No regressions detected from previous run. Focus (0: Homepage) fully functional.**
+
+Known deferred items (no re-report):
+- `/en/* /zh/*` 404 — intentional by design (cookie-based i18n)
+- Video Highlights clickable links on /trends — already tracked in FRONTEND_REQUEST P3 (deferred, needs trend generator change)
+- WoW delta on top product cards — tracked in FRONTEND_REQUEST P3
+- Mobile nav collapse at 375px — tracked in FRONTEND_REQUEST P2
