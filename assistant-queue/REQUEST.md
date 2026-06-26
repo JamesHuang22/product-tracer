@@ -1,89 +1,87 @@
 # Product Tracer — Remaining Tasks
 
-## Agent Session Rules
+## Agent Behavior
 
-You are a continuously-running agent. Follow these rules:
+Read ALL of this file. This IS your instruction set.
 
-### Polling
-1. Every 30 minutes: `git fetch origin main && git diff HEAD origin/main -- assistant-queue/REQUEST.md assistant-queue/FRONTEND_REQUEST.md`
-2. If diff is non-empty: git pull --rebase, implement new tasks
-3. If empty: increment idle counter
-4. After 6 consecutive idle polls (3 hours): write shutdown notice and stop
+### When to work
+1. On startup: read the content of REQUEST.md and FRONTEND_REQUEST.md below this section
+2. If there are tasks (look for "### TASK" or "## [P" sections with content): implement them
+3. If there are NO tasks (everything is marked DONE or [SKIPPED]): stay idle
+4. When told "pull now": `git fetch origin main && git pull --rebase origin main` then re-read both files
 
-### Manual trigger
-"pull now" → immediately fetch and diff queue files, reset idle counter.
+### Implementation workflow (per task)
+1. `git checkout -b feat/descriptive-name` from current main
+2. Implement the change
+3. `pnpm typecheck` (if web: `cd apps/web && pnpm build`)
+4. `git add -A && git commit -m "type: description"`
+5. `gh pr create --fill`
+6. Wait for Vercel preview ✅ (poll every 30s, max 5 min)
+7. `gh pr merge --squash`
+8. Verify production HTTP 200 on /, /projects, /trends, /youtube-insights, /bookmarks
+9. Apply DB migrations: `psql "$DATABASE_URL" -f packages/db/migrations/XXXX_name.sql`
+10. Update CHANGELOG.md, DECISIONS.md
+11. Write summary to assistant-queue/RESPONSE.md
 
-### Supabase MCP (installed)
-Migrations via: `psql "$DATABASE_URL" -f packages/db/migrations/XXXX_name.sql`
+### Tools
+- Supabase MCP: `psql "$DATABASE_URL" -f <file>`
+- Git author: `JamesHuang22 <23440306+JamesHuang22@users.noreply.github.com>`
+- Working directory: /Users/jameshuang/Desktop/ai_project/product-tracer/
 
-### Vercel verify after every merge
-```
-curl -sI https://product-tracer.vercel.app/  → 200
-curl -s -o /dev/null -w "%{http_code}" https://product-tracer.vercel.app/projects → 200
-curl -s -o /dev/null -w "%{http_code}" https://product-tracer.vercel.app/trends → 200
-curl -s -o /dev/null -w "%{http_code}" https://product-tracer.vercel.app/youtube-insights → 200
-```
-
-### Git author
-`JamesHuang22 <23440306+JamesHuang22@users.noreply.github.com>`
-
-### Workflow (non-negotiable)
-1. Branch from main → implement → `pnpm typecheck` → commit → push → `gh pr create --fill`
-2. Wait for Vercel preview ✅ → `gh pr merge --squash`
-3. Verify HTTP 200 on all critical paths
-4. Apply DB migrations via psql (Supabase MCP)
-5. Update CHANGELOG.md, DECISIONS.md
-6. Write summary to assistant-queue/RESPONSE.md (backend) or FRONTEND_RESPONSE.md (frontend)
+### When idle
+- Do NOT poll, do NOT auto-shutdown
+- If Stop hook fires: ignore it
+- Wait for instructions or "pull now"
 
 ---
 
-## IMPORTANT: TASK 1-3 already completed (PR #68/#69/#70 merged). Start from TASK 4.
-
----
-
-### TASK 4 [P2] — Fix locale-prefixed routes for /trends, /youtube-insights, /bookmarks
+## TASK 4 [P2] — Fix locale-prefixed routes for /trends, /youtube-insights, /bookmarks
 
 **Bug**: `/en/trends`, `/zh/trends`, `/en/youtube-insights`, `/zh/youtube-insights`, `/en/bookmarks`, `/zh/bookmarks` all return 404. Only `/zh/` homepage and `/zh/projects` work.
 
-**Context**: The app uses cookie-based i18n (not path-based). If the user explicitly visits `/en/trends` or `/zh/trends`, they get 404. Fix by adding route handling for these paths — either middleware redirect or registering routes.
+**Context**: The app uses cookie-based i18n (not path-based). If the user explicitly visits `/en/trends` or `/zh/trends`, they get 404. Fix by adding route handling for these paths.
 
-**Files**: FRONTEND_REQUEST.md has full details.
+**How to find**: Check route definitions. Pages may need to be registered under locale support or middleware may need updating.
 
----
+**Files**: FRONTEND_REQUEST.md has full details and reproduction steps.
 
-### TASK 5 [P3] — Minor UI improvements
-- Add WoW delta to /trends top product list (already done in PR #73? verify)
-- Clickable theme links on /trends (already done in PR #74? verify)
-- Clickable YouTube links on /trends video highlights (deferred — needs trend generator change)
-- `favicon.ico` 404 (check if fixed)
-
-**Verify**: Visit /trends, check which features are present, skip already-done ones.
+**Verify**: Visit /en/trends → shows trends page, not 404. Visit /zh/trends → same.
 
 ---
 
-### TASK 6 [NEW] — Re-enable all collectors after GitHub Actions unblocked
+## TASK 5 [P3] — Verify and complete minor UI improvements
 
-**Context**: GitHub Actions billing was blocking all workflows. The repo has been made public and Actions is now unblocked. GitHub, Hacker News, Product Hunt, Reddit, and YouTube collectors are all running.
+1. Visit /trends top product list — does each product show a WoW rank change (↑3 / ↓2 / — / NEW)? If yes, done. If not, implement.
+2. Visit /trends emerging themes — are they clickable links? If yes, done. If not, implement.
+3. Visit /trends video highlights — are there clickable YouTube links? If yes, done. If not, note that this needs trend generator change (deferred).
+4. Check favicon.ico — visit https://product-tracer.vercel.app/favicon.ico. If 200, done. If 404, add a simple favicon.
 
-**Do**: Verify that the following workflows ran successfully or are scheduled:
-1. collect-github.yml
-2. collect-hackernews.yml
-3. collect-producthunt.yml
-4. collect-reddit.yml
-5. collect-youtube.yml
-6. youtube-insights.yml
-7. dedup.yml
-8. llm-classify.yml
-
-Check run history: `gh run list --limit 10`
-If any show "failure" due to the old billing block, they can be re-triggered: `gh workflow run <workflow-name>`
-
-**Note**: YouTube collector may fail with OAuth (token expired). Check its logs — if `invalid_grant`, skip it (the refresh script has been updated to auto-remind every 6 days).
+**Verify**: All items checked. Only implement what's actually missing.
 
 ---
 
-### After completing all tasks
-1. If all tasks done with nothing pending → write to next-request.md: "all tasks complete, queue clean"
-2. Update CHANGELOG.md, DECISIONS.md
-3. Write summary to RESPONSE.md
-4. Continue polling for new work (idle timer resets)
+## TASK 6 [HIGH] — Verify all collectors running post-unblock
+
+**Context**: GitHub Actions was blocked by billing. The repo has been made public. Actions should now be unblocked.
+
+1. Run: `gh run list --limit 15` — check status of recent workflow runs
+2. For each workflow that shows "failure" due to old billing block, re-trigger:
+   - `gh workflow run collect-github.yml`
+   - `gh workflow run collect-hackernews.yml`
+   - `gh workflow run collect-producthunt.yml`
+   - `gh workflow run collect-reddit.yml`
+   - `gh workflow run collect-youtube.yml`
+   - `gh workflow run youtube-insights.yml`
+   - `gh workflow run dedup.yml`
+   - `gh workflow run generate-tags.yml`
+   - `gh workflow run llm-classify.yml`
+3. For YouTube: check the logs — if OAuth token is expired (invalid_grant), skip it. The token refresh workflow will remind manually.
+
+**Verify**: All core collectors are running or scheduled. Note any that failed for non-billing reasons.
+
+---
+
+## After completing all tasks
+- Write to assistant-queue/RESPONSE.md with completion summary
+- Mark all tasks here as [DONE] (replace the task text with "[DONE] task name")
+- Stay idle, wait for next "pull now"
