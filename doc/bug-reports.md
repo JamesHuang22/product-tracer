@@ -124,3 +124,35 @@ Known deferred (no re-report):
 - Video Highlights clickable links — tracked in FRONTEND_REQUEST P3 (needs trend generator changes)
 - WoW delta on top product cards — tracked in FRONTEND_REQUEST P3
 - Mobile nav collapse at 375px — tracked in FRONTEND_REQUEST P2
+
+---
+
+> Weekly product tour — 2026-06-26 21:05 UTC (Focus: 2 — /[slug] detail page)
+> JBK (Product Manager + QA Lead)
+
+### Result: No new bugs
+
+All critical pages return HTTP 200 on Vercel:
+- ✅ `/` — 200, hero stats, cards, latest activity
+- ✅ `/projects` — 200, search/filter/sort, project cards with tags/categories/stars
+- ✅ `/projects/:slug` — 200, breadcrumb, AI summary, cross-platform signals (GH stars/forks, YT views/likes), sparkline charts, tag chips, related projects in "You might also like" with star counts
+- ✅ `/trends` — 200, week selector, WoW comparison, mix chart, top products, emerging themes
+- ✅ `/youtube-insights` — 200, video cards with sentiment labels
+
+**Detail page deep-dive**:
+- Breadcrumb → Projects / open-design — renders correctly
+- AI Summary sparkles icon + description — renders well
+- Cross-platform signals render as cards with GH (star count + fork count) and YT (view count + like count)
+- GitHub sparkline chart renders correctly
+- "You might also like" shows 4 related project cards with names, descriptions, star counts
+- Tag chips render as clickable filter links (e.g., `/projects?tag=local-first`)
+- Bookmark button present, "Visit site" link present, "Tracked since" date shows
+- Pages with no YouTube data gracefully show "Not enough history yet" instead of breaking
+
+**No regressions detected. /[slug] detail pages render fully with all expected features.**
+
+Known deferred (no re-report):
+- `/en/* /zh/*` 404 — intentional (cookie-based i18n)
+- Video Highlights clickable links — tracked in FRONTEND_REQUEST P3 (needs trend generator changes)
+- WoW delta on top product cards — tracked in FRONTEND_REQUEST P3
+- Mobile nav collapse at 375px — tracked in FRONTEND_REQUEST P2
