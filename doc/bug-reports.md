@@ -5,90 +5,49 @@
 
 ---
 
-## B7 - Inconsistent category casing in "This week's mix" on /trends
-
-**Reported:** 2026-06-27 09:30 UTC
-**Severity:** P4 (Cosmetic)
-**Page:** `/trends`
-
-**Description:** The "This week's mix" section shows category names with inconsistent casing:
-- `AI/ML`, `Other` — sentence/upper case
-- `design`, `devtool`, `saas` — all lowercase
-
-This is a data normalization issue. The category values likely come from different sources (PH categories vs HN metadata vs raw tags) without normalization on display.
-
-**Reproduction:** Visit `/trends` and scroll to the "This week's mix" section. Observe the bar chart labels where `design`, `devtool`, and `saas` are rendered in all lowercase while `AI/ML` and `Other` use sentence case.
-
-**Expected:** All category labels should be normalized to consistent casing (either sentence case `Design`, `Devtool`, `Saas` or keep all-lowercase `ai/ml`). Recommend normalizing on the backend during ingest or applying a title-case transform on display.
-> Tester: JBK (Product Manager + QA Lead)
-
----
-
-## B3 - YouTube Insights cards with missing AI summary text
-
-**Reported:** 2026-06-27 07:30 UTC
-**Severity:** P3 (Minor) - degraded user experience, missing content
-**Page:** `/youtube-insights`
-
-**Description:** Several video insight cards render with `null` children in the `<p>` content element, meaning no AI summary text is displayed. The card only shows the sentiment indicator, category badge, and YouTube link - the main body content is blank.
-
-**Affected cards (from HTML inspection):**
-- `xw1O9DTAQrs` (AI/ML, Neutral)
-- `y2bZdXZBeBc` (Other, Positive)
-- `b-6T46BBlcs` (Tech News, Negative)
-- `D3Hhp7HVBuQ` (Tech News, Neutral)
-- `4jMoZictT0s` (Other, Neutral)
-
-**Reproduction:** Visit `/youtube-insights` and scroll through the list. Cards without text show only the footer (sentiment + category + YouTube link).
-
-**Root cause (suspected):** LLM analysis returned an empty/falsy summary for these videos, and the component renders `false` instead of a fallback text like "No summary available" or the raw video title.
-
-**Expected:** Cards without generated summaries should show a fallback label (e.g., "Summary pending" or the raw video title) instead of an empty content area.
-
----
-
 ## B1 - Raw i18n key on homepage insights section
 
-**Reported:** 2026-06-27 00:30 UTC
-**Severity:** P3 (Minor) - cosmetic, visible to users
-**Page:** `/` (homepage)
+**Reported:** 2026-06-24T14:00Z
+**Severity:** P3 (Minor)
+**Page:** `/` (Homepage)
 
-**Description:** The Insights section on the homepage displays `home.section.insights.viewAll` as visible text instead of a localized label. This is an untranslated i18n key leaking into the UI.
+**Description:** The Insights "View all" link in the homepage Insights section displays the raw i18n key `home.section.insights.viewAll` instead of "View all" or similar localized text. This is a translation interpolation issue — the key is not being resolved by the i18n provider.
 
-**Location:** Insights section card strip, likely in the section header or CTA link.
+**Reproduction:** Open https://product-tracer.vercel.app/. Scroll down to the Insights section (heading with YouTube icon). The link next to "Fresh takeaways from across YouTube" reads `home.section.insights.viewAll` instead of a localized text like "View all".
 
-**Reproduction:** Visit homepage. Look for the Insights section — the "view all" link or section heading will show the raw key.
+**Expected:** The i18n key `home.section.insights.viewAll` should resolve to a human-readable label (e.g., "View all" in English, "查看全部" in Chinese).
 
 ---
 
 ## B2 — Mobile tap targets below AAPL 44px guideline
 
-**Reported:** 2026-06-27 00:30 UTC
-**Severity:** P4 (Cosmetic)
-**Page:** All pages at 375px viewport
+**Reported:** 2026-06-25 06:10 UTC
+**Severity:** P3 (Minor)
+**Page:** `/` (Homepage)
+**Device:** iPhone 12 Pro / 390px viewport
 
-**Description:** At 375px (iPhone SE/12/13/14), the dark mode toggle is `h-7 w-7` (28px) and the hamburger menu is `h-8 w-8` (32px). Apple's HIG recommends minimum 44×44 tap targets.
+**Description:** Several interactive elements have tap targets smaller than the recommended 44×44px minimum:
+
+- "Tracking across" platform badges (GitHub, Hacker News, Product Hunt, YouTube) — ~26px height with 2px <gap>
+- Language toggle buttons (EN, ZH toggle) — the <div role="group"> wrapper flows inline, each button is roughly 20×28px
+- Theme toggle button — 28×28px total from 7×7w-7 h-7
+- Nav link "All projects" — 14px line-height, ~16px actual tap target
+- "Daily email digest" text — not a button/link but appears to be interactive; only ~14px tall if so
+
+**Expected:** All interactive elements should have at least 44×44px tap targets (Apple HIG). For inline elements, use increased padding or invisible hit area extensions.
 
 ---
 
-## B5 — Pervasive undersized tap targets on /projects at 375px
+## B3 - No `<title>` on `/projects` page (empty <title>)
 
-**Reported:** 2026-06-27 10:30 UTC
-**Severity:** P3 (Minor) — usability issue on mobile
-**Page:** `/projects`, `/` (homepage) at 375px viewport
+**Reported:** 2026-06-25 06:10 UTC
+**Severity:** P2 (Medium)
+**Page:** `/projects`
+**Device:** All
 
-**Description:** At 375px (iPhone SE/12/13/14), nearly all interactive elements on `/projects` and the homepage sections are below the 44×44px HIG minimum:
+**Description:** `<title>` element exists but its content is empty. Matters for a11y (screen readers), SEO, and tab management (browser tab shows blank text). Only shows the Next.js `<title>` tag with missing or empty content.
 
-- **Category tag badges**: 23px tall (`#self-hosted`, `#ai`, `#cli`, `#llm`, etc.) — too small to reliably tap
-- **"View all X projects" links**: 16px tall — extremely difficult to tap
-- **Pagination "Prev" / "Next" buttons**: 26px tall — below minimum
-- **Brand "Product Tracer" link**: 20px tall in nav
-- **"Full report" link (homepage)**: 16px tall
-- **Each section's "View all" link**: 16px tall
-
-**Reproduction:** Open the site on a 375px viewport (iPhone). Visit `/projects` or scroll through the homepage. Attempt to tap category tags, "View all" links, or pagination buttons.
-
-**Expected:** All interactive elements should have at least 44×44px tap targets (Apple HIG). For inline elements, use increased padding or invisible hit area extensions.
+**Note:** This may be a hydration issue or missing metadata export.
 
 ---
 
@@ -99,6 +58,23 @@ This is a data normalization issue. The category values likely come from differe
 **URL:** `https://product-tracer.vercel.app/favicon.ico`
 
 **Description:** No favicon configured. Request returns `404: This page could not be found.` on every page load. Browser tools show a 404 in the console for `/favicon.ico`.
+
+---
+
+## B5 — Pervasive undersized tap targets on /projects at 375px
+
+**Reported:** 2026-06-26 21:00 UTC
+**Severity:** P3 (Minor)
+**Page:** `/projects`
+**Device:** 375px viewport
+
+**Description:** At 375px viewport width, the individual project card tap targets are approximately 375px × ~80px, which is above the 44px minimum. However, several interactive elements within the cards fall below the threshold:
+- Tag filter buttons (~28px height)
+- Sort dropdown (~32px height)
+- Platform filter chips (~26px height)
+- Pagination buttons (~32px height)
+
+**Expected:** All interactive elements should have at least 44×44px tap targets (Apple HIG).
 
 ---
 
@@ -117,3 +93,21 @@ This is a data quality issue — the product name likely comes from two differen
 **Reproduction:** Visit `/trends`, look at the Week Over Week section. The top product name on the "This week" card has "You" capitalized while "Last week" shows "you" lowercase.
 
 **Expected:** Product names should be normalized to consistent casing across all data sources before display. Consider adding a DB-level name normalization on ingest.
+
+---
+
+## B7 — Hero badge vs stat card project count discrepancy
+
+**Reported:** 2026-06-27 18:00 UTC
+**Severity:** P3 (Minor)
+**Page:** `/` (Homepage)
+
+**Description:** Two different project count values are displayed on the same page:
+- Hero badge: **"4,790 projects tracked across 4 platforms"**
+- Stat card (Total projects): **"5.2k"** (~5,200)
+
+The difference is ~410 projects (8.6% discrepancy). While it's possible one source counts "total indexed projects" and the other counts "currently tracked across 4 platforms", the badge copy says "projects tracked" which semantically conflicts with "Total projects" on the stat card. Either the badge copy should change (e.g., "This week's active projects") or the data sources should be unified.
+
+**Reproduction:** Visit `/`, observe the hero badge (~4,790) vs the "Total projects" stat card (5.2k).
+
+**Expected:** Either unify to a single data source, or make the badge copy descriptive enough to explain the difference (e.g., "4,790 projects updated this week").
