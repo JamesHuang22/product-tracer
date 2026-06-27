@@ -184,3 +184,26 @@ Known deferred (no re-report):
 - Video Highlights clickable links — tracked in FRONTEND_REQUEST P3
 - WoW rank change arrows (all show "—" this week but feature not implemented) — tracked in FRONTEND_REQUEST P3
 - `/en/* /zh/*` 404 — intentional (cookie-based i18n)
+
+---
+
+> Weekly product tour — 2026-06-27 00:30 UTC (Focus: 5 — Mobile 375px)
+> JBK (Product Manager + QA Lead)
+
+### Bugs Found
+
+**B1 — Untranslated i18n key on homepage Insights section**
+- **Where**: Homepage → Insights section → "View all" link text
+- **What**: Renders `home.section.insights.viewAll` as raw text instead of "View all" or translated equivalent
+- **Severity**: P3 (visual, visible to all users on desktop & mobile)
+- **Expected**: Should resolve the i18n key to a human-readable label
+- **Root cause**: Missing i18n translation for key `home.section.insights.viewAll`
+- **Status**: New
+
+**B2 — Mobile tap targets below 44px touch minimum (375px viewport)**
+- **Where**: Header at 375px viewport
+- **What**: Dark mode toggle `h-7 w-7` (28px), hamburger menu `h-8 w-8` (32px) — both under 44px iOS/Android minimum
+- **Severity**: P4 (usability, intermittently hard to tap)
+- **Expected**: Buttons padded or sized to ≥44×44px on touch devices
+- **Root cause**: Tailwind h-7/h-8 classes with no touch-responsive sizing
+- **Status**: New
