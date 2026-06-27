@@ -207,3 +207,36 @@ Known deferred (no re-report):
 - **Expected**: Buttons padded or sized to ≥44×44px on touch devices
 - **Root cause**: Tailwind h-7/h-8 classes with no touch-responsive sizing
 - **Status**: New
+
+---
+
+> Weekly product tour — 2026-06-27 02:30 UTC (Focus: 2 — /[slug] detail page)
+> JBK (Product Manager + QA Lead)
+
+### Result: No new bugs
+
+All critical pages return HTTP 200 on Vercel:
+- ✅ `/` — 200
+- ✅ `/projects` — 200
+- ✅ `/[slug]` — 200
+- ✅ `/trends` — 200
+- ✅ `/youtube-insights` — 200
+
+**Detail page deep-dive**:
+- Breadcrumb: Projects → slug name — renders correctly with chevron separator
+- Title + category badge ("other") — renders
+- Visit site link → correct GitHub URL with external icon
+- Bookmark button → present with BookmarkButton component (bookmark/filled states)
+- Tracked since date: 2026-05-24 — renders
+- AI Summary section: sparkles icon + description paragraph — renders well, concise prose
+- Cross-platform signals: GitHub card with 49k stars / 4.2k forks, sparkline SVG chart, "Updated 2026-06-27" — all render correctly
+- "You might also like": 4 related project cards (clawhub, feishin, ag-kit, book) in 4-column grid, each with name, description, star count — all clickable links
+- `ag-kit` card has no description (null), renders without breaking — graceful handling
+
+**No regressions detected. All expected sections render correctly.**
+
+Known deferred (no re-report):
+- `/en/* /zh/*` 404 — intentional (cookie-based i18n)
+- Untranslated i18n key on homepage — tracked in bug reports (B1)
+- Mobile tap targets below 44px — tracked in bug reports (B2)
+- WoW rank change indicators + clickable links in trends — tracked in FRONTEND_REQUEST.md
