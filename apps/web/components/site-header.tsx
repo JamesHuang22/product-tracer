@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Menu, X } from 'lucide-react';
 import { LanguageSwitcher } from '@/components/language-switcher';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { UserMenu } from '@/components/user-menu';
 import { useI18n } from '@/lib/i18n-context';
 import type { MessageKey } from '@/lib/i18n';
 
@@ -15,9 +16,10 @@ const NAV_LINKS: { href: string; key: MessageKey }[] = [
   { href: '/bookmarks', key: 'nav.bookmarks' },
 ];
 
-export function SiteHeader() {
+export function SiteHeader({ userEmail }: { userEmail: string | null }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
+  const authed = userEmail !== null;
 
   const linkCls =
     'text-neutral-600 transition-colors hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-50';
@@ -43,6 +45,13 @@ export function SiteHeader() {
           ))}
           <LanguageSwitcher />
           <ThemeToggle />
+          {authed ? (
+            <UserMenu email={userEmail} />
+          ) : (
+            <Link href="/login" className={linkCls}>
+              {t('nav.signIn')}
+            </Link>
+          )}
         </nav>
 
         {/* Mobile controls (< sm): theme toggle stays reachable; links collapse
@@ -74,6 +83,23 @@ export function SiteHeader() {
               {t(l.key)}
             </Link>
           ))}
+          {authed ? (
+            <Link
+              href="/account"
+              onClick={() => setOpen(false)}
+              className={`py-1.5 ${linkCls}`}
+            >
+              {t('nav.account')}
+            </Link>
+          ) : (
+            <Link
+              href="/login"
+              onClick={() => setOpen(false)}
+              className={`py-1.5 ${linkCls}`}
+            >
+              {t('nav.signIn')}
+            </Link>
+          )}
           <div className="pt-2">
             <LanguageSwitcher />
           </div>

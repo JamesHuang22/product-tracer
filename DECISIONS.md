@@ -3,6 +3,16 @@
 > Permanent record of architectural, process, and product decisions.
 > Each entry: date, decision, rationale, alternatives considered.
 
+## 2026-06-27 — User auth & account-synced bookmarks
+
+**Auth provider — Supabase Auth via `@supabase/ssr`.** The user asked to "leverage Supabase," which already backs the data layer. `@supabase/ssr` is the documented App-Router pattern (cookie-based sessions + middleware refresh). *Alternative considered:* rolling our own auth on the existing postgres.js connection (bcrypt + JWT) — rejected: reinvents a security-critical surface and ignores the explicit ask. Email/password chosen as the universal, self-contained method (no email-deliverability dependency to *log in*); OAuth (GitHub/Google) can be layered on the same callback later.
+
+**Bookmark storage — DB for members, localStorage for guests, with one-time merge.** Rather than force sign-in for bookmarks (regression for anonymous users) or keep everything client-only (no cross-device sync), bookmarks are dual-mode behind one `BookmarksProvider` so the `useBookmark`/`useBookmarks` hook signatures are unchanged. On first login the guest's localStorage set is POSTed to `/api/bookmarks/merge` (idempotent), then cleared locally. Toggles for members are optimistic with server reconciliation + revert-on-error.
+
+**Data access path — postgres.js, not PostREST.** `app.bookmark` is read/written through the existing server-side postgres.js connection (consistent with the rest of `app`/`raw`, which aren't on PostgREST's exposed-schema allow-list), always scoping by the **session-verified** `user.id` from `supabase.auth.getUser()`. RLS (own-rows-only) is still enabled as defense-in-depth in case the table is ever reached via the anon/authenticated PostgREST role. *Note:* `app.weekly_trend` remains RLS-disabled (pre-existing; flagged by the Supabase advisor) — out of scope here, surfaced to the operator.
+
+**Graceful degradation.** Every auth entry point guards on `isSupabaseConfigured()`; with the public env vars absent the middleware no-ops, `getUser()` returns null, `/login` shows a notice, and bookmarks stay on localStorage. This keeps `next build` and all routes green in preview/fork environments that lack the keys, so the HTTP-200 verification never depends on auth being configured.
+
 ## 2026-06-24 — Phase 2: empty-insight fix, historic trends, collector quality
 
 **Empty insight card (Task 1)** — The bug's real cause was an insight whose `key_insight` ("English") column actually held Chinese; in EN mode `localizedPair` correctly suppresses it (→ null) but the card rendered anyway. **Decision**: drop any insight with no displayable text in the active locale rather than fall back to the other language. The spec suggested EN→ZH fallback, but that conflicts with the established CJK-suppression rule (no Chinese in the EN UI), so a textless EN card is **skipped**, not back-filled with Chinese. Defence in depth: query guard (skip rows empty in both languages) + page-level filter (fetch a buffer of 8, drop empties, slice to 3 so the strip stays full) + a client-side `InsightCard` null-return for locale switches.
