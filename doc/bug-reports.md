@@ -240,3 +240,37 @@ Known deferred (no re-report):
 - Untranslated i18n key on homepage — tracked in bug reports (B1)
 - Mobile tap targets below 44px — tracked in bug reports (B2)
 - WoW rank change indicators + clickable links in trends — tracked in FRONTEND_REQUEST.md
+
+---
+
+> Weekly product tour — 2026-06-27 03:30 UTC (Focus: 4 — /trends)
+> JBK (Product Manager + QA Lead)
+
+### Result: No new bugs
+
+All critical pages return HTTP 200 on Vercel:
+- ✅ `/` — 200, hero stats, latest activity, platform sections
+- ✅ `/projects` — 200, search/filter/sort, cards
+- ✅ `/[slug]` — 200, breadcrumb, AI summary, platform signals
+- ✅ `/trends` — 200 (full page SSR rendered correctly)
+- ✅ `/youtube-insights` — 200
+
+**/trends deep-dive (Focus: 4):**
+- Week selector renders 2 options (current + previous), switching works
+- WoW comparison cards render both weeks with top source (PH) and top product
+- Category mix bar chart: AI/ML 40%, Other 30%, design/devtool/saas 10% each — bars sized proportionally
+- Top 5 products: rank #, platform badge, product name (clickable link to /projects/slug), signal count badge, all show "—" for WoW rank change (tracked in FRONTEND_REQUEST P3)
+- Emerging themes: 7 clickable tags linking to `/projects?tag=...`
+- Video Highlights: prose summary paragraph (no clickable links — deferred)
+- Footer stats: 919 projects · 170 signals · 83 insights
+
+**Detection quality note**: The same product "Are You in the Weights?" uses inconsistent casing in the WoW comparison section between weeks — displays as "Are You in the Weights?" (title case) for this week vs "Are you in the Weights?" (sentence case "you") for last week. The slug is consistently lowercase. This is a data-source normalization issue in the trend generator, not a frontend bug — no ticket filed.
+
+**Open bugs still present (no regression):**
+- B1: `home.section.insights.viewAll` key still rendering raw text on homepage
+- B2: Mobile tap targets (dark mode 28px, hamburger 32px) below 44px minimum
+- `favicon.ico` still returns 404
+
+Known deferred (no re-report):
+- `/en/* /zh/*` 404 — intentional (cookie-based i18n)
+- WoW change arrows — tracked in FRONTEND_REQUEST P3
