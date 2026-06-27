@@ -300,3 +300,36 @@ All pages render and scroll correctly at 375px:
 
 ### Notes:
 - The mobile horizontal scroll card strips use `-mx-6` negative margins to break out of the `px-6` container — creates edge-to-edge scroll effect. Works as designed.
+
+---
+
+> Weekly product tour — 2026-06-27 06:30 UTC (Focus: 0 — Homepage)
+> JBK (Product Manager + QA Lead)
+
+### Result: No new bugs
+
+All critical pages return HTTP 200 on Vercel:
+- ✅ `/` — 200, hero stats (5k projects, 4 platforms, 1.1k new, 108 signals), latest activity (10 cards with descriptions + platform badges), platform sections (GH, HN, PH, YT with top 5 each), insights card strip, trends summary
+- ✅ `/projects` — 200
+- ✅ `/[slug]` — 200
+- ✅ `/trends` — 200
+- ✅ `/youtube-insights` — 200
+
+**Homepage deep-dive (Focus: 0):**
+- Hero renders correctly with 4,698 projects count, tagline, CTA buttons
+- Stats grid: 4 cards (Total projects 5k, Active platforms 4, New this week 1.1k, Hot signals 108)
+- Latest activity: horizontal scroll strip of 10 project cards from HN and GH, each with truncated description, platform badge, relative time
+- By platform grid: 4×2 col layout at desktop (2×2 at mobile), each with platform badge, project count, top 5 ranked list with star/upvote/view counts, external link hover effects
+- Insights section: card strip with descriptions + YouTube links (B1 still present: `home.section.insights.viewAll` raw key)
+- Trends section: summary paragraph, 4 top product cards, 7 clickable theme tags
+- Footer: RSS feed links present
+
+**Still present (no regression from prior round):**
+- B1: `home.section.insights.viewAll` raw i18n key — P3, reported 2026-06-27 00:30 UTC
+- B2: Mobile tap targets (28px dark mode toggle, 32px hamburger) below 44px guideline — P4
+- `favicon.ico` returns 404 — P3
+
+Known deferred (no re-report):
+- `/en/* /zh/*` 404 — intentional (cookie-based i18n)
+- WoW change arrows — tracked in FRONTEND_REQUEST P3
+- Video Highlights clickable links — tracked in FRONTEND_REQUEST P3
