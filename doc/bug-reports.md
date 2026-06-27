@@ -274,3 +274,29 @@ All critical pages return HTTP 200 on Vercel:
 Known deferred (no re-report):
 - `/en/* /zh/*` 404 — intentional (cookie-based i18n)
 - WoW change arrows — tracked in FRONTEND_REQUEST P3
+
+---
+
+## JBK Review — 2026-06-27 06:05 UTC (Mobile 375px)
+
+**Focus:** Mobile 375px — scroll, nav, tap targets
+
+### Result: No new bugs
+
+All pages render and scroll correctly at 375px:
+- ✅ **Homepage**: `grid-cols-2` stat cards fit well. Horizontal scroll card strips (`overflow-x-auto`) work. Hero section, platform badges, project cards all render. Body uses `overflow-x-clip` to prevent horizontal bleed.
+- ✅ **Header/Nav**: Desktop nav is `hidden sm:flex` (hidden < 640px). Mobile shows hamburger menu (`h-8 w-8` = 32px) and dark mode toggle (`h-7 w-7` = 28px). Both already tracked as B2.
+- ✅ **/projects**: Search bar, category filter, sort dropdown all visible. Cards render in single-column layout.
+- ✅ **Detail page**: Breadcrumb, AI summary, signal sections all render.
+- ✅ **/trends**: Week selector, WoW comparison cards, stat grid, top products, themes, video highlights all render.
+- ✅ **Bookmarks**: Empty state renders (no bookmarks).
+- ✅ **/youtube-insights**: Content renders (verified title).
+
+### Still present (no regression):
+- B1: `home.section.insights.viewAll` raw i18n key on homepage insights section
+- B2: Mobile tap targets below 44px AAPL guideline (28px dark mode toggle, 32px hamburger)
+- `favicon.ico` 404
+- `home.section.insights.viewAll` link also uses raw key in the Insights section heading
+
+### Notes:
+- The mobile horizontal scroll card strips use `-mx-6` negative margins to break out of the `px-6` container — creates edge-to-edge scroll effect. Works as designed.
