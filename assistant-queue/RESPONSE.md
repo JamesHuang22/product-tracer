@@ -1,3 +1,41 @@
+# Accounts & Synced Bookmarks — Response (2026-06-27)
+
+**Status: ✅ Shipped & verified in production (PR #77).** End-to-end user sign-up/login + account-synced bookmarks, leveraging Supabase Auth. Branch → PR → Vercel preview ✅ → squash-merge → migration via Supabase MCP → HTTP 200 verify.
+
+## What shipped
+
+| Area | Detail |
+|------|--------|
+| **Auth** | Email/password via `@supabase/ssr` (cookie sessions). `/login` (combined sign-in / create-account, one `authenticate` server action), `/account` (email · member-since · saved count · sign out), `/auth/callback` (email-confirmation/OAuth code exchange), session-refresh `middleware.ts`. |
+| **Header** | Logged out → **Sign in** link; logged in → account menu (email · Account · Sign out). Mirrored in the mobile nav. |
+| **Bookmarks** | Dual-mode behind a `BookmarksProvider`: guests keep localStorage; members get DB-backed bookmarks (`app.bookmark`, **migration 0017**) synced across devices. First login **merges** the guest's localStorage set into the account, then clears it. Optimistic toggles with server reconciliation. |
+| **API** | `GET /api/bookmarks/ids`, `POST /api/bookmarks/toggle`, `POST /api/bookmarks/merge` (all auth-scoped, 401 when logged out). Existing `GET /api/bookmarks?slugs=` unchanged. |
+| **i18n** | EN + ZH for `nav.signIn/account/signOut`, `auth.*`, `account.*`, `bookmarks.guestHint`. |
+
+## Production verification (https://product-tracer.vercel.app)
+
+- Pages 200: `/`, `/projects`, `/trends`, `/youtube-insights`, `/bookmarks`, `/login`.
+- `/account` (logged out) → **307 → /login**; `/auth/callback` (no code) → **307 → /login**.
+- `/api/bookmarks/ids` & `/toggle` (logged out) → **401**; `/api/bookmarks?slugs=` → **200**.
+- `/login` renders the **live sign-in form** → the `NEXT_PUBLIC_SUPABASE_*` env vars are **already configured in Vercel**, so auth is live (no operator action needed).
+- Supabase Auth (GoTrue) reachable with the configured key: `/auth/v1/settings` → 200; bogus login → `400 invalid_credentials` (correct).
+
+## Architecture notes / decisions
+
+- **Data path**: `app.bookmark` is accessed via the existing server-side postgres.js connection (consistent with `app`/`raw`, which aren't on PostgREST's exposed-schema allow-list), always scoped by the **session-verified** `user.id`. RLS (own-rows-only) is enabled as defense-in-depth. See `DECISIONS.md`.
+- **Graceful degradation**: every auth path guards on `isSupabaseConfigured()`; without the public env vars, auth disables cleanly and bookmarks fall back to localStorage — `next build` and all routes stay green.
+
+## ⚠️ Pre-existing security item (surfaced, not changed)
+
+The Supabase advisor flags **`app.weekly_trend` has RLS disabled** — it's readable/writable by the anon role via PostgREST. It predates this work and is out of scope here. If you ever expose data via the Supabase JS client, enable RLS with a read-only policy:
+```sql
+alter table app.weekly_trend enable row level security;
+create policy weekly_trend_read on app.weekly_trend for select using (true);
+```
+(The web app reads it via postgres.js, which is unaffected either way.)
+
+---
+
 # Phase 2 Sprint — Response (2026-06-24)
 
 All 3 Phase 2 tasks shipped via branch → PR → squash-merge → HTTP 200 verify; `pnpm typecheck` (+ `next build` for frontend) before each PR; no direct pushes to main.
