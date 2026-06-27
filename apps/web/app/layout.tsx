@@ -4,6 +4,8 @@ import { cookies } from 'next/headers';
 import './globals.css';
 import { SiteHeader } from '@/components/site-header';
 import { I18nProvider } from '@/lib/i18n-context';
+import { BookmarksProvider } from '@/lib/bookmarks';
+import { getUser } from '@/lib/supabase/server';
 import { DEFAULT_LOCALE, isLocale, LOCALE_COOKIE } from '@/lib/i18n';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
@@ -36,6 +38,7 @@ export default async function RootLayout({
   const cookieStore = await cookies();
   const cookieLocale = cookieStore.get(LOCALE_COOKIE)?.value;
   const locale = isLocale(cookieLocale) ? cookieLocale : DEFAULT_LOCALE;
+  const user = await getUser();
 
   return (
     <html lang={locale} className={inter.variable} suppressHydrationWarning>
@@ -49,8 +52,10 @@ export default async function RootLayout({
           strips keep working. */}
       <body className="min-h-dvh overflow-x-clip font-sans antialiased">
         <I18nProvider initialLocale={locale}>
-          <SiteHeader />
-          {children}
+          <BookmarksProvider initialUserId={user?.id ?? null}>
+            <SiteHeader userEmail={user?.email ?? null} />
+            {children}
+          </BookmarksProvider>
         </I18nProvider>
       </body>
     </html>

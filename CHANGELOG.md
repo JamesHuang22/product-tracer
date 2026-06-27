@@ -3,6 +3,14 @@
 > Auto-generated summary of notable changes to product-tracer.
 > Format: Keep a Changelog — date, PR/commit, type, description.
 
+## 2026-06-27 — Accounts & synced bookmarks
+
+- **feat(web)**: end-to-end user authentication + account-synced bookmarks (Supabase Auth). New email/password sign-up & sign-in (`/login`, combined form via a single `authenticate` server action), account page (`/account` — email, member-since, saved count, sign out), email-confirmation callback (`/auth/callback`), and session refresh middleware (`@supabase/ssr`). Header shows **Sign in** when logged out and an account menu (email · Account · Sign out) when logged in; mobile nav mirrors this.
+  - **Bookmarks are now dual-mode.** Guests keep the existing localStorage behaviour; signed-in users get DB-backed bookmarks (`app.bookmark`, migration **0017**, applied via Supabase MCP) that sync across devices. On first login a guest's localStorage bookmarks are **merged** into the account and then cleared. New auth-scoped API routes `GET /api/bookmarks/ids`, `POST /api/bookmarks/toggle`, `POST /api/bookmarks/merge`; toggles are optimistic with server reconciliation. `lib/bookmarks` became a `BookmarksProvider` context (same `useBookmark`/`useBookmarks` hook signatures, so `BookmarkButton` and the `/bookmarks` list stayed untouched aside from a guest "sign in to sync" hint).
+  - **Graceful degradation**: with no `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY`, auth disables cleanly (login shows a notice, middleware no-ops, bookmarks stay on localStorage) — the site never 500s for a missing key.
+  - **Security**: `app.bookmark` has RLS (own-rows-only policies) as defense-in-depth; the web layer reaches it via the existing server-side postgres.js connection and always scopes by the session-verified user id. New i18n keys `nav.signIn`/`nav.account`/`nav.signOut`, `auth.*`, `account.*`, `bookmarks.guestHint` (EN/ZH). Deps: `@supabase/ssr`, `@supabase/supabase-js`.
+  - **Setup required**: add the two `NEXT_PUBLIC_SUPABASE_*` env vars in Vercel (values in `assistant-queue/RESPONSE.md`) and redeploy to activate auth in production.
+
 ## 2026-06-24 — Phase 2
 
 - **feat(web)**: mobile nav collapses to a hamburger below 640px (FE#2, #72). The header overflowed a 375px viewport (brand + 4 links + language switcher + theme toggle in one row); the inline nav is now `hidden sm:flex`, and mobile shows the theme toggle + a hamburger toggling a dropdown panel with the links + language switcher. New i18n `nav.menu`/`nav.close` (EN/ZH).

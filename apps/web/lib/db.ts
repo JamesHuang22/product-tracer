@@ -972,3 +972,105 @@ export async function getTrendTopProducts(
     throw err;
   }
 }
+
+// ────────────────────────────────────────────────────────────────────────────
+// User bookmarks (app.bookmark, migration 0017)
+//
+// Persisted per authenticated user. Accessed via this server-side connection
+// (bypasses RLS), so every query MUST scope by the caller's verified user id —
+// never trust a user id from the client. Callers pass the id resolved from the
+// Supabase session (see lib/supabase/server.ts → getUser).
+// ────────────────────────────────────────────────────────────────────────────
+
+/** Slugs the user has bookmarked, newest-first. */
+export async function getBookmarkedSlugs(userId: string): Promise<string[]> {
+  const rows = await sql<{ slug: string }[]>`
+    select p.slug
+    from app.bookmark b
+    join app.project p on p.id = b.project_id
+    where b.user_id = ${userId}
+    order by b.created_at desc
+  `;
+  return rows.map((r) => r.slug);
+}
+
+/** Full project cards for the user's bookmarks, newest-bookmarked first. */
+export async function getBookmarkedProjects(userId: string): Promise<ProjectListItem[]> {
+  return await sql<ProjectListItem[]>`
+    select
+      p.id,
+      p.slug,
+      p.name,
+      p.one_liner,
+      (to_jsonb(p) ->> 'ai_summary') as ai_summary,
+      p.category,
+      p.llm_category,
+      p.primary_url,
+      latest.stars as github_stars,
+      latest.forks as github_forks,
+      p.created_at,
+      coalesce(p.tags, '{}') as tags,
+      coalesce(
+        (select array_agg(distinct il.platform)
+         from app.identity_link il where il.project_id = p.id),
+        '{}'
+      ) as platforms
+    from app.bookmark b
+    join app.project p on p.id = b.project_id
+    left join lateral (
+      select s.stars, s.forks
+      from raw.snapshot s
+      where s.project_id = p.id and s.platform = 'github'
+      order by s.timestamp desc
+      limit 1
+    ) latest on true
+    where b.user_id = ${userId}
+    order by b.created_at desc
+  `;
+}
+
+/**
+ * Toggle a bookmark by project slug. Returns the new state (true = bookmarked)
+ * and whether the slug resolved to a real project. Unknown slugs are a no-op.
+ */
+export async function toggleBookmarkDb(
+  userId: string,
+  slug: string,
+): Promise<{ bookmarked: boolean; found: boolean }> {
+  const [project] = await sql<{ id: string }[]>`
+    select id from app.project where slug = ${slug} limit 1
+  `;
+  if (!project) return { bookmarked: false, found: false };
+
+  const deleted = await sql`
+    delete from app.bookmark
+    where user_id = ${userId} and project_id = ${project.id}
+    returning project_id
+  `;
+  if (deleted.length > 0) return { bookmarked: false, found: true };
+
+  await sql`
+    insert into app.bookmark (user_id, project_id)
+    values (${userId}, ${project.id})
+    on conflict (user_id, project_id) do nothing
+  `;
+  return { bookmarked: true, found: true };
+}
+
+/**
+ * Merge a set of slugs (e.g. a guest's localStorage bookmarks) into the user's
+ * saved set on login. Idempotent — existing rows are left untouched. Returns
+ * the resulting full slug set (newest-first) so the client can sync.
+ */
+export async function mergeBookmarks(userId: string, slugs: string[]): Promise<string[]> {
+  if (slugs.length > 0) {
+    await sql`
+      insert into app.bookmark (user_id, project_id)
+      select ${userId}, p.id
+      from app.project p
+      where p.slug = any(${slugs})
+      on conflict (user_id, project_id) do nothing
+    `;
+  }
+  return getBookmarkedSlugs(userId);
+}
