@@ -5,6 +5,25 @@
 
 ---
 
+## B7 - Inconsistent category casing in "This week's mix" on /trends
+
+**Reported:** 2026-06-27 09:30 UTC
+**Severity:** P4 (Cosmetic)
+**Page:** `/trends`
+
+**Description:** The "This week's mix" section shows category names with inconsistent casing:
+- `AI/ML`, `Other` — sentence/upper case
+- `design`, `devtool`, `saas` — all lowercase
+
+This is a data normalization issue. The category values likely come from different sources (PH categories vs HN metadata vs raw tags) without normalization on display.
+
+**Reproduction:** Visit `/trends` and scroll to the "This week's mix" section. Observe the bar chart labels where `design`, `devtool`, and `saas` are rendered in all lowercase while `AI/ML` and `Other` use sentence case.
+
+**Expected:** All category labels should be normalized to consistent casing (either sentence case `Design`, `Devtool`, `Saas` or keep all-lowercase `ai/ml`). Recommend normalizing on the backend during ingest or applying a title-case transform on display.
+> Tester: JBK (Product Manager + QA Lead)
+
+---
+
 ## B3 - YouTube Insights cards with missing AI summary text
 
 **Reported:** 2026-06-27 07:30 UTC
