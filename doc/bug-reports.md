@@ -80,3 +80,21 @@
 **URL:** `https://product-tracer.vercel.app/favicon.ico`
 
 **Description:** No favicon configured. Request returns `404: This page could not be found.` on every page load. Browser tools show a 404 in the console for `/favicon.ico`.
+
+---
+
+## B6 - WoW product name case mismatch in /trends comparison cards
+
+**Reported:** 2026-06-27 08:10 UTC
+**Severity:** P4 (Cosmetic) - minor data presentation inconsistency
+**Page:** `/trends`
+
+**Description:** The "This week" and "Last week" comparison cards in the Week Over Week section show the same top product with different casing:
+- This week: **"Are You in the Weights?"** (title case)
+- Last week: **"Are you in the Weights?"** (lowercase 'y' in "you")
+
+This is a data quality issue — the product name likely comes from two different source snapshots with inconsistent casing.
+
+**Reproduction:** Visit `/trends`, look at the Week Over Week section. The top product name on the "This week" card has "You" capitalized while "Last week" shows "you" lowercase.
+
+**Expected:** Product names should be normalized to consistent casing across all data sources before display. Consider adding a DB-level name normalization on ingest.
