@@ -100,18 +100,34 @@ function DigestCard({
   // Locale-aware: one paragraph in the active language. In English mode we never
   // fall back to the Chinese column (and drop the English one if it actually
   // holds Chinese), so the EN UI stays free of stray Chinese.
-  const text = localizedPair(locale, insight.key_insight, insight.key_insight_zh);
+  const insightText = localizedPair(locale, insight.key_insight, insight.key_insight_zh);
+  // Never leave a card textless. When the AI summary is missing — or gets
+  // suppressed because EN mode drops a Chinese-only key_insight — fall back to
+  // the video title (raw source content, like a product name), then to a muted
+  // "analysis pending" note. The DB layer already drops rows with no usable text
+  // in either language; this covers the locale-suppression case.
+  const fallbackTitle = insight.video_title?.trim() || null;
+  const text = insightText ?? fallbackTitle;
+  const isFallback = !insightText;
 
   return (
     <article
       className={`flex h-full flex-col rounded-xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950 ${compact ? 'p-4' : 'p-5'}`}
     >
-      {text && (
+      {text ? (
         <p
-          className={`text-[15px] leading-relaxed text-neutral-900 dark:text-neutral-100 ${compact ? 'line-clamp-4' : ''}`}
+          className={`text-[15px] leading-relaxed ${isFallback ? 'text-neutral-600 dark:text-neutral-400' : 'text-neutral-900 dark:text-neutral-100'} ${compact ? 'line-clamp-4' : ''}`}
         >
-          {hot && <span className="mr-1.5" aria-hidden>🔥</span>}
+          {hot && !isFallback && (
+            <span className="mr-1.5" aria-hidden>
+              🔥
+            </span>
+          )}
           {text}
+        </p>
+      ) : (
+        <p className="text-[15px] italic leading-relaxed text-neutral-400 dark:text-neutral-500">
+          {translate(locale, 'insights.analysisPending')}
         </p>
       )}
 

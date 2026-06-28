@@ -22,9 +22,9 @@
 
 ## [2026-06-28] TASK-006: Fix empty YouTube insight cards on /youtube-insights
 - **Priority**: P0 BUG
-- **Status**: ready
-- **Locked by**:
-- **Locked at**:
+- **Status**: in-progress
+- **Locked by**: coder-auto
+- **Locked at**: 2026-06-28 16:10 PDT
 - **Acceptance**: Every card on /youtube-insights must display content. No card should show only "Neutral / Other / Watch on YouTube" with empty insight text.
   - Investigate: are these rows with null/empty `key_insight` in the DB? Or is the frontend failing to render?
   - Fix: ensure every card has visible content. If DB has null insights, show a fallback like "Analysis pending" or fetch the raw title/description.
