@@ -1,3 +1,25 @@
+# Coder-Auto session — Response (2026-06-28)
+
+## TASK-006 — Empty YouTube insight cards (P0 BUG) ✅ shipped & verified (PR #82)
+
+**Bug:** some cards on `/youtube-insights` showed only a sentiment dot + category + "Watch on YouTube", with no insight text.
+
+**Root cause (confirmed in DB, not a guess):** of 117 `app.video_insight` rows, **20 store Chinese text in the English `key_insight` column**. The EN UI deliberately suppresses CJK (the no-Chinese-in-English rule via `localizedPair`), so those 20 rows resolved to empty text — and `DigestCard` rendered no paragraph at all (it also never showed the video title). 0 rows are empty in *both* languages, so this was purely the locale-suppression case, not null data.
+
+**Fix (two layers):**
+1. **DB guard** — added the "usable text in either language" predicate (already used by the homepage's `getTopVideoInsights`) to `getVideoInsights`, `getVideoInsightsByCategories`, the pager count, and the category counts — kept in sync so list/pager/badges agree. Drops 0 rows today; defensive against future null rows.
+2. **Render fallback** — `DigestCard` now falls back to the **video title** when the localized insight is empty, then to a muted **"Analysis pending"**. A text block always renders. The EN no-CJK rule is preserved: the full Chinese insight body is still not shown in EN — only the title surfaces.
+
+**Verified in prod:** EN renders 20 cards, all with content, no empty cards, no insight-body leak; ZH unchanged.
+
+**⚠️ Upstream follow-up (worker, not done here):** the YouTube analysis pipeline is writing Chinese into the English `key_insight` column for ~17% of rows. The durable fix is in `apps/worker` — ensure `key_insight` is English and `key_insight_zh` holds the Chinese. This frontend fix makes the cards non-empty, but the data should be corrected at the source.
+
+## TASK-001 — Locale-prefixed routes ✅ shipped & verified (PR #81)
+
+`/en/*` and `/zh/*` URLs previously 404'd (locale was cookie-only). `middleware.ts` now strips the `/en`·`/zh` prefix, rewrites to the existing route, and sets the locale cookie on the forwarded request + response so the whole tree (header, body, `<html lang>`) is consistent. Verified: all six acceptance routes 200 with correct per-locale content; legacy routes + RSS feeds unaffected. **Note:** this reverses the earlier FE#1 decision ("locale-prefixed routes declined — 404 intentionally") — done per your explicit "merge it" call after the task had been removed from the queue mid-implementation.
+
+---
+
 # Email Confirmation Fix — Response (2026-06-28)
 
 **Bug:** clicking the sign-up confirmation email showed **"unable to connect."**

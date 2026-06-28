@@ -22,9 +22,11 @@
 
 ## [2026-06-28] TASK-006: Fix empty YouTube insight cards on /youtube-insights
 - **Priority**: P0 BUG
-- **Status**: in-progress
+- **Status**: done
 - **Locked by**: coder-auto
 - **Locked at**: 2026-06-28 16:10 PDT
+- **PR**: #82 (merged)
+- **Verify**: PASS — EN /youtube-insights renders 20 cards, every card has a text block (title fallback for the 20 CJK-in-EN-column rows), no empty cards, no CJK insight leak; ZH still shows the Chinese insight. Root cause confirmed in DB: 20/117 rows store Chinese in the English `key_insight` column (worker-side data-quality follow-up noted in RESPONSE.md).
 - **Acceptance**: Every card on /youtube-insights must display content. No card should show only "Neutral / Other / Watch on YouTube" with empty insight text.
   - Investigate: are these rows with null/empty `key_insight` in the DB? Or is the frontend failing to render?
   - Fix: ensure every card has visible content. If DB has null insights, show a fallback like "Analysis pending" or fetch the raw title/description.
