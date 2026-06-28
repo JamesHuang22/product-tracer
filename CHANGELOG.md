@@ -3,6 +3,10 @@
 > Auto-generated summary of notable changes to product-tracer.
 > Format: Keep a Changelog — date, PR/commit, type, description.
 
+## 2026-06-28 — Email confirmation fix
+
+- **fix(web)**: sign-up email confirmation showed "unable to connect" (#79). Root cause was the Supabase **Site URL** still being the localhost default (the verify link redirects there), compounded by `/auth/callback` only handling the PKCE `code` (which fails when the email is opened on a different device). Added **`/auth/confirm`** (`verifyOtp` with `token_hash`, device-independent — the Supabase-recommended SSR flow); made `/auth/callback` handle both `code` and `token_hash`; added a friendly **`/auth/auth-code-error`** page; and added login detection of `email_not_confirmed` with a **resend confirmation email** action + a post-signup "check your email" notice (server actions now localize via the locale cookie, EN/ZH). Email verification stays required (`mailer_autoconfirm=false`). **Operator must set 3 Supabase Auth settings** (Site URL, Redirect URLs, Confirm-signup email template) to complete the fix — see `assistant-queue/RESPONSE.md`. Also `.gitignore`d a stray `jbk-focus-counter.txt` written into the repo by an external tool.
+
 ## 2026-06-27 — Accounts & synced bookmarks
 
 - **feat(web)**: end-to-end user authentication + account-synced bookmarks (Supabase Auth). New email/password sign-up & sign-in (`/login`, combined form via a single `authenticate` server action), account page (`/account` — email, member-since, saved count, sign out), email-confirmation callback (`/auth/callback`), and session refresh middleware (`@supabase/ssr`). Header shows **Sign in** when logged out and an account menu (email · Account · Sign out) when logged in; mobile nav mirrors this.

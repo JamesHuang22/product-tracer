@@ -31,3 +31,6 @@ pnpm-debug.log*
 
 # Claude Code transient scheduler lock
 .claude/scheduled_tasks.lock
+
+# Stray local artifact written into the repo dir by an external focus tool
+jbk-focus-counter.txt
