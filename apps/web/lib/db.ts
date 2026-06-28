@@ -665,6 +665,14 @@ export async function getVideoInsights(limit: number, offset = 0): Promise<Video
       -- category column likewise read defensively (migration 0010): NULL until applied.
       (to_jsonb(vi) ->> 'category') as category
     from app.video_insight vi
+    -- Skip rows with no usable summary in EITHER language: they render as an
+    -- empty card on /youtube-insights (just sentiment + "Watch on YouTube").
+    -- Mirrors getTopVideoInsights; the pager (getVideoInsightCount) applies the
+    -- same predicate so totals stay in sync.
+    where (
+      nullif(btrim(vi.key_insight), '') is not null
+      or nullif(btrim(to_jsonb(vi) ->> 'key_insight_zh'), '') is not null
+    )
     order by vi.published_at desc nulls last, vi.created_at desc
     limit ${limit}
     offset ${offset}
@@ -742,6 +750,11 @@ export async function getVideoInsightsByCategories(
       (to_jsonb(vi) ->> 'category') as category
     from app.video_insight vi
     where (to_jsonb(vi) ->> 'category') = any(${categories})
+      -- Same empty-summary guard as getVideoInsights (kept in sync with the pager).
+      and (
+        nullif(btrim(vi.key_insight), '') is not null
+        or nullif(btrim(to_jsonb(vi) ->> 'key_insight_zh'), '') is not null
+      )
     order by vi.published_at desc nulls last, vi.created_at desc
     limit ${limit}
     offset ${offset}
@@ -760,8 +773,19 @@ export async function getVideoInsightCount(categories?: string[]): Promise<numbe
         select count(*)::int as n
         from app.video_insight vi
         where (to_jsonb(vi) ->> 'category') = any(${categories})
+          and (
+            nullif(btrim(vi.key_insight), '') is not null
+            or nullif(btrim(to_jsonb(vi) ->> 'key_insight_zh'), '') is not null
+          )
       `
-      : await sql<{ n: number }[]>`select count(*)::int as n from app.video_insight`;
+      : await sql<{ n: number }[]>`
+        select count(*)::int as n
+        from app.video_insight vi
+        where (
+          nullif(btrim(vi.key_insight), '') is not null
+          or nullif(btrim(to_jsonb(vi) ->> 'key_insight_zh'), '') is not null
+        )
+      `;
   return row?.n ?? 0;
 }
 
@@ -776,6 +800,12 @@ export async function getVideoInsightCategories(): Promise<
   return await sql<{ category: string | null; cnt: number }[]>`
     select (to_jsonb(vi) ->> 'category') as category, count(*)::int as cnt
     from app.video_insight vi
+    -- Count only rows that will actually render (same guard as the list/pager),
+    -- so the dropdown badges match the visible card count.
+    where (
+      nullif(btrim(vi.key_insight), '') is not null
+      or nullif(btrim(to_jsonb(vi) ->> 'key_insight_zh'), '') is not null
+    )
     group by 1
     order by cnt desc
   `;

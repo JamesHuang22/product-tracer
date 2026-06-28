@@ -209,6 +209,7 @@ const en: Messages = {
   'insights.categoryOther': 'Other',
   'insights.viewList': 'List',
   'insights.viewGrid': 'Grid',
+  'insights.analysisPending': 'Analysis pending',
 
   'trends.title': 'Weekly Hot Trends',
   'trends.subtitle': "What's hot in the indie dev space this week",
@@ -419,6 +420,7 @@ const zh: Messages = {
   'insights.categoryOther': '其他',
   'insights.viewList': '列表',
   'insights.viewGrid': '网格',
+  'insights.analysisPending': '分析生成中',
 
   'trends.title': '本周热门趋势',
   'trends.subtitle': '本周独立开发者圈的热点',
