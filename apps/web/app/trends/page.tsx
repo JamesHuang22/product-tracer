@@ -24,7 +24,7 @@ import {
 } from '@/lib/i18n';
 
 export const metadata: Metadata = {
-  title: 'Weekly Hot Trends — Product Tracer',
+  title: 'Weekly Hot Trends — OpenProduct',
   description: 'A weekly read on what is gaining traction in the indie dev & AI space.',
 };
 

@@ -7,7 +7,7 @@ import { getUser } from '@/lib/supabase/server';
 import { AuthForm } from './auth-form';
 
 export const metadata: Metadata = {
-  title: 'Sign in — Product Tracer',
+  title: 'Sign in — OpenProduct',
   description: 'Sign in to sync your bookmarks across devices.',
 };
 

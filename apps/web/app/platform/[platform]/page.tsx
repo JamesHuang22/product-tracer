@@ -25,9 +25,9 @@ export async function generateMetadata({
   params: Promise<{ platform: string }>;
 }): Promise<Metadata> {
   const { platform } = await params;
-  if (!isPlatform(platform)) return { title: 'Platform not found — Product Tracer' };
+  if (!isPlatform(platform)) return { title: 'Platform not found — OpenProduct' };
   const name = translate('en', platformNameKey(platform));
-  return { title: `${name} projects — Product Tracer` };
+  return { title: `${name} projects — OpenProduct` };
 }
 
 export default async function PlatformPage({ params }: { params: Promise<{ platform: string }> }) {

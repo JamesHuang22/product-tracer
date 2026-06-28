@@ -7,7 +7,7 @@ import { DEFAULT_LOCALE, isLocale, LOCALE_COOKIE, translate } from '@/lib/i18n';
 import { localizedText } from '@/lib/format';
 
 export const metadata: Metadata = {
-  title: 'Projects — Product Tracer',
+  title: 'Projects — OpenProduct',
   description: 'All tracked indie products across GitHub, sorted by stars.',
 };
 

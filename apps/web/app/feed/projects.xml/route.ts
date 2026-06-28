@@ -38,7 +38,7 @@ export async function GET() {
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0">
   <channel>
-    <title>Product Tracer — New Projects</title>
+    <title>OpenProduct — New Projects</title>
     <link>${SITE}/projects</link>
     <description>New indie projects tracked across GitHub, Hacker News, Product Hunt &amp; YouTube</description>
     <language>en</language>

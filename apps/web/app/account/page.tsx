@@ -8,7 +8,7 @@ import { getBookmarkedSlugs } from '@/lib/db';
 import { signOut } from '@/app/login/actions';
 
 export const metadata: Metadata = {
-  title: 'Account — Product Tracer',
+  title: 'Account — OpenProduct',
   description: 'Manage your account.',
 };
 

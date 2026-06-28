@@ -14,14 +14,14 @@ export const metadata: Metadata = {
   // Resolves relative OG / Twitter image URLs (e.g. /og/youtube-insights) to
   // absolute. Overridable via NEXT_PUBLIC_SITE_URL for previews / forks.
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'https://product-tracer.vercel.app'),
-  title: 'Product Tracer — Cross-platform indie product signals',
+  title: 'OpenProduct — Cross-platform indie product signals',
   description:
     'Daily intelligence on indie products gaining traction across GitHub, Hacker News, Product Hunt, and YouTube.',
   alternates: {
     types: {
       'application/rss+xml': [
-        { url: '/feed/projects.xml', title: 'Product Tracer — New Projects' },
-        { url: '/feed/youtube-insights.xml', title: 'Product Tracer — YouTube Insights' },
+        { url: '/feed/projects.xml', title: 'OpenProduct — New Projects' },
+        { url: '/feed/youtube-insights.xml', title: 'OpenProduct — YouTube Insights' },
       ],
     },
   },

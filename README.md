@@ -1,6 +1,6 @@
-# product-tracer
+# OpenProduct
 
-All-in-one agentic indie-product signal tracker.
+All-in-one agentic indie-product signal tracker. (Repo/package id: `product-tracer`.)
 
 ## Structure
 

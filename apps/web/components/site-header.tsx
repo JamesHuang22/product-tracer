@@ -33,7 +33,7 @@ export function SiteHeader({ userEmail }: { userEmail: string | null }) {
           className="flex items-center gap-2 text-sm font-semibold tracking-tight"
         >
           <span className="inline-block size-2 rounded-full bg-emerald-500" aria-hidden />
-          Product Tracer
+          OpenProduct
         </Link>
 
         {/* Desktop nav (>= sm) */}
