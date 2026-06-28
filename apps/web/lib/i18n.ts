@@ -54,6 +54,17 @@ const en: Messages = {
   'auth.toSignUp': "Don't have an account? Create one",
   'auth.toSignIn': 'Already have an account? Sign in',
   'auth.notConfigured': 'Authentication is not configured on this deployment yet.',
+  'auth.confirmPending':
+    'Account created. We sent a confirmation link to your email — click it to verify, then sign in.',
+  'auth.emailNotConfirmed':
+    'Please confirm your email first. Check your inbox for the confirmation link.',
+  'auth.resend': 'Resend confirmation email',
+  'auth.resending': 'Sending…',
+  'auth.resent': 'Confirmation email sent. Check your inbox (and spam).',
+  'auth.errorTitle': 'Confirmation link invalid or expired',
+  'auth.errorBody':
+    'This link is invalid, has expired, or was already used. Sign in below, or create your account again to get a fresh link.',
+  'auth.backToLogin': 'Back to sign in',
 
   'account.title': 'Account',
   'account.email': 'Email',
@@ -258,6 +269,14 @@ const zh: Messages = {
   'auth.toSignUp': '还没有账户？创建一个',
   'auth.toSignIn': '已有账户？登录',
   'auth.notConfigured': '此部署尚未配置身份验证。',
+  'auth.confirmPending': '账户已创建。我们已向你的邮箱发送确认链接——点击完成验证后即可登录。',
+  'auth.emailNotConfirmed': '请先确认你的邮箱。请在收件箱中查收确认链接。',
+  'auth.resend': '重新发送确认邮件',
+  'auth.resending': '发送中…',
+  'auth.resent': '确认邮件已发送，请查收收件箱（含垃圾邮件）。',
+  'auth.errorTitle': '确认链接无效或已过期',
+  'auth.errorBody': '该链接无效、已过期或已被使用。请在下方登录，或重新创建账户以获取新链接。',
+  'auth.backToLogin': '返回登录',
 
   'account.title': '账户',
   'account.email': '邮箱',
