@@ -1,3 +1,46 @@
+# Email Confirmation Fix — Response (2026-06-28)
+
+**Bug:** clicking the sign-up confirmation email showed **"unable to connect."**
+
+**Root cause (two parts):**
+1. **Supabase config (the actual cause):** the verify link redirects to the project's **Site URL**, which is still the default `http://localhost:3000`. On a real device that host is unreachable → "unable to connect." Our `emailRedirectTo` was also ignored because it wasn't on the redirect allow-list.
+2. **Code:** `/auth/callback` only handled the PKCE `code` param, which can't be exchanged when the email is opened on a **different device** than the one used to sign up (the code-verifier cookie isn't there).
+
+**Code fix — shipped & verified (PR #79):**
+- New **`/auth/confirm`** route (`verifyOtp` with `token_hash`) — the Supabase-recommended SSR flow; device-independent.
+- **`/auth/callback`** now handles both `code` (PKCE/OAuth) and `token_hash` fallback, so confirmation works whether or not the email template is updated.
+- New friendly **`/auth/auth-code-error`** page instead of dead-end redirects.
+- Login now detects **`email_not_confirmed`** and offers a **"resend confirmation email"** action; shows a localized "check your email" notice after sign-up. Server actions localize messages (EN/ZH).
+- Verified in prod: `/auth/confirm` (no token) → 307 → `/auth/auth-code-error` (200); all key pages 200.
+
+**Email verification is kept on** (`mailer_autoconfirm` is already `false`) per your requirement to validate real addresses.
+
+## ⚠️ Required: 3 Supabase dashboard settings (you're applying these)
+
+Project **ProductTracer** (`wpleklpvjmzfhfqukwzz`) → **Authentication**:
+
+1. **URL Configuration → Site URL**
+   ```
+   https://product-tracer.vercel.app
+   ```
+2. **URL Configuration → Redirect URLs** → Add URL (add both):
+   ```
+   https://product-tracer.vercel.app/**
+   http://localhost:3000/**
+   ```
+3. **Emails → Templates → "Confirm signup"** → change the link target to:
+   ```
+   {{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next=/bookmarks
+   ```
+   (i.e. replace the `href="{{ .ConfirmationURL }}"` with the URL above.)
+
+After saving, sign up with a fresh email → the link opens
+`/auth/confirm` → verifies → lands on `/bookmarks` signed in, on any device.
+Existing unconfirmed accounts: use the new **Resend confirmation email**
+button on the login page to get a working link.
+
+---
+
 # Accounts & Synced Bookmarks — Response (2026-06-27)
 
 **Status: ✅ Shipped & verified in production (PR #77).** End-to-end user sign-up/login + account-synced bookmarks, leveraging Supabase Auth. Branch → PR → Vercel preview ✅ → squash-merge → migration via Supabase MCP → HTTP 200 verify.
