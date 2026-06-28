@@ -6,23 +6,6 @@
 
 ---
 
-## [2026-06-28] TASK-005: Landing page — "OpenProduct" marketing homepage
-- **Priority**: P0
-- **Status**: pending
-- **Locked by**:
-- **Locked at**:
-- **Acceptance**:
-  - A new landing page at `/` with flashy animations/effects that sells the product
-  - Tagline: "Stay ahead of the curve. Discover the latest products building around the world."
-  - "Get Started" CTA button → login/signup
-  - After login → redirect to the existing product dashboard (the current `/` page moves to `/dashboard`)
-  - Must be bilingual (EN/ZH), include i18n keys
-  - Visually impressive — animated hero, gradient effects, particle effects or similar
-- **Spec**:
-  *(filled by Planner)*
-
----
-
 ## [2026-06-28] TASK-006: Fix empty YouTube insight cards on /youtube-insights
 - **Priority**: P0 BUG
 - **Status**: pending
@@ -47,34 +30,18 @@
 
 ---
 
-## [2026-06-28] TASK-003: Re-enable all collectors + verify post-unblock
-- **Priority**: HIGH
+## [2026-06-28] TASK-005: Landing page — "OpenProduct" marketing homepage
+- **Priority**: P0
 - **Status**: pending
 - **Locked by**:
 - **Locked at**:
-- **Acceptance**: All 5 core collectors (GitHub, HN, PH, Reddit, YouTube) run successfully. Any non-billing failures reported.
-- **Spec**:
-  *(filled by Planner)*
-
----
-
-## [2026-06-28] TASK-002: GitHub collector — richer data, freshness filter
-- **Priority**: P1
-- **Status**: pending
-- **Locked by**:
-- **Locked at**:
-- **Acceptance**: GitHub collector fetches more fields (description, stars, language, topics) and skips repos older than 30 days. **(BLOCKED by TASK-003 — need collectors running first)**
-- **Spec**:
-  *(filled by Planner)*
-
----
-
-## [2026-06-28] TASK-001: Fix locale-prefixed routes for /trends, /youtube-insights, /bookmarks
-- **Priority**: P2
-- **Status**: pending
-- **Locked by**:
-- **Locked at**:
-- **Acceptance**: `/en/trends`, `/zh/trends`, `/en/youtube-insights`, `/zh/youtube-insights`, `/en/bookmarks`, `/zh/bookmarks` all return 200 with correct locale content
+- **Acceptance**:
+  - A new landing page at `/` with flashy animations/effects that sells the product
+  - Tagline: "Stay ahead of the curve. Discover the latest products building around the world."
+  - "Get Started" CTA button → login/signup
+  - After login → redirect to the existing product dashboard (the current `/` page moves to `/dashboard`)
+  - Must be bilingual (EN/ZH), include i18n keys
+  - Visually impressive — animated hero, gradient effects, particle effects or similar
 - **Spec**:
   *(filled by Planner)*
 
