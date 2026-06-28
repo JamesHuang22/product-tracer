@@ -266,9 +266,9 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const project = await getProjectBySlug(slug);
-  if (!project) return { title: 'Project not found — Product Tracer' };
+  if (!project) return { title: 'Project not found — OpenProduct' };
   return {
-    title: `${project.name} — Product Tracer`,
+    title: `${project.name} — OpenProduct`,
     description: cleanOneLiner(project.one_liner) ?? undefined,
   };
 }

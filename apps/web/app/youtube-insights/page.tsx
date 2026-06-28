@@ -19,7 +19,7 @@ import {
 import { localizedPair } from '@/lib/format';
 import { InsightsControls, type CategoryOption } from './insights-controls';
 
-const OG_TITLE = 'YouTube Insights — Product Tracer';
+const OG_TITLE = 'YouTube Insights — OpenProduct';
 const OG_DESCRIPTION =
   'A bilingual digest of LLM-analysed YouTube videos — key takeaways by category.';
 
@@ -33,14 +33,14 @@ export const metadata: Metadata = {
     title: OG_TITLE,
     description: OG_DESCRIPTION,
     url: '/youtube-insights',
-    siteName: 'Product Tracer',
+    siteName: 'OpenProduct',
     type: 'website',
     images: [
       {
         url: '/og/youtube-insights',
         width: 1200,
         height: 630,
-        alt: 'Product Tracer — YouTube Insights',
+        alt: 'OpenProduct — YouTube Insights',
       },
     ],
   },

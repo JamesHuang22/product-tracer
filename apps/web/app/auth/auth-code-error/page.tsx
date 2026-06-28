@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { DEFAULT_LOCALE, isLocale, LOCALE_COOKIE, translate } from '@/lib/i18n';
 
 export const metadata: Metadata = {
-  title: 'Confirmation problem — Product Tracer',
+  title: 'Confirmation problem — OpenProduct',
   robots: { index: false },
 };
 

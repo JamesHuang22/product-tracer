@@ -4,7 +4,7 @@ import { DEFAULT_LOCALE, isLocale, LOCALE_COOKIE, translate } from '@/lib/i18n';
 import { BookmarksList } from './bookmarks-list';
 
 export const metadata: Metadata = {
-  title: 'Bookmarks — Product Tracer',
+  title: 'Bookmarks — OpenProduct',
   description: 'Your saved projects.',
 };
 

@@ -10,7 +10,7 @@ const HEIGHT = 630;
 /**
  * GET /og/youtube-insights — 1200×630 Open Graph card for the YouTube Insights
  * page, referenced by the page's generateMetadata. Dark, brand-consistent
- * (emerald accent + Product Tracer wordmark) so shared links preview cleanly.
+ * (emerald accent + OpenProduct wordmark) so shared links preview cleanly.
  */
 export function GET() {
   return new ImageResponse(
@@ -32,7 +32,7 @@ export function GET() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <div style={{ width: 18, height: 18, borderRadius: 9999, backgroundColor: '#10b981' }} />
           <div style={{ color: '#fafafa', fontSize: 30, fontWeight: 600, letterSpacing: -0.5 }}>
-            Product Tracer
+            OpenProduct
           </div>
         </div>
 

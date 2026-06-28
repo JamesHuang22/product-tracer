@@ -1,6 +1,6 @@
 # @product-tracer/db
 
-Supabase Postgres client + SQL migrations for Product Tracer.
+Supabase Postgres client + SQL migrations for OpenProduct.
 
 See [`SCHEMA.md`](./SCHEMA.md) for full table-by-table documentation.
 
