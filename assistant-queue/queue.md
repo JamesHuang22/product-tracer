@@ -6,17 +6,6 @@
 
 ---
 
-## [2026-06-28] TASK-004: Product rename — "Product Tracer" → "OpenProduct"
-- **Priority**: P0
-- **Status**: pending
-- **Locked by**:
-- **Locked at**:
-- **Acceptance**: All references to "Product Tracer" throughout the codebase are changed to "OpenProduct". Site title, nav bar, page titles, meta tags, OG images, README, CHANGELOG.
-- **Spec**:
-  *(filled by Planner)*
-
----
-
 ## [2026-06-28] TASK-005: Landing page — "OpenProduct" marketing homepage
 - **Priority**: P0
 - **Status**: pending
@@ -29,6 +18,30 @@
   - After login → redirect to the existing product dashboard (the current `/` page moves to `/dashboard`)
   - Must be bilingual (EN/ZH), include i18n keys
   - Visually impressive — animated hero, gradient effects, particle effects or similar
+- **Spec**:
+  *(filled by Planner)*
+
+---
+
+## [2026-06-28] TASK-006: Fix empty YouTube insight cards on /youtube-insights
+- **Priority**: P0 BUG
+- **Status**: pending
+- **Locked by**:
+- **Locked at**:
+- **Acceptance**: Every card on /youtube-insights must display content. No card should show only "Neutral / Other / Watch on YouTube" with empty insight text.
+  - Investigate: are these rows with null/empty `key_insight` in the DB? Or is the frontend failing to render?
+  - Fix: ensure every card has visible content. If DB has null insights, show a fallback like "Analysis pending" or fetch the raw title/description.
+- **Spec**:
+  *(filled by Planner)*
+
+---
+
+## [2026-06-28] TASK-004: Product rename — "Product Tracer" → "OpenProduct"
+- **Priority**: P0
+- **Status**: pending
+- **Locked by**:
+- **Locked at**:
+- **Acceptance**: All references to "Product Tracer" throughout the codebase are changed to "OpenProduct". Site title, nav bar, page titles, meta tags, OG images, README, CHANGELOG.
 - **Spec**:
   *(filled by Planner)*
 
