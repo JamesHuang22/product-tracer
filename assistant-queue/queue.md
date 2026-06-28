@@ -50,9 +50,9 @@
 
 ## [2026-06-28] TASK-004: Product rename — "Product Tracer" → "OpenProduct"
 - **Priority**: P0
-- **Status**: ready
-- **Locked by**:
-- **Locked at**:
+- **Status**: in-progress
+- **Locked by**: coder-auto
+- **Locked at**: 2026-06-28 16:20 PDT
 - **Acceptance**: All references to "Product Tracer" throughout the codebase are changed to "OpenProduct". Site title, nav bar, page titles, meta tags, OG images, README, CHANGELOG.
 - **Spec**:
   **Scope — exhaustive grep & replace:**
