@@ -4,14 +4,16 @@
 
 ---
 
-## Overview
+## What you'll be running
 
-You'll set up:
-| Component | Type | How |
-|-----------|------|-----|
-| **Planner** | OpenClaw cron (every 5 min) | Me — write specs for pending tasks |
-| **Coder** | CC `--worktree` (your terminal) | You — implement code, say "pull now" |
-| **Health** | OpenClaw cron (every 30 min) | Me — monitor site uptime |
+| Terminal | Role | Behavior |
+|----------|------|----------|
+| 1 | **Coder-Auto** | Polls queue every 30 min, works autonomously |
+| 2 | **Coder-OnDemand** | Waits for "pull now" — you trigger it |
+| (background) | Planner cron | Every 5 min, writes specs (me) |
+| (background) | Health cron | Every 30 min, monitors site (me) |
+
+No manual scope assignment. Both coders compete for tasks via a lock mechanism in queue.md.
 
 ---
 
@@ -22,132 +24,152 @@ cd /Users/jameshuang/Desktop/ai_project/product-tracer
 mkdir -p assistant-queue
 ```
 
-**Alex will write the initial queue.md.** It will contain:
-- The system description (so the Coder knows the rules)
-- Any pending tasks migrated from the old queue files
+Alex will write the initial queue.md with the system rules.
 
 ---
 
-## Step 2: Register Planner cron
+## Step 2: Register Planner cron (every 5 min)
 
 ```bash
 openclaw cron add \
   --name planner \
   --cron "*/5 * * * *" \
   --agent main \
-  --message "Read assistant-queue/queue.md from product-tracer repo. If there is a task with Status: pending, analyze the task and write a detailed spec section. Change Status to spec. Commit and push. Stay silent otherwise." \
+  --message "Read assistant-queue/queue.md from product-tracer repo. If any task has Status: pending, write a detailed spec section. Change Status to ready. Commit and push." \
   --timeout-seconds 180 \
   --session isolated
 ```
 
-**What this does:** Every 5 minutes, I check queue.md. If there's a pending task → I write a spec → commit → push. If nothing → silence.
-
 ---
 
-## Step 3: Register Health cron
+## Step 3: Register Health cron (every 30 min)
 
 ```bash
 openclaw cron add \
   --name health \
   --cron "*/30 * * * *" \
   --agent main \
-  --message "HTTP health check for product-tracer.vercel.app. curl /, /projects, /trends. If any non-200, send Telegram alert to James." \
+  --message "HTTP health check for product-tracer.vercel.app. curl /, /projects, /trends. If any non-200, alert James via Telegram." \
   --timeout-seconds 60 \
   --session isolated
 ```
 
 ---
 
-## Step 4: Start Coder session
+## Step 4: Start Coder-Auto
 
-This is the only step you do in your terminal.
+Open a new terminal tab.
 
 ```bash
 cd /Users/jameshuang/Desktop/ai_project/product-tracer
-claude --worktree coder --dangerously-skip-permissions --name "PT Coder"
+claude --worktree coder-auto --dangerously-skip-permissions --name "PT Coder Auto"
 ```
 
-**What `--worktree coder` does:**
-- Creates an independent working directory at `.claude/worktrees/coder/`
-- Has its own branch, its own file changes
-- Your `main` working tree is untouched — you can work on it in another terminal
-
-**After the session starts, paste this goal:**
-
-```markdown
-/goal You are the Product Tracer Coder Agent.
-
-YOUR ONLY JOB:
-1. Read assistant-queue/queue.md
-2. Find the first task with Status: "ready" or "spec"
-3. Read its spec section carefully
-4. git pull --rebase origin main
-5. git checkout -b feat/task-XXX
-6. Implement the code per spec
-7. pnpm typecheck
-8. gh pr create --fill
-9. Poll CI every 30s (max 5 min): gh pr view --json statusCheckRollup
-10. If Vercel ✅ → gh pr merge --squash
-11. curl -sI https://product-tracer.vercel.app/ → 200
-12. curl /projects /trends /youtube-insights /bookmarks /login → all 200
-13. If migrations exist: psql "$DATABASE_URL" -f packages/db/migrations/XXX.sql
-14. Update CHANGELOG.md
-15. Write summary to assistant-queue/RESPONSE.md
-16. In queue.md: change Status to "done", add PR # and verify result
-17. git add -A && git commit -m 'coder: TASK-XXX done' && git push
-18. Stay idle. Say "pull now" when James can start the next task.
-
-GOLDEN RULES:
-- NEVER re-read queue during a task. Finish first.
-- NEVER close the session.
-- If stuck → write "Status: blocked" in queue.md with the problem and wait.
-- If a page returns non-200 → do NOT merge. Investigate first.
-- When idle → just sit there. Say "done, waiting for next task".
-- Self-review before PR: check for null safety, stray console.log, TODO comments.
-```
-
----
-
-## Step 5: Load skills
-
-Inside the Coder session, run these commands:
-
+**After session starts, load skills:**
 ```
 /skill agent-session
 /skill vercel-verify
 /skill frontend-design
 ```
 
+**Then paste this goal:**
+```markdown
+/goal You are Coder-Auto for Product Tracer. Your job is to poll the queue every 30 minutes and implement tasks automatically.
+
+BEHAVIOR:
+1. Every 30 minutes: read assistant-queue/queue.md
+2. Find first task with Status: "ready" AND Locked by: (empty)
+3. Lock it: change "Locked by" to "coder-auto", "Locked at" to current timestamp
+4. git add -A && git commit -m "lock: TASK-XXX by coder-auto" && git push
+5. git pull --rebase origin main
+6. git checkout -b feat/task-XXX
+7. Implement per spec
+8. pnpm typecheck → gh pr create --fill
+9. Poll Vercel (max 5 min)
+10. If ✅ → gh pr merge --squash
+11. curl verify all pages 200
+12. If migrations: psql "$DATABASE_URL" -f packages/db/migrations/XXX.sql
+13. Update CHANGELOG.md → write RESPONSE.md → Status: done
+14. git push → wait 30 min → poll again
+
+LOCKING RULES:
+- If another coder already locked the task (Locked by is not empty): skip it, find the next one
+- If no ready + unlocked task exists: stay idle, wait 30 min
+- Never work on a task without locking it first
+```
+
 ---
 
-## Step 6: Verify everything is working
+## Step 5: Start Coder-OnDemand
+
+Open another terminal tab.
 
 ```bash
-# Check cron jobs
+cd /Users/jameshuang/Desktop/ai_project/product-tracer
+claude --worktree coder-ondemand --dangerously-skip-permissions --name "PT Coder OD"
+```
+
+**Load skills:**
+```
+/skill agent-session
+/skill vercel-verify
+/skill frontend-design
+```
+
+**Paste this goal:**
+```markdown
+/goal You are Coder-OnDemand for Product Tracer. You only work when James tells you "pull now".
+
+BEHAVIOR:
+1. On "pull now": read assistant-queue/queue.md
+2. Find first task with Status: "ready" AND Locked by: (empty)
+3. Lock it: change "Locked by" to "coder-ondemand", "Locked at" to current timestamp
+4. git add -A && git commit -m "lock: TASK-XXX by coder-ondemand" && git push
+5. git pull --rebase origin main
+6. git checkout -b feat/task-XXX
+7. Implement per spec
+8. pnpm typecheck → gh pr create --fill
+9. Poll Vercel (max 5 min)
+10. If ✅ → gh pr merge --squash
+11. curl verify all pages 200
+12. If migrations: psql "$DATABASE_URL" -f packages/db/migrations/XXX.sql
+13. Update CHANGELOG.md → write RESPONSE.md → Status: done
+14. git push → idle. Wait for next "pull now".
+
+LOCKING RULES:
+- Always check Locked by before starting. If non-empty, skip that task.
+- Never work on a task without locking it first.
+- When idle: just sit there. Say "waiting for pull now".
+```
+
+---
+
+## Verify everything
+
+```bash
 openclaw cron list
 # → planner (every 5 min)
 # → health (every 30 min)
 
-# Check site
 curl -sI https://product-tracer.vercel.app/
+# → 200
 
-# Check worktree
-ls -la /Users/jameshuang/Desktop/ai_project/product-tracer/.claude/worktrees/
-# → coder/
+ls -la .claude/worktrees/
+# → coder-auto/  coder-ondemand/
 ```
 
 ---
 
 ## Your daily routine
 
-| Situation | Action |
-|-----------|--------|
-| You want to add a feature | Telegram me: "帮我在 /projects 加排序" |
-| Coder finished last task | Say **"pull now"** in the Coder terminal |
-| You want to check status | Telegram me: "系统状态？" |
-| You want to pause everything | Telegram me: "停了" |
-| You want to resume | Telegram me: "恢复" |
-| Site is down | Health checker alerts you automatically |
+| Situation | Do this |
+|-----------|---------|
+| Add a feature | Telegram: "帮我在 /projects 加排序" → I write task → Planner specs → Coder-Auto picks it up within 30 min |
+| Coder-Auto is busy, you want to jump in | Say **"pull now"** in the Coder-OnDemand terminal |
+| Check status | Telegram: "系统状态？" |
+| Pause everything | Telegram: "停了" |
+| Clear a stuck lock | Telegram: "TASK-001 的 lock 清了" → I clear it |
+| Leave for the day | Coder-Auto keeps running. OnDemand stays idle. Health monitors site. |
 
 ---
 
@@ -156,6 +178,7 @@ ls -la /Users/jameshuang/Desktop/ai_project/product-tracer/.claude/worktrees/
 ```bash
 openclaw cron disable <planner-id>
 openclaw cron disable <health-id>
-# In Coder terminal: Ctrl+C or exit
-git worktree remove .claude/worktrees/coder
+# In each Coder terminal: Ctrl+C or exit
+git worktree remove .claude/worktrees/coder-auto
+git worktree remove .claude/worktrees/coder-ondemand
 ```
