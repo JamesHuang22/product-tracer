@@ -1,5 +1,16 @@
 # Coder-Auto session — Response (2026-06-28)
 
+## TASK-004 — Brand rename → OpenProduct (P0) ✅ shipped & verified (PR #83)
+
+Renamed the user-facing brand **"Product Tracer" → "OpenProduct"** across the live product: every page title/metadata, OG + Twitter tags, the OG image wordmark, RSS feed titles, the site-header brand, and the README + db README.
+
+**Preserved (deliberately):** the `@product-tracer/*` package names, the `product-tracer.vercel.app` deployment domain, DB/table/column names, and API routes — renaming these would break the build/deploy and contradict the spec. The lowercase phrase "an intelligent product tracer" (the product *category* in the hero copy) is left as-is.
+
+**Scope decision (please confirm if you want it wider):** I rebranded the **live frontend + front-door docs**. I did **not** rewrite point-in-time records — older CHANGELOG entries, `DECISIONS.md`, `HISTORY.md`, `PRD.md`, `status-*.md`, `doc/` guides, and `assistant-queue/*` still say "Product Tracer" where they describe past states. Rewriting historical records felt revisionist and risky; the live product is what users see. If you want a full sweep of every doc too, say so and I'll do a second pass.
+
+**Verified in prod:** homepage + /projects + /trends + /youtube-insights + /bookmarks all show "OpenProduct", 0 "Product Tracer"; `<title>` rebranded; OG image route 200.
+
+
 ## TASK-006 — Empty YouTube insight cards (P0 BUG) ✅ shipped & verified (PR #82)
 
 **Bug:** some cards on `/youtube-insights` showed only a sentiment dot + category + "Watch on YouTube", with no insight text.

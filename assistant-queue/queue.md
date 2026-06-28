@@ -50,9 +50,11 @@
 
 ## [2026-06-28] TASK-004: Product rename — "Product Tracer" → "OpenProduct"
 - **Priority**: P0
-- **Status**: in-progress
+- **Status**: done
 - **Locked by**: coder-auto
 - **Locked at**: 2026-06-28 16:20 PDT
+- **PR**: #83 (merged)
+- **Verify**: PASS — production homepage, /projects, /trends, /youtube-insights, /bookmarks all show "OpenProduct" and 0 "Product Tracer"; `<title>` = "OpenProduct — …"; OG image route 200 (image/png). Technical ids preserved (`@product-tracer/*`, `product-tracer.vercel.app`, DB/API). Scope note: historical/operational docs (CHANGELOG history, DECISIONS/HISTORY/PRD, status-*, doc/, assistant-queue/*) intentionally keep point-in-time mentions — see RESPONSE.md.
 - **Acceptance**: All references to "Product Tracer" throughout the codebase are changed to "OpenProduct". Site title, nav bar, page titles, meta tags, OG images, README, CHANGELOG.
 - **Spec**:
   **Scope — exhaustive grep & replace:**
