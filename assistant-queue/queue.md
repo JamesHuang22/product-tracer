@@ -6,6 +6,20 @@
 
 ---
 
+## [2026-06-28] TASK-007: Fix weekly trends — remove stale repeated data, ensure week-unique insights
+- **Priority**: P0 BUG
+- **Status**: pending
+- **Locked by**:
+- **Locked at**:
+- **Acceptance**: Each week's trends should contain ONLY data collected during that specific week. No carry-over from previous weeks.
+  - **Backend fix**: The weekly trends query/script must filter by collection_date, not just rely on the week label. Ensure the same project/video doesn't appear in multiple weeks' trends.
+  - **LLM fix**: The LLM summary prompt must explicitly instruct to only analyze data from this week's window. No repeating themes/insights from previous weeks.
+  - **Verification**: Week 2026-06-22 and week 2026-06-15 should show DIFFERENT top products, different themes, different video highlights.
+- **Spec**:
+  *(filled by Planner)*
+
+---
+
 ## [2026-06-28] TASK-006: Fix empty YouTube insight cards on /youtube-insights
 - **Priority**: P0 BUG
 - **Status**: ready
