@@ -1,0 +1,35 @@
+name: Backfill Insight English
+
+# One-off / on-demand: translate any app.video_insight rows whose `key_insight`
+# (the English column) actually holds Chinese into English, so /youtube-insights
+# renders English in EN locale (TASK-010). Idempotent — re-runs are no-ops once
+# every key_insight is English. Manual trigger only.
+
+on:
+  workflow_dispatch: {}
+
+concurrency:
+  group: backfill-insight-en
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @product-tracer/worker backfill:insight-en
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          # Optional overrides — defaults: deepseek-chat @ api.deepseek.com
+          LLM_MODEL: ${{ secrets.LLM_MODEL }}
+          LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
