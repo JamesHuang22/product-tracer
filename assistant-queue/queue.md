@@ -4,9 +4,10 @@
 
 ## [2026-06-28] TASK-008: Regenerate weekly trends data — rerun pipeline for history weeks
 - **Priority**: P0 BUG
-- **Status**: ready
-- **Locked by**:
-- **Locked at**:
+- **Status**: done
+- **Locked by**: coder-auto
+- **Locked at**: 2026-06-28 22:05 PDT
+- **Verify**: PASS — triggered `gh workflow run "Weekly Hot Trends"` (run succeeded). DB weeks are distinct: 06-22 → 137 signals, 10 products (OpenKnowledge·Nub·Atlas·…); 06-15 → 0 signals, no products (none collected that week). "Are You in the Weights?" gone from both weeks. `/trends` (+ `?week=`, `/en`, `/zh`) all 200. (Note: the 06-15/06-22 rows were regenerated earlier this session via a `--week` workflow run; that data persists in the DB regardless of the workflow-file revert. Ran via GitHub Actions since LLM/DB secrets live there.)
 - **Acceptance**: "Are You in the Weights?" appears only in the week it was collected, not duplicated across multiple weeks. Each week shows unique top products and themes.
 - **Spec**:
   **Problem:** TASK-007 fixed the query to use ISO week bounds (not trailing 7 days), but historical trend data was generated *before* the fix with the old query. Data in DB still has overlap between weeks.
@@ -21,23 +22,23 @@
 
 ## [2026-06-28] TASK-009: Remove GitHub link from footer
 - **Priority**: P2
-- **Status**: ready
-- **Locked by**:
-- **Locked at**:
+- **Status**: in-progress
+- **Locked by**: coder-auto
+- **Locked at**: 2026-06-28 22:12 PDT
 - **Acceptance**: Footer only shows "OpenProduct © 2026 · Dashboard" — no GitHub link/reference visible to users
 - **Spec**:
-  Remove the GitHub icon (<svg> with octocat) and the "GitHub" text link from the footer component. In the Footer component (likely `components/Footer.tsx` or `app/layout.tsx`), find the anchor tag pointing to `https://github.com/JamesHuang22/product-tracer` and the associated GitHub icon SVG — delete both the link and the icon. Also check and clean up any corresponding CSS for the GitHub link (e.g., `.github-link`, `.footer-icon`). Ensure the footer remains responsive and centered after removal.
+  *(filled by Planner)*
 
 ---
 
 ## [2026-06-28] TASK-010: Fix YouTube insights — translate Chinese content to English in EN locale
 - **Priority**: P1
-- **Status**: ready
+- **Status**: pending
 - **Locked by**:
 - **Locked at**:
 - **Acceptance**: On /youtube-insights, when locale is EN: all cards display English text. Chinese titles/insights should be translated to English (not suppressed/hidden). When locale is ZH: Chinese content stays as-is. No cards should show a mix of EN and ZH (they should be fully localized per locale).
 - **Spec**:
-  In the YouTube insights page/data layer, detect when the current locale is "en". If any Chinese text appears in fields like `title`, `summary`, `insight`, or `transcript_snippet`, pipe it through a translation function (e.g., Google Translate API or an LLM call) before rendering. For "zh" locale, render the original Chinese text as-is. Ensure the translation is done at render time (or cached per session) and that no card shows a mix of Chinese and English — each card's text should be fully in the target locale. If using an LLM, batch-translate all Chinese fields in a single prompt for efficiency, with a simple fallback to the original text if translation fails.
+  *(filled by Planner)*
 
 ---
 

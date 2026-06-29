@@ -6,8 +6,6 @@ import { ArrowRight, Sparkles, RefreshCw, Compass } from 'lucide-react';
 import { useI18n } from '@/lib/i18n-context';
 import { Reveal } from '@/components/reveal';
 
-const GITHUB_REPO = 'https://github.com/JamesHuang22/product-tracer';
-
 /** Round down to a clean "N+" figure (e.g. 4,512 → "4,500+"); small counts show as-is. */
 function approxCount(n: number): string {
   if (n < 100) return n.toLocaleString();
@@ -162,14 +160,6 @@ export function Landing({
             <Link href="/dashboard" className="transition-colors hover:text-neutral-900 dark:hover:text-neutral-100">
               {t('landing.footer.dashboard')}
             </Link>
-            <a
-              href={GITHUB_REPO}
-              target="_blank"
-              rel="noreferrer"
-              className="transition-colors hover:text-neutral-900 dark:hover:text-neutral-100"
-            >
-              GitHub
-            </a>
           </nav>
         </div>
       </footer>
