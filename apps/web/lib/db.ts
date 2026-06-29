@@ -45,6 +45,9 @@ export interface ProjectListItem {
   platforms: string[];
   /** AI-generated granular tags (app.project.tags, migration 0015); [] until generated. */
   tags: string[];
+  /** Upvote/downvote tallies (app.project.upvotes/downvotes, migration 0019); 0 until voted. */
+  upvotes: number;
+  downvotes: number;
 }
 
 export async function getAllProjects(): Promise<ProjectListItem[]> {
@@ -63,6 +66,8 @@ export async function getAllProjects(): Promise<ProjectListItem[]> {
       latest.forks as github_forks,
       p.created_at,
       coalesce(p.tags, '{}') as tags,
+      coalesce((to_jsonb(p) ->> 'upvotes')::int, 0) as upvotes,
+      coalesce((to_jsonb(p) ->> 'downvotes')::int, 0) as downvotes,
       coalesce(
         (select array_agg(distinct il.platform)
          from app.identity_link il where il.project_id = p.id),
@@ -454,6 +459,9 @@ export interface ProjectDetail {
   created_at: string; // YYYY-MM-DD
   /** AI-generated granular tags (app.project.tags, migration 0015); [] until generated. */
   tags: string[];
+  /** Upvote/downvote tallies (app.project, migration 0019); 0 until voted. */
+  upvotes: number;
+  downvotes: number;
   platforms: ProjectPlatformSnapshot[];
   metrics: ProjectMetricPoint[]; // ascending by date
 }
@@ -477,6 +485,8 @@ export async function getProjectBySlug(slug: string): Promise<ProjectDetail | nu
       primary_url: string | null;
       created_at: string;
       tags: string[];
+      upvotes: number;
+      downvotes: number;
     }[]
   >`
     select
@@ -484,7 +494,9 @@ export async function getProjectBySlug(slug: string): Promise<ProjectDetail | nu
       (to_jsonb(p) ->> 'ai_summary') as ai_summary,
       p.category, p.llm_category, p.primary_url,
       to_char(p.created_at, 'YYYY-MM-DD') as created_at,
-      coalesce(p.tags, '{}') as tags
+      coalesce(p.tags, '{}') as tags,
+      coalesce((to_jsonb(p) ->> 'upvotes')::int, 0) as upvotes,
+      coalesce((to_jsonb(p) ->> 'downvotes')::int, 0) as downvotes
     from app.project p
     where p.slug = ${slug}
     limit 1
@@ -1227,6 +1239,90 @@ export async function getRecentlySubmittedProjects(limit = 12): Promise<ProjectL
   } catch (err) {
     const code = (err as { code?: string }).code;
     if (code === '42P01' || code === '42703') return [];
+    throw err;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Product votes (app.product_vote, migration 0019)
+// ---------------------------------------------------------------------------
+
+export type VoteValue = -1 | 0 | 1;
+
+export interface VoteResult {
+  found: boolean;
+  upvotes: number;
+  downvotes: number;
+  /** The user's vote after this write (0 when they toggled it off). */
+  userVote: VoteValue;
+}
+
+/**
+ * Cast (or change, or clear) the authenticated user's vote on a project.
+ * Clicking the same direction twice toggles the vote off. After mutating
+ * app.product_vote, the project's denormalised upvotes/downvotes tallies are
+ * recomputed from the source rows and returned for the optimistic client.
+ */
+export async function voteOnProject(
+  userId: string,
+  projectId: string,
+  vote: 1 | -1,
+): Promise<VoteResult> {
+  const [project] = await sql<{ id: string }[]>`
+    select id from app.project where id = ${projectId} limit 1
+  `;
+  if (!project) return { found: false, upvotes: 0, downvotes: 0, userVote: 0 };
+
+  const [existing] = await sql<{ vote: number }[]>`
+    select vote from app.product_vote
+    where user_id = ${userId} and project_id = ${projectId}
+    limit 1
+  `;
+
+  let userVote: VoteValue = vote;
+  if (existing && existing.vote === vote) {
+    // Same direction again → clear the vote.
+    await sql`
+      delete from app.product_vote
+      where user_id = ${userId} and project_id = ${projectId}
+    `;
+    userVote = 0;
+  } else {
+    await sql`
+      insert into app.product_vote (user_id, project_id, vote)
+      values (${userId}, ${projectId}, ${vote})
+      on conflict (user_id, project_id) do update set vote = excluded.vote, created_at = now()
+    `;
+  }
+
+  const [counts] = await sql<{ upvotes: number; downvotes: number }[]>`
+    update app.project p set
+      upvotes = (select count(*) from app.product_vote v where v.project_id = p.id and v.vote = 1),
+      downvotes = (select count(*) from app.product_vote v where v.project_id = p.id and v.vote = -1)
+    where p.id = ${projectId}
+    returning upvotes, downvotes
+  `;
+
+  return {
+    found: true,
+    upvotes: counts?.upvotes ?? 0,
+    downvotes: counts?.downvotes ?? 0,
+    userVote,
+  };
+}
+
+/** The authenticated user's current vote on a project: 1, -1, or 0 (none). */
+export async function getUserVote(userId: string, projectId: string): Promise<VoteValue> {
+  try {
+    const [row] = await sql<{ vote: number }[]>`
+      select vote from app.product_vote
+      where user_id = ${userId} and project_id = ${projectId}
+      limit 1
+    `;
+    return (row?.vote as VoteValue) ?? 0;
+  } catch (err) {
+    const code = (err as { code?: string }).code;
+    if (code === '42P01' || code === '42703') return 0;
     throw err;
   }
 }
