@@ -111,12 +111,12 @@ function StatCard({
   label: string;
 }) {
   return (
-    <div className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950">
+    <div className="rounded-xl bg-white p-3.5 shadow-[0_1px_2px_rgba(0,0,0,0.04)] ring-1 ring-neutral-200/60 dark:bg-neutral-950 dark:ring-neutral-800/70">
       <div className="flex items-center gap-1.5 text-neutral-400">
         {icon}
-        <span className="text-[11px] font-medium uppercase tracking-wide">{label}</span>
+        <span className="text-[11px] font-medium uppercase tracking-wider">{label}</span>
       </div>
-      <div className="mt-2 text-2xl font-semibold tabular-nums tracking-tight">{value}</div>
+      <div className="mt-2 text-xl font-bold tabular-nums tracking-tight">{value}</div>
     </div>
   );
 }
@@ -137,13 +137,13 @@ function SectionHeader({
   viewAllLabel?: string;
 }) {
   return (
-    <div className="mb-5 flex items-end justify-between gap-3">
+    <div className="mb-5 flex items-end justify-between gap-3 border-b border-neutral-100 pb-4 dark:border-neutral-800">
       <div>
-        <h2 className="inline-flex items-center gap-2 text-xl font-semibold tracking-tight">
+        <h2 className="inline-flex items-center gap-2 text-lg font-semibold tracking-tight">
           {icon}
           {title}
         </h2>
-        {subtitle && <p className="mt-1 text-sm text-neutral-500">{subtitle}</p>}
+        {subtitle && <p className="mt-1 text-xs text-neutral-400">{subtitle}</p>}
       </div>
       {viewAllHref && viewAllLabel && (
         <Link
@@ -164,7 +164,7 @@ function TrendProductCard({ product }: { product: WeeklyTrendProduct }) {
   return (
     <Link
       href={`/projects/${product.slug}` as Route}
-      className="flex flex-col gap-1.5 rounded-xl border border-neutral-200 bg-white p-4 transition-colors hover:border-neutral-400 dark:border-neutral-800 dark:bg-neutral-950 dark:hover:border-neutral-600"
+      className="flex flex-col gap-1 rounded-xl border border-neutral-200 bg-white p-3.5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-neutral-400 dark:border-neutral-800 dark:bg-neutral-950 dark:shadow-none dark:hover:border-neutral-600"
     >
       <div className="flex items-center justify-between gap-2">
         <span className="inline-flex min-w-0 items-center gap-2 font-medium text-neutral-900 dark:text-neutral-50">
@@ -179,7 +179,7 @@ function TrendProductCard({ product }: { product: WeeklyTrendProduct }) {
         )}
       </div>
       {product.description && (
-        <p className="line-clamp-2 text-sm leading-relaxed text-neutral-500">{product.description}</p>
+        <p className="line-clamp-2 text-sm leading-[1.6] text-neutral-500">{product.description}</p>
       )}
     </Link>
   );
@@ -191,7 +191,7 @@ function LatestCard({ project }: { project: ProjectListItem }) {
   return (
     <Link
       href={`/projects/${project.slug}` as Route}
-      className="flex w-60 shrink-0 flex-col rounded-xl border border-neutral-200 bg-white p-4 transition-colors hover:border-neutral-400 dark:border-neutral-800 dark:bg-neutral-950 dark:hover:border-neutral-600"
+      className="flex w-60 shrink-0 snap-start flex-col rounded-xl border border-neutral-200 bg-white p-3.5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-neutral-400 dark:border-neutral-800 dark:bg-neutral-950 dark:shadow-none dark:hover:border-neutral-600"
     >
       <div className="flex items-center justify-between gap-2">
         <span className="truncate text-sm font-medium text-neutral-900 dark:text-neutral-50">
@@ -200,7 +200,7 @@ function LatestCard({ project }: { project: ProjectListItem }) {
         <PlatformBadges platforms={project.platforms ?? []} />
       </div>
       {oneLiner && (
-        <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-neutral-500">{oneLiner}</p>
+        <p className="mt-1.5 line-clamp-2 text-xs leading-[1.6] text-neutral-500">{oneLiner}</p>
       )}
       <div className="mt-auto flex items-center justify-between gap-2 pt-3">
         <span className="text-[11px] tabular-nums text-neutral-400">
@@ -245,10 +245,10 @@ function InsightCard({ insight }: { insight: VideoInsight }) {
       href={insight.video_url}
       target="_blank"
       rel="noreferrer"
-      className="flex w-72 shrink-0 flex-col rounded-xl border border-neutral-200 bg-white p-4 transition-colors hover:border-neutral-400 dark:border-neutral-800 dark:bg-neutral-950 dark:hover:border-neutral-600"
+      className="flex w-72 shrink-0 snap-start flex-col rounded-xl border border-neutral-200 bg-white p-3.5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-neutral-400 dark:border-neutral-800 dark:bg-neutral-950 dark:shadow-none dark:hover:border-neutral-600"
     >
       {text && (
-        <p className="line-clamp-5 text-sm leading-relaxed text-neutral-900 dark:text-neutral-100">
+        <p className="line-clamp-5 text-sm leading-[1.6] text-neutral-900 dark:text-neutral-100">
           {hot && <span className="mr-1" aria-hidden>🔥</span>}
           {text}
         </p>
@@ -273,23 +273,23 @@ export function HomeContent({ data }: { data: HomeData }) {
   const { t } = useI18n();
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-12 sm:py-16">
+    <main className="mx-auto max-w-6xl px-5 py-10 sm:px-8 sm:py-14 lg:px-6">
       {/* Hero */}
       <section className="max-w-2xl">
-        <span className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1 text-xs font-medium text-neutral-600 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400">
+        <span className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-3 py-1 text-[11px] font-medium text-neutral-600 shadow-sm dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400 dark:shadow-none">
           <span className="inline-block size-1.5 rounded-full bg-emerald-500" />
           {t('hero.badge', {
             count: data.totalLive.toLocaleString(),
             platforms: data.livePlatforms,
           })}
         </span>
-        <h1 className="mt-5 text-4xl font-semibold leading-[1.1] tracking-tight sm:text-5xl">
+        <h1 className="mt-5 text-4xl font-semibold leading-[1.05] tracking-[-0.02em] sm:text-5xl">
           {t('hero.titleLine1')}
           <br />
           {t('hero.titleLead')}
           <span className="text-neutral-500">{t('hero.titleAccent')}</span>
         </h1>
-        <p className="mt-6 text-lg leading-relaxed text-neutral-600 dark:text-neutral-400">
+        <p className="mt-6 text-lg leading-[1.6] text-neutral-600 dark:text-neutral-400">
           {t('hero.subtitle')}
         </p>
         <div className="mt-8 flex flex-wrap items-center gap-3">
@@ -321,7 +321,7 @@ export function HomeContent({ data }: { data: HomeData }) {
       </section>
 
       {/* Stats overview */}
-      <section className="mt-12 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <section className="mt-10 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
         <StatCard
           icon={<Boxes className="h-3.5 w-3.5" />}
           value={fmtCount(data.totalProjects)}
@@ -345,7 +345,7 @@ export function HomeContent({ data }: { data: HomeData }) {
       </section>
 
       {/* ─── Section 1: Projects ─── */}
-      <section className="mt-16">
+      <section className="mt-14">
         <SectionHeader
           icon={<Boxes className="h-4 w-4 text-emerald-500" />}
           title={t('home.section.projects.title')}
@@ -364,7 +364,7 @@ export function HomeContent({ data }: { data: HomeData }) {
             {t('home.latest.empty')}
           </div>
         ) : (
-          <div className="-mx-6 flex gap-3 overflow-x-auto px-6 pb-2 sm:mx-0 sm:px-0">
+          <div className="-mx-5 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-pl-5 px-5 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] sm:mx-0 sm:px-0">
             {data.latest.map((p) => (
               <LatestCard key={p.id} project={p} />
             ))}
@@ -407,7 +407,7 @@ export function HomeContent({ data }: { data: HomeData }) {
       </section>
 
       {/* ─── Section 2: Insights ─── */}
-      <section className="mt-16">
+      <section className="mt-14">
         <SectionHeader
           icon={<Youtube className="h-4 w-4 text-red-600" />}
           title={t('home.section.insights.title')}
@@ -421,7 +421,7 @@ export function HomeContent({ data }: { data: HomeData }) {
             {t('home.insights.empty')}
           </div>
         ) : (
-          <div className="-mx-6 flex gap-3 overflow-x-auto px-6 pb-2 sm:mx-0 sm:px-0">
+          <div className="-mx-5 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-pl-5 px-5 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] sm:mx-0 sm:px-0">
             {data.videoInsights.map((insight) => (
               <InsightCard key={insight.id} insight={insight} />
             ))}
@@ -430,7 +430,7 @@ export function HomeContent({ data }: { data: HomeData }) {
       </section>
 
       {/* ─── Section 3: Trends ─── */}
-      <section className="mt-16">
+      <section className="mt-14">
         <SectionHeader
           icon={<TrendingUp className="h-4 w-4 text-amber-500" />}
           title={t('home.section.trends.title')}
@@ -453,7 +453,7 @@ export function HomeContent({ data }: { data: HomeData }) {
         ) : (
           <div className="space-y-6">
             {data.trend.summary && (
-              <p className="max-w-3xl text-[15px] leading-relaxed text-neutral-700 dark:text-neutral-300">
+              <p className="max-w-3xl text-[15px] leading-[1.6] text-neutral-700 dark:text-neutral-300">
                 {data.trend.summary}
               </p>
             )}
