@@ -109,14 +109,27 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
   // state, and pager all reflect the tag-filtered set.
   const searchParams = useSearchParams();
   const activeTag = searchParams.get('tag');
-  const data = useMemo(
-    () => (activeTag ? projects.filter((p) => p.tags.includes(activeTag)) : projects),
-    [projects, activeTag],
-  );
   const [sorting, setSorting] = useState<SortingState>([{ id: 'github_stars', desc: true }]);
   const [sortValue, setSortValue] = useState('stars-desc');
   const [filter, setFilter] = useState('');
   const [category, setCategory] = useState('');
+
+  // Full-text search across name + description + AI summary + tags (TASK-019).
+  // Applied here (not via tanstack's column-only global filter) so it reaches
+  // the one_liner/ai_summary fields, which aren't table columns. The category
+  // dropdown remains a tanstack column filter, so the two combine.
+  const query = filter.trim().toLowerCase();
+  const data = useMemo(() => {
+    let rows = activeTag ? projects.filter((p) => p.tags.includes(activeTag)) : projects;
+    if (query) {
+      rows = rows.filter((p) =>
+        [p.name, p.one_liner, p.ai_summary, ...(p.tags ?? [])]
+          .filter(Boolean)
+          .some((field) => (field as string).toLowerCase().includes(query)),
+      );
+    }
+    return rows;
+  }, [projects, activeTag, query]);
 
   const onSortChange = (value: string) => {
     setSortValue(value);
@@ -257,9 +270,8 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
     data,
     columns,
     initialState: { columnVisibility: { created_at: false } },
-    state: { sorting, globalFilter: filter, columnFilters, pagination },
+    state: { sorting, columnFilters, pagination },
     onSortingChange: setSorting,
-    onGlobalFilterChange: setFilter,
     onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -341,6 +353,12 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
           {t('table.count', { shown: filteredCount, total: data.length })}
         </div>
       </div>
+
+      {query && (
+        <div className="mb-4 text-sm text-neutral-500">
+          {t('table.resultsFound', { count: filteredCount })}
+        </div>
+      )}
 
       {activeTag && (
         <div className="mb-4 flex items-center gap-2 text-sm">
