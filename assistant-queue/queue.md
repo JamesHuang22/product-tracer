@@ -35,9 +35,9 @@
 
 ## [2026-06-28] TASK-011: Hide future/incomplete weeks on /trends + fix cron time
 - **Priority**: P1
-- **Status**: ready
-- **Locked by**:
-- **Locked at**:
+- **Status**: in-progress
+- **Locked by**: coder-auto
+- **Locked at**: 2026-06-28 22:35 PDT
 - **Acceptance**: /trends does NOT show weeks that haven't ended yet. Current week (2026-06-29 ~ 07-05) should NOT appear on 2026-06-28. Cron should run at a time that captures full week data.
 - **Spec**:
   **Problem:** The `/trends` page currently shows the current week (2026-06-29 ~ 07-05) even though the week hasn't ended yet. The cron that triggers the Weekly Hot Trends workflow runs at a time that may not capture a full week's worth of data.
