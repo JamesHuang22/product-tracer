@@ -361,10 +361,11 @@
 
 ## [2026-06-29] TASK-016: Product share cards (OG image + social sharing)
 - **Priority**: P0 FEATURE
-- **Status**: in-progress
+- **Status**: done
 - **Locked by**: coder-auto
 - **Locked at**: 2026-06-29 09:35 PDT
-- **Acceptance**: Each /projects/[slug] page generates a beautiful OG image and has Twitter/LinkedIn share buttons. Copy link button too.
+- **PR**: #94 (merged)
+- **Verify**: PASS — /og/projects/tanstack-ai → 200 image/png (51.7KB real card: brand wordmark, category pill, name, one-liner, ★stars + ▲net votes + platform chips, Cache-Control max-age=3600). Detail page 200 with absolute og:image meta + twitter:card=summary_large_image. Shipped: getProjectOgData lean query, /og/projects/[slug] route (Node runtime), generateMetadata openGraph+twitter, ShareButtons client component (Twitter/X intent, LinkedIn share, Copy Link → navigator.clipboard + "Copied!" state) in a Share section on the detail header, i18n EN+ZH. typecheck clean.
 - **Spec**:
   **Goal:** Let users share product pages easily with rich previews on Twitter/LinkedIn.
 
