@@ -393,10 +393,11 @@
 
 ## [2026-06-29] TASK-017: Newsletter subscription box on landing page
 - **Priority**: P0 FEATURE
-- **Status**: in-progress
+- **Status**: done
 - **Locked by**: coder-auto
 - **Locked at**: 2026-06-29 09:50 PDT
-- **Acceptance**: Landing page has an email input: "Get weekly indie product digest". Submissions saved. Weekly trends emailed via Gmail.
+- **PR**: #95 (merged)
+- **Verify**: PASS — migration 0020 applied via Supabase MCP (app.newsletter_subscriber, unique email, partial active index, RLS on). / 200; POST /api/subscribe-newsletter valid email → {"success":true} (200), invalid → 400. Shipped: subscribeNewsletter db fn (idempotent upsert, reactivates on resubscribe), API route w/ server-side email validation, NewsletterSignup client component (idle→loading→success/error) wired into landing "Stay in the loop" section above footer, i18n EN+ZH. Part 4 send-newsletter.ts = compiling outline (queries active subscribers + latest finished week; Gmail send left as TODO per spec "future, outline only"). Removed test-insert row from prod table. typecheck clean (web + worker).
 - **Spec**:
   **Goal:** Capture emails on the landing page for a weekly newsletter.
 
