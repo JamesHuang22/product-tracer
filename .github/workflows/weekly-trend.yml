@@ -4,11 +4,6 @@ on:
   schedule:
     - cron: '0 4 * * 1' # every Monday UTC 04:00
   workflow_dispatch:
-    inputs:
-      week:
-        description: 'ISO week to (re)generate, YYYY-MM-DD (any day in the week). Blank = current week.'
-        required: false
-        type: string
 
 jobs:
   generate:
@@ -22,16 +17,8 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # WEEK is passed via env (not inlined into the command) to avoid shell
-      # injection; the worker validates the YYYY-MM-DD format. Blank → current week.
-      - run: |
-          if [ -n "$WEEK" ]; then
-            pnpm --filter @product-tracer/worker weekly:trend --week="$WEEK"
-          else
-            pnpm --filter @product-tracer/worker weekly:trend
-          fi
+      - run: pnpm --filter @product-tracer/worker weekly:trend
         env:
-          WEEK: ${{ inputs.week }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
           # Optional overrides — defaults: deepseek-chat @ api.deepseek.com
