@@ -79,9 +79,11 @@
 
 ## [2026-06-28] TASK-005: Landing page — "OpenProduct" marketing homepage
 - **Priority**: P0
-- **Status**: in-progress
+- **Status**: done
 - **Locked by**: coder-auto
 - **Locked at**: 2026-06-28 16:35 PDT
+- **PR**: #84 (merged)
+- **Verify**: PASS — `/` serves the animated landing (gradient mesh, Get Started CTA w/ data-cta, real stats 5,000+ products · 4,500+ AI summaries, 3 features, footer); dashboard moved to `/dashboard` (200, no landing leak); `/en`,`/zh`,`/en/dashboard`,`/zh/dashboard` all 200; ZH landing fully localized (`<html lang=zh>`, 抢先一步…, 立即开始); post-login redirects → /dashboard. Hero is light (First Load ~116 kB, no particle lib — CSS keyframes + ~1kb IntersectionObserver reveal per user's "animated gradient mesh / light JS" choice).
 - **Acceptance**:
   - A new landing page at `/` with flashy animations/effects that sells the product
   - Tagline: "Stay ahead of the curve. Discover the latest products building around the world."

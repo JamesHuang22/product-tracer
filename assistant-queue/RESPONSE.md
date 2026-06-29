@@ -1,5 +1,16 @@
 # Coder-Auto session — Response (2026-06-28)
 
+## TASK-005 — Marketing landing page (P0) ✅ shipped & verified (PR #84)
+
+New animated landing at `/`; the former homepage dashboard moved to **`/dashboard`**.
+
+**Per your two choices:** built the **animated gradient-mesh** hero (CSS `@keyframes` drifting/hue-shifting blobs + floating dots, reduced-motion aware) — *not* a heavy particle lib — and **moved the dashboard to `/dashboard`**. Scroll fade-ins use a ~1kb IntersectionObserver `<Reveal>` instead of framer-motion, so `/` First Load JS is ~116 kB.
+
+**Includes:** Get Started CTA (`data-cta="landing-get-started"`, → `/login` or `/dashboard` if signed in), 3 feature cards, a live stats strip (real product + AI-summary counts), footer; fully bilingual (EN/ZH). Signed-in visitors hitting `/` are redirected to `/dashboard`; post-auth redirects now go to `/dashboard` (was `/bookmarks`); header gains a Dashboard link.
+
+**Verified in prod:** `/`, `/dashboard`, `/en`, `/zh`, `/en/dashboard`, `/zh/dashboard` all 200; EN + ZH landing render correctly (`<html lang>` + translated strings); dashboard shows the overview with no landing leak.
+
+
 ## TASK-004 — Brand rename → OpenProduct (P0) ✅ shipped & verified (PR #83)
 
 Renamed the user-facing brand **"Product Tracer" → "OpenProduct"** across the live product: every page title/metadata, OG + Twitter tags, the OG image wordmark, RSS feed titles, the site-header brand, and the README + db README.
