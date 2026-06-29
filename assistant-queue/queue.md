@@ -491,9 +491,9 @@
 
 ## [2026-06-29] TASK-020: Product comparison tool (Compare 2-3 products)
 - **Priority**: P2
-- **Status**: ready
-- **Locked by**:
-- **Locked at**:
+- **Status**: in-progress
+- **Locked by**: coder-auto
+- **Locked at**: 2026-06-29 10:35 PDT
 - **Acceptance**: Users can select 2-3 products and see a side-by-side comparison of GitHub stars, platforms, category, description, and created date.
 - **Spec**:
   **Goal:** Let users compare 2-3 products side by side.
