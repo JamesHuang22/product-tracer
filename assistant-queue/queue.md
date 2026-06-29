@@ -4,9 +4,11 @@
 
 ## [2026-06-28] TASK-008: Regenerate weekly trends data — rerun pipeline for history weeks
 - **Priority**: P0 BUG
-- **Status**: in-progress
+- **Status**: done
 - **Locked by**: coder-auto
 - **Locked at**: 2026-06-28 21:20 PDT
+- **PR**: #86 (merged — adds `week` workflow_dispatch input)
+- **Verify**: PASS — regenerated via `gh workflow run "Weekly Hot Trends" -f week=2026-06-15` and `-f week=2026-06-22` (both runs succeeded). DB now: 06-22 → 137 signals, top products OpenKnowledge·Nub·Atlas·…; 06-15 → 0 signals (none that week), distinct themes (RSI·GLM-5.2·…); "Are You in the Weights?" gone from both weeks. `/trends` (+ `?week=`, `/en`, `/zh`) all 200; latest /trends shows the regenerated 06-22 data. Done via GitHub Actions (secrets live there; billing now unblocked) — local run not possible.
 - **Acceptance**: "Are You in the Weights?" appears only in the week it was collected, not duplicated across multiple weeks. Each week shows unique top products and themes.
 - **Spec**:
   **Problem:** TASK-007 fixed the query to use ISO week bounds (not trailing 7 days), but historical trend data was generated *before* the fix with the old query. Data in DB still has overlap between weeks.

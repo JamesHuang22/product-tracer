@@ -1,5 +1,18 @@
 # Coder-Auto session — Response (2026-06-28)
 
+## TASK-008 — Regenerate weekly trends history (P0 BUG) ✅ shipped & verified (PR #86)
+
+Once you pointed out the secrets live in **GitHub Actions** (and billing was unblocked), this became actionable. I added a `week` `workflow_dispatch` input to the **Weekly Hot Trends** workflow and dispatched it for the two stale weeks; both runs succeeded.
+
+**Result (verified in DB + on /trends):**
+- **06-22** → 137 signals, real top products (OpenKnowledge · Nub · Atlas · …), distinct themes.
+- **06-15** → 0 signals (none collected that week — correct, no carry-over), distinct insight-driven themes.
+- The duplicated "Are You in the Weights?" leaderboard is **gone from both weeks**; each week is now unique.
+- `/trends` (+ `?week=`, `/en`, `/zh`) all 200; latest view shows the corrected 06-22 data.
+
+Note: a brand-new week **06-29** also exists (empty — the Monday cron ran with the fix but no data has been collected into that week yet); `/trends` correctly falls back to the latest week with content (06-22).
+
+
 ## TASK-007 — Weekly trends repeated across weeks (P0 BUG) ✅ code fixed & merged (PR #85)
 
 **Root cause (confirmed in DB):** the pipeline gathered its corpus with a trailing `now() - 7 days` window but keyed each row to the ISO week. With bursty/stalled collection, every run captured ~the same recent rows, so weeks 2026-06-15 and 2026-06-22 stored **identical top products** ("Are You in the Weights? | Elvin | Dropmatico | …") and near-duplicate themes. Those stored products didn't even match 06-22's real signal leaderboard.
