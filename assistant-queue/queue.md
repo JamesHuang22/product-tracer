@@ -462,9 +462,9 @@
 
 ## [2026-06-29] TASK-019: Full-text search for projects
 - **Priority**: P1
-- **Status**: ready
-- **Locked by**:
-- **Locked at**:
+- **Status**: in-progress
+- **Locked by**: coder-auto
+- **Locked at**: 2026-06-29 10:20 PDT
 - **Acceptance**: /projects search searches names AND descriptions. Tag/category filter works with search combined.
 - **Spec**:
   **Goal:** Search across project names and descriptions for better discovery.
