@@ -434,9 +434,9 @@
 
 ## [2026-06-29] TASK-018: Personalized "My Dashboard" for logged-in users
 - **Priority**: P1
-- **Status**: ready
-- **Locked by**:
-- **Locked at**:
+- **Status**: in-progress
+- **Locked by**: coder-auto
+- **Locked at**: 2026-06-29 10:05 PDT
 - **Acceptance**: Logged-in users see personalized dashboard: upvoted products, submission status, bookmarked projects, recent activity.
 - **Spec**:
   **Goal:** Replace the generic /dashboard with a personalized one for logged-in users.
