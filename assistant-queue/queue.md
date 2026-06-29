@@ -393,9 +393,9 @@
 
 ## [2026-06-29] TASK-017: Newsletter subscription box on landing page
 - **Priority**: P0 FEATURE
-- **Status**: ready
-- **Locked by**:
-- **Locked at**:
+- **Status**: in-progress
+- **Locked by**: coder-auto
+- **Locked at**: 2026-06-29 09:50 PDT
 - **Acceptance**: Landing page has an email input: "Get weekly indie product digest". Submissions saved. Weekly trends emailed via Gmail.
 - **Spec**:
   **Goal:** Capture emails on the landing page for a weekly newsletter.
