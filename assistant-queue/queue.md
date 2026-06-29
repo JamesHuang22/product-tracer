@@ -68,9 +68,11 @@
 
 ## [2026-06-28] TASK-013: User-submitted products — form, AI review, "Recently Submitted" category
 - **Priority**: P0 FEATURE
-- **Status**: in-progress
+- **Status**: done
 - **Locked by**: coder-auto
 - **Locked at**: 2026-06-28 23:10 PDT
+- **PR**: #91 (merged)
+- **Verify**: PASS — migration 0018 applied (app.user_submission exists, RLS on, 1 row). Pages: / 200, /projects 200, /projects?category=recently-submitted 200, /submit & /account 307→/login (auth-gated as specced). All 8 parts shipped: DB table, AI review worker (apps/worker/src/scripts/submission-review.ts + .github/workflows/submission-review.yml), db.ts queries, recently-submitted category + i18n, /submit form, /api/submit-product route, site-header Submit link, /account submission history.
 - **Acceptance**: Users can submit their own product via a form (requires login). AI reviews the submission (validates GitHub URL, product URL, description). Valid entries appear in "Recently Submitted by Developers" category on /projects. Invalid entries marked in DB.
 - **Spec**:
   **Overview:** Add a new DB table + API + frontend form so logged-in users can submit their own product. An AI validation step reviews submissions. Valid submissions appear in a new "Recently Submitted by Developers" category on `/projects`. Invalid submissions get marked (not deleted) for admin review.
