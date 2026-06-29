@@ -162,6 +162,11 @@ const en: Messages = {
   'vote.downvote': 'Downvote',
   'vote.score': 'Net votes',
   'vote.signInPrompt': 'Sign in to vote',
+  'share.label': 'Share',
+  'share.twitter': 'Share on Twitter',
+  'share.linkedin': 'Share on LinkedIn',
+  'share.copy': 'Copy Link',
+  'share.copied': 'Copied!',
 
   'theme.toDark': 'Switch to dark mode',
   'theme.toLight': 'Switch to light mode',
@@ -425,6 +430,11 @@ const zh: Messages = {
   'vote.downvote': '反对',
   'vote.score': '净票数',
   'vote.signInPrompt': '登录后投票',
+  'share.label': '分享',
+  'share.twitter': '分享到 Twitter',
+  'share.linkedin': '分享到 LinkedIn',
+  'share.copy': '复制链接',
+  'share.copied': '已复制！',
 
   'theme.toDark': '切换到深色模式',
   'theme.toLight': '切换到浅色模式',

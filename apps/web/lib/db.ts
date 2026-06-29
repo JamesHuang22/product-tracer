@@ -1311,6 +1311,49 @@ export async function voteOnProject(
   };
 }
 
+/**
+ * Minimal project facts for the Open Graph share card (`/og/projects/[slug]`).
+ * Lean by design — just the fields the image renders — so the card stays fast.
+ * Returns null when the slug is unknown (route falls back to a generic card).
+ */
+export interface ProjectOgData {
+  name: string;
+  one_liner: string | null;
+  llm_category: string | null;
+  github_stars: number | null;
+  upvotes: number;
+  downvotes: number;
+  platforms: string[];
+}
+
+export async function getProjectOgData(slug: string): Promise<ProjectOgData | null> {
+  const [row] = await sql<ProjectOgData[]>`
+    select
+      p.name,
+      p.one_liner,
+      p.llm_category,
+      latest.stars as github_stars,
+      coalesce((to_jsonb(p) ->> 'upvotes')::int, 0) as upvotes,
+      coalesce((to_jsonb(p) ->> 'downvotes')::int, 0) as downvotes,
+      coalesce(
+        (select array_agg(distinct il.platform)
+         from app.identity_link il where il.project_id = p.id),
+        '{}'
+      ) as platforms
+    from app.project p
+    left join lateral (
+      select s.stars
+      from raw.snapshot s
+      where s.project_id = p.id and s.platform = 'github'
+      order by s.timestamp desc
+      limit 1
+    ) latest on true
+    where p.slug = ${slug}
+    limit 1
+  `;
+  return row ?? null;
+}
+
 /** The authenticated user's current vote on a project: 1, -1, or 0 (none). */
 export async function getUserVote(userId: string, projectId: string): Promise<VoteValue> {
   try {
