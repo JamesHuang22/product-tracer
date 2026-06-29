@@ -21,9 +21,9 @@
 
 ## [2026-06-28] TASK-009: Remove GitHub link from footer
 - **Priority**: P2
-- **Status**: ready
-- **Locked by**:
-- **Locked at**:
+- **Status**: in-progress
+- **Locked by**: coder-ondemand
+- **Locked at**: 2026-06-28 16:05 PDT
 - **Acceptance**: Footer only shows "OpenProduct © 2026 · Dashboard" — no GitHub link/reference visible to users
 - **Spec**:
   Remove the GitHub icon (<svg> with octocat) and the "GitHub" text link from the footer component. In the Footer component (likely `components/Footer.tsx` or `app/layout.tsx`), find the anchor tag pointing to `https://github.com/JamesHuang22/product-tracer` and the associated GitHub icon SVG — delete both the link and the icon. Also check and clean up any corresponding CSS for the GitHub link (e.g., `.github-link`, `.footer-icon`). Ensure the footer remains responsive and centered after removal.
