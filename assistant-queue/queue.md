@@ -310,3 +310,69 @@
   - Don't add a modal/dialog library — keep it simple, just render inline on the page
   - Don't change header styling or layout
   - Don't add analytics events
+
+---
+
+## [2026-06-29] TASK-015: Upvote/Downvote system for products
+- **Priority**: P0 FEATURE
+- **Status**: pending
+- **Locked by** :
+- **Locked at** :
+- **Acceptance**: Users can upvote/downvote products. Products show vote count. /projects has a "Most Upvoted" sort option. Vote counts display on product detail pages.
+- **Spec** :
+  *(filled by Planner)*
+
+---
+
+## [2026-06-29] TASK-016: Product share cards (OG image + social sharing)
+- **Priority**: P0 FEATURE
+- **Status**: pending
+- **Locked by** :
+- **Locked at** :
+- **Acceptance**: Each /projects/[slug] page generates a beautiful OG image and has Twitter/LinkedIn share buttons. Copy link button too.
+- **Spec** :
+  *(filled by Planner)*
+
+---
+
+## [2026-06-29] TASK-017: Newsletter subscription box on landing page
+- **Priority**: P0 FEATURE
+- **Status**: pending
+- **Locked by** :
+- **Locked at** :
+- **Acceptance**: Landing page has an email input: "Get weekly indie product digest". Submissions are saved and emailed weekly trends via Gmail.
+- **Spec** :
+  *(filled by Planner)*
+
+---
+
+## [2026-06-29] TASK-018: Personalized "My Dashboard" for logged-in users
+- **Priority**: P1
+- **Status**: pending
+- **Locked by** :
+- **Locked at** :
+- **Acceptance**: Logged-in users see personalized dashboard: upvoted products, submission status, bookmarked projects, recent activity.
+- **Spec** :
+  *(filled by Planner)*
+
+---
+
+## [2026-06-29] TASK-019: Full-text search for projects
+- **Priority**: P1
+- **Status**: pending
+- **Locked by** :
+- **Locked at** :
+- **Acceptance**: /projects search box searches project names AND descriptions. Optional tag/category filtering combined with search.
+- **Spec** :
+  *(filled by Planner)*
+
+---
+
+## [2026-06-29] TASK-020: Product comparison tool (Compare 2-3 products)
+- **Priority**: P2
+- **Status**: pending
+- **Locked by** :
+- **Locked at** :
+- **Acceptance**: Users can select 2-3 products and see a side-by-side comparison of GitHub stars, platforms, category, description, and created date.
+- **Spec** :
+  *(filled by Planner)*
