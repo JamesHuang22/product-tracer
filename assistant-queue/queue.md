@@ -491,10 +491,11 @@
 
 ## [2026-06-29] TASK-020: Product comparison tool (Compare 2-3 products)
 - **Priority**: P2
-- **Status**: in-progress
+- **Status**: done
 - **Locked by**: coder-auto
 - **Locked at**: 2026-06-29 10:35 PDT
-- **Acceptance**: Users can select 2-3 products and see a side-by-side comparison of GitHub stars, platforms, category, description, and created date.
+- **PR**: #98 (merged)
+- **Verify**: PASS — /compare?ids=<uuid>,<uuid> → 200 rendering 2 side-by-side cards (name+link, category, description, stars, platforms, net votes, tracked-since); /compare (no ids) → 200 empty state; /projects → 200. Shipped: getProjectsByIds (id-order-preserving), projects-table row checkboxes (desktop + mobile, max 3, selection via tanstack meta to avoid stale closures), "Compare (N)" action bar (enabled at ≥2) → /compare?ids=…, Clear button, CompareTable responsive grid (sm:2/lg:3), /compare server route w/ UUID validation + og:title "Compare products on OpenProduct" + Add another/Back links, i18n EN+ZH. No migration. typecheck clean.
 - **Spec**:
   **Goal:** Let users compare 2-3 products side by side.
 
