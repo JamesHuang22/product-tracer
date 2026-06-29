@@ -28,6 +28,15 @@ import { TagChips } from '@/components/tag-chips';
 
 const ch = createColumnHelper<ProjectListItem>();
 
+/** Compare-selection handlers passed through tanstack table `meta` (TASK-020). */
+type CompareMeta = {
+  isSelected: (id: string) => boolean;
+  toggleSelected: (id: string) => void;
+  selectionFull: boolean;
+  compareLabel: string;
+  compareMaxTitle: string;
+};
+
 /** Trim to `max` characters (unicode-safe), appending an ellipsis when cut. */
 function truncateChars(s: string, max: number): string {
   const chars = [...s];
@@ -137,6 +146,20 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
     if (opt) setSorting(opt.sorting);
   };
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 50 });
+
+  // Compare selection (TASK-020): up to 3 project ids, persisted in component
+  // state across pagination/sort. The "Compare (N)" bar links to /compare.
+  const [selected, setSelected] = useState<string[]>([]);
+  const MAX_COMPARE = 3;
+  const isSelected = (id: string) => selected.includes(id);
+  const toggleSelected = (id: string) => {
+    setSelected((prev) => {
+      if (prev.includes(id)) return prev.filter((x) => x !== id);
+      if (prev.length >= MAX_COMPARE) return prev; // cap at 3
+      return [...prev, id];
+    });
+  };
+  const compareHref = `/compare?ids=${selected.join(',')}`;
 
   // Category dropdown drives an exact-match column filter on `llm_category`.
   // Empty string = "All". Going through tanstack's filter pipeline means the
@@ -262,6 +285,32 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
           </div>
         ),
       }),
+      // Compare checkbox. Reads selection state from table meta (kept current
+      // each render) and raises itself above the row link overlay.
+      ch.display({
+        id: 'compare',
+        header: '',
+        cell: (info) => {
+          const id = info.row.original.id;
+          const meta = info.table.options.meta as CompareMeta;
+          const checked = meta.isSelected(id);
+          const disabled = !checked && meta.selectionFull;
+          return (
+            <div className="flex justify-center">
+              <input
+                type="checkbox"
+                checked={checked}
+                disabled={disabled}
+                onChange={() => meta.toggleSelected(id)}
+                onClick={(e) => e.stopPropagation()}
+                aria-label={meta.compareLabel}
+                title={disabled ? meta.compareMaxTitle : meta.compareLabel}
+                className="relative z-10 h-4 w-4 cursor-pointer accent-emerald-600 disabled:cursor-not-allowed disabled:opacity-40"
+              />
+            </div>
+          );
+        },
+      }),
     ],
     [t, locale],
   );
@@ -279,6 +328,13 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
     getPaginationRowModel: getPaginationRowModel(),
     // Changing the search filter snaps back to page 1 (tanstack default).
     autoResetPageIndex: true,
+    meta: {
+      isSelected,
+      toggleSelected,
+      selectionFull: selected.length >= MAX_COMPARE,
+      compareLabel: t('compare.select'),
+      compareMaxTitle: t('compare.max'),
+    } satisfies CompareMeta,
   });
 
   // `rows` is the current page only; `filteredCount` is the full match count
@@ -357,6 +413,38 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
       {query && (
         <div className="mb-4 text-sm text-neutral-500">
           {t('table.resultsFound', { count: filteredCount })}
+        </div>
+      )}
+
+      {selected.length > 0 && (
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-emerald-500/30 bg-emerald-50/60 px-4 py-2.5 dark:border-emerald-500/20 dark:bg-emerald-500/5">
+          <span className="text-sm font-medium text-neutral-700 dark:text-neutral-200">
+            {t('compare.selected', { count: selected.length, max: MAX_COMPARE })}
+          </span>
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setSelected([])}
+              className="rounded-md px-2.5 py-1.5 text-sm font-medium text-neutral-500 transition-colors hover:text-neutral-900 dark:hover:text-neutral-100"
+            >
+              {t('compare.clear')}
+            </button>
+            {selected.length >= 2 ? (
+              <Link
+                href={compareHref as Route}
+                className="rounded-md bg-emerald-600 px-3.5 py-1.5 text-sm font-medium text-white transition-colors hover:bg-emerald-700"
+              >
+                {t('compare.cta', { count: selected.length })}
+              </Link>
+            ) : (
+              <span
+                className="cursor-not-allowed rounded-md bg-neutral-200 px-3.5 py-1.5 text-sm font-medium text-neutral-400 dark:bg-neutral-800 dark:text-neutral-500"
+                title={t('compare.needTwo')}
+              >
+                {t('compare.cta', { count: selected.length })}
+              </span>
+            )}
+          </div>
         </div>
       )}
 
@@ -488,7 +576,16 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
                 })()}
               </div>
               {p.tags.length > 0 && <TagChips tags={p.tags} max={5} className="mt-2" />}
-              <div className="absolute right-3 top-3">
+              <div className="absolute right-3 top-3 flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={isSelected(p.id)}
+                  disabled={!isSelected(p.id) && selected.length >= MAX_COMPARE}
+                  onChange={() => toggleSelected(p.id)}
+                  onClick={(e) => e.stopPropagation()}
+                  aria-label={t('compare.select')}
+                  className="relative z-10 h-4 w-4 cursor-pointer accent-emerald-600 disabled:cursor-not-allowed disabled:opacity-40"
+                />
                 <BookmarkButton slug={p.slug} />
               </div>
             </div>
