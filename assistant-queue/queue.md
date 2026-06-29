@@ -33,6 +33,17 @@
 
 ---
 
+## [2026-06-28] TASK-011: Hide future/incomplete weeks on /trends + fix cron time
+- **Priority**: P1
+- **Status**: pending
+- **Locked by**:
+- **Locked at**:
+- **Acceptance**: /trends does NOT show weeks that haven't ended yet. Current week (2026-06-29 ~ 07-05) should NOT appear on 2026-06-28. Cron should run at a time that captures full week data.
+- **Spec**:
+  *(filled by Planner)*
+
+---
+
 ## [2026-06-28] TASK-010: Fix YouTube insights — translate Chinese content to English in EN locale
 - **Priority**: P1
 - **Status**: pending
