@@ -1244,6 +1244,25 @@ export async function getRecentlySubmittedProjects(limit = 12): Promise<ProjectL
 }
 
 // ---------------------------------------------------------------------------
+// Newsletter subscribers (app.newsletter_subscriber, migration 0020)
+// ---------------------------------------------------------------------------
+
+/**
+ * Record a newsletter signup. Idempotent — a repeat email is a no-op (and, if
+ * previously unsubscribed, is reactivated). Returns whether a new active
+ * subscription resulted, so the API can stay quiet about existing emails.
+ */
+export async function subscribeNewsletter(email: string): Promise<{ subscribed: boolean }> {
+  const rows = await sql`
+    insert into app.newsletter_subscriber (email)
+    values (${email})
+    on conflict (email) do update set unsubscribed_at = null
+    returning id
+  `;
+  return { subscribed: rows.length > 0 };
+}
+
+// ---------------------------------------------------------------------------
 // Product votes (app.product_vote, migration 0019)
 // ---------------------------------------------------------------------------
 
