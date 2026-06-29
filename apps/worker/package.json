@@ -11,6 +11,7 @@
     "youtube:insights": "tsx src/scripts/youtube-insights.ts",
     "dedup": "tsx src/scripts/dedup.ts",
     "weekly:trend": "tsx src/scripts/weekly-trend.ts",
+    "backfill:insight-en": "tsx src/scripts/backfill-insight-en.ts",
     "summaries:generate": "tsx src/scripts/generate-summaries.ts",
     "tags:generate": "tsx src/scripts/generate-tags.ts",
     "typecheck": "tsc --noEmit"
