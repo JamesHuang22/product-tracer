@@ -1373,6 +1373,39 @@ export async function getProjectOgData(slug: string): Promise<ProjectOgData | nu
   return row ?? null;
 }
 
+export interface UserUpvote {
+  slug: string;
+  name: string;
+  /** Project's current net-positive tally (app.project.upvotes). */
+  upvotes: number;
+  created_at: string; // YYYY-MM-DD — when the user cast the vote
+}
+
+/**
+ * Products the user has upvoted (vote = 1), newest vote first. Powers the
+ * "Your Upvotes" section of the personalized dashboard.
+ */
+export async function getUserUpvotes(userId: string): Promise<UserUpvote[]> {
+  try {
+    return await sql<UserUpvote[]>`
+      select
+        p.slug,
+        p.name,
+        coalesce((to_jsonb(p) ->> 'upvotes')::int, 0) as upvotes,
+        to_char(pv.created_at, 'YYYY-MM-DD') as created_at
+      from app.product_vote pv
+      join app.project p on p.id = pv.project_id
+      where pv.user_id = ${userId} and pv.vote = 1
+      order by pv.created_at desc
+      limit 50
+    `;
+  } catch (err) {
+    const code = (err as { code?: string }).code;
+    if (code === '42P01' || code === '42703') return [];
+    throw err;
+  }
+}
+
 /** The authenticated user's current vote on a project: 1, -1, or 0 (none). */
 export async function getUserVote(userId: string, projectId: string): Promise<VoteValue> {
   try {
