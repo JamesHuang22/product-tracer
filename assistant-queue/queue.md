@@ -56,9 +56,11 @@
 
 ## [2026-06-28] TASK-010: Fix YouTube insights — translate Chinese content to English in EN locale
 - **Priority**: P1
-- **Status**: in-progress
+- **Status**: done
 - **Locked by**: coder-auto
 - **Locked at**: 2026-06-28 22:50 PDT
+- **PR**: #89 (merged) + ran "Backfill Insight English" workflow
+- **Verify**: PASS — 20 legacy rows had Chinese in the English `key_insight` column (Chinese already preserved in `key_insight_zh`). New `backfill-insight-en` worker (run via GitHub Actions, LLM=DeepSeek) translated them → English. DB now: 0 CJK in `key_insight` (was 20), all 117 English, ZH preserved (116). Production EN /youtube-insights shows English insights (e.g. "ByteDance unveiled the Doubao 2.1 Pro…"), 20 cards, 0 "Analysis pending"; ZH still shows Chinese. No frontend change needed (titles are only a fallback, never shown once insights are English). Idempotent; the YT-insights generator already prompts for English `key_insight` going forward.
 - **Acceptance**: On /youtube-insights, when locale is EN: all cards display English text. Chinese titles/insights should be translated to English (not suppressed/hidden). When locale is ZH: Chinese content stays as-is. No cards should show a mix of EN and ZH (they should be fully localized per locale).
 - **Spec**:
   **Problem:** The `/youtube-insights` page has YouTube video cards that sometimes show Chinese titles or insight text even when the locale is set to EN (English). This creates a mixed-language experience that looks broken.

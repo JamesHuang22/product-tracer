@@ -3,6 +3,10 @@
 > Auto-generated summary of notable changes to product-tracer.
 > Format: Keep a Changelog — date, PR/commit, type, description.
 
+## 2026-06-28 — YouTube insights translated to English (EN locale)
+
+- **fix(worker/data)**: `/youtube-insights` now shows English in EN locale for the rows that previously stored Chinese in the English `key_insight` column (#89, TASK-010). A new `backfill-insight-en` worker finds rows whose `key_insight` contains CJK, translates the canonical Chinese (`key_insight_zh`) to English via the LLM (DeepSeek), and overwrites `key_insight`; `key_insight_zh` is untouched so ZH locale is unchanged. Ran via a new manual **Backfill Insight English** GitHub Action (secrets live there). Result: 0 of 117 rows still have CJK in `key_insight` (was 20); production EN cards render English insights (e.g. "ByteDance unveiled the Doubao 2.1 Pro…") with no "Analysis pending" fallbacks, while ZH still shows Chinese. Idempotent (English rows no longer match the CJK filter); no frontend change needed since titles are only a fallback that no longer triggers.
+
 ## 2026-06-28 — /trends hides the in-progress week
 
 - **fix(web)**: `/trends` no longer surfaces the current, not-yet-ended ISO week (#88, TASK-011). `getLatestWeeklyTrend`, `getTrendWeeks`, and `getRecentWeeklyTrends` now filter `week_end < current_date`, so the selector, default view, and week-over-week comparison only include fully-ended weeks; `getLatest`/`getRecent` also order by `week_start` (newest week, not most-recently-regenerated row). Used `week_end < current_date` rather than the spec's `week_start <= current_date` because the DB runs in UTC where `current_date` is already the new Monday — the latter would still show the in-progress week. Also moved the Weekly Hot Trends cron to `5 0 * * 1` (Mon 00:05 UTC). Verified on production: `/trends` defaults to "Week of 2026-06-22 – 06-28"; the 06-29 week is absent from the selector.
