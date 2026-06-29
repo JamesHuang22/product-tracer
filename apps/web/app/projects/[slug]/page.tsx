@@ -17,6 +17,7 @@ import { CategoryBadge } from '@/components/category-badge';
 import { RelatedProjects } from '@/components/related-projects';
 import { BookmarkButton } from '@/components/bookmark-button';
 import { VoteButton } from '@/components/vote-button';
+import { ShareButtons } from '@/components/share-buttons';
 import { TagChips } from '@/components/tag-chips';
 
 // Live data — reflect the latest collector run on every request.
@@ -270,9 +271,30 @@ export async function generateMetadata({
   const { slug } = await params;
   const project = await getProjectBySlug(slug);
   if (!project) return { title: 'Project not found — OpenProduct' };
+  const title = `${project.name} — OpenProduct`;
+  const description =
+    cleanOneLiner(project.one_liner) ??
+    localizedText('en', project.ai_summary) ??
+    `Cross-platform signals for ${project.name} on OpenProduct.`;
+  const ogImage = `/og/projects/${slug}`;
+  const url = `/projects/${slug}`;
   return {
-    title: `${project.name} — OpenProduct`,
-    description: cleanOneLiner(project.one_liner) ?? undefined,
+    title,
+    description,
+    alternates: { canonical: url },
+    openGraph: {
+      title,
+      description,
+      url,
+      type: 'website',
+      images: [{ url: ogImage, width: 1200, height: 630, alt: project.name }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [ogImage],
+    },
   };
 }
 
@@ -342,6 +364,9 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           </span>
         </div>
         {project.tags.length > 0 && <TagChips tags={project.tags} className="mt-4" />}
+        <div className="mt-5 border-t border-neutral-100 pt-4 dark:border-neutral-800">
+          <ShareButtons title={project.name} />
+        </div>
       </header>
 
       {aiSummary && (
