@@ -4,7 +4,7 @@
 
 ## [2026-06-28] TASK-008: Regenerate weekly trends data — rerun pipeline for history weeks
 - **Priority**: P0 BUG
-- **Status**: pending
+- **Status**: ready
 - **Locked by**:
 - **Locked at**:
 - **Acceptance**: "Are You in the Weights?" appears only in the week it was collected, not duplicated across multiple weeks. Each week shows unique top products and themes.
