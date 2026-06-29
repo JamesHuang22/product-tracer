@@ -1124,3 +1124,109 @@ export async function mergeBookmarks(userId: string, slugs: string[]): Promise<s
   }
   return getBookmarkedSlugs(userId);
 }
+
+// ---------------------------------------------------------------------------
+// User-submitted products (app.user_submission, migration 0018)
+// ---------------------------------------------------------------------------
+
+export interface UserSubmission {
+  id: string;
+  product_name: string;
+  description: string;
+  product_url: string;
+  github_url: string | null;
+  status: 'pending' | 'approved' | 'rejected';
+  review_status: 'pending' | 'valid' | 'invalid' | null;
+  review_reason: string | null;
+  created_at: string;
+  project_slug: string | null;
+}
+
+/**
+ * Record a new product submission for the authenticated user. The async AI
+ * review (apps/worker submission-review) picks it up from `review_status =
+ * 'pending'` and approves/flags it. Inserts via the session-verified user id.
+ */
+export async function submitProduct(
+  userId: string,
+  productName: string,
+  description: string,
+  productUrl: string,
+  githubUrl: string | null,
+): Promise<{ id: string }> {
+  const [row] = await sql<{ id: string }[]>`
+    insert into app.user_submission
+      (user_id, product_name, description, product_url, github_url, status, review_status)
+    values
+      (${userId}, ${productName}, ${description}, ${productUrl}, ${githubUrl}, 'pending', 'pending')
+    returning id::text as id
+  `;
+  return { id: row!.id };
+}
+
+/** The authenticated user's own submissions, newest first (account history). */
+export async function getUserSubmissions(userId: string): Promise<UserSubmission[]> {
+  return await sql<UserSubmission[]>`
+    select
+      s.id::text as id,
+      s.product_name,
+      s.description,
+      s.product_url,
+      s.github_url,
+      s.status,
+      s.review_status,
+      s.review_reason,
+      to_char(s.created_at, 'YYYY-MM-DD') as created_at,
+      p.slug as project_slug
+    from app.user_submission s
+    left join app.project p on p.id = s.project_id
+    where s.user_id = ${userId}
+    order by s.created_at desc
+  `;
+}
+
+/**
+ * Projects created from approved user submissions — the "Recently Submitted by
+ * Developers" section on /projects. Same shape as the other project lists.
+ * Resilient to the 0018 table not existing yet (returns []).
+ */
+export async function getRecentlySubmittedProjects(limit = 12): Promise<ProjectListItem[]> {
+  try {
+    return await sql<ProjectListItem[]>`
+      select
+        p.id,
+        p.slug,
+        p.name,
+        p.one_liner,
+        (to_jsonb(p) ->> 'ai_summary') as ai_summary,
+        p.category,
+        p.llm_category,
+        p.primary_url,
+        latest.stars as github_stars,
+        latest.forks as github_forks,
+        p.created_at,
+        coalesce(p.tags, '{}') as tags,
+        coalesce(
+          (select array_agg(distinct il.platform)
+           from app.identity_link il where il.project_id = p.id),
+          '{}'
+        ) as platforms
+      from app.user_submission s
+      join app.project p on p.id = s.project_id
+      left join lateral (
+        select sn.stars, sn.forks
+        from raw.snapshot sn
+        where sn.project_id = p.id and sn.platform = 'github'
+        order by sn.timestamp desc
+        limit 1
+      ) latest on true
+      where s.status = 'approved' and s.project_id is not null
+      order by s.reviewed_at desc nulls last, s.created_at desc
+      limit ${limit}
+    `;
+  } catch (err) {
+    const code = (err as { code?: string }).code;
+    if (code === '42P01' || code === '42703') return [];
+    throw err;
+  }
+}

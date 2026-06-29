@@ -37,6 +37,7 @@ const en: Messages = {
   'nav.insights': 'Insights',
   'nav.trends': 'Trends',
   'nav.bookmarks': 'Bookmarks',
+  'nav.submit': 'Submit',
   'nav.menu': 'Menu',
   'nav.close': 'Close menu',
   'nav.signIn': 'Sign in',
@@ -259,6 +260,27 @@ const en: Messages = {
   'landing.footer.tagline': 'Cross-platform signals for indie products.',
   'landing.footer.about': 'About',
   'landing.footer.dashboard': 'Dashboard',
+
+  // Submit a product (/submit)
+  'submit.title': 'Submit a product',
+  'submit.subtitle': 'Share a product you built. Our AI reviews each submission before it appears.',
+  'submit.name': 'Product name',
+  'submit.namePlaceholder': 'e.g. Acme Analytics',
+  'submit.productUrl': 'Product URL',
+  'submit.githubUrl': 'GitHub URL (optional)',
+  'submit.description': 'Description',
+  'submit.descHint': '{n}/500 — min 50 characters',
+  'submit.button': 'Submit for review',
+  'submit.submitting': 'Submitting…',
+  'submit.successTitle': 'Submitted!',
+  'submit.successBody': 'Our AI will review it shortly and, once approved, it’ll appear under “Recently Submitted by Developers”.',
+  'submit.viewSubmitted': 'View recently submitted →',
+  'submit.another': 'Submit another',
+  'submit.recentlySubmitted': 'Recently Submitted by Developers',
+  'submit.mySubmissions': 'Your submissions',
+  'submit.statusPending': 'Pending review',
+  'submit.statusApproved': 'Approved',
+  'submit.statusRejected': 'Needs changes',
 };
 
 const zh: Messages = {
@@ -277,6 +299,7 @@ const zh: Messages = {
   'nav.insights': '洞察',
   'nav.trends': '趋势',
   'nav.bookmarks': '收藏',
+  'nav.submit': '提交',
   'nav.menu': '菜单',
   'nav.close': '关闭菜单',
   'nav.signIn': '登录',
@@ -491,6 +514,27 @@ const zh: Messages = {
   'landing.footer.tagline': '面向独立产品的跨平台信号。',
   'landing.footer.about': '关于',
   'landing.footer.dashboard': '面板',
+
+  // Submit a product (/submit)
+  'submit.title': '提交产品',
+  'submit.subtitle': '分享你打造的产品。每个提交都会经 AI 审核后展示。',
+  'submit.name': '产品名称',
+  'submit.namePlaceholder': '例如：Acme Analytics',
+  'submit.productUrl': '产品网址',
+  'submit.githubUrl': 'GitHub 链接（可选）',
+  'submit.description': '描述',
+  'submit.descHint': '{n}/500 —— 至少 50 字符',
+  'submit.button': '提交审核',
+  'submit.submitting': '提交中…',
+  'submit.successTitle': '提交成功！',
+  'submit.successBody': '我们的 AI 会尽快审核，通过后将显示在“开发者最近提交”中。',
+  'submit.viewSubmitted': '查看最近提交 →',
+  'submit.another': '再提交一个',
+  'submit.recentlySubmitted': '开发者最近提交',
+  'submit.mySubmissions': '你的提交',
+  'submit.statusPending': '审核中',
+  'submit.statusApproved': '已通过',
+  'submit.statusRejected': '需修改',
 };
 
 const MESSAGES: Record<Locale, Messages> = { en, zh };
