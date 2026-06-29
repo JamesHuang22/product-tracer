@@ -317,9 +317,9 @@
 
 ## [2026-06-29] TASK-015: Upvote/Downvote system for products
 - **Priority**: P0 FEATURE
-- **Status**: ready
-- **Locked by**:
-- **Locked at**:
+- **Status**: in-progress
+- **Locked by**: coder-auto
+- **Locked at**: 2026-06-29 09:15 PDT
 - **Acceptance**: Users can upvote/downvote products. Products show vote count. /projects has a "Most Upvoted" sort option. Vote counts displayed on product detail pages.
 - **Spec**:
   **Goal:** Add a full upvote/downvote system so users can vote on products and see rankings.
