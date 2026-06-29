@@ -625,7 +625,13 @@ export async function searchProjects(query: string): Promise<ProjectSearchResult
       limit 1
     ) latest on true
     where p.merged_into_id is null
-      and (p.name ilike ${like} or p.name % ${q} or p.one_liner % ${q})
+      and (
+        p.name ilike ${like}
+        or p.one_liner ilike ${like}
+        or (to_jsonb(p) ->> 'ai_summary') ilike ${like}
+        or p.name % ${q}
+        or p.one_liner % ${q}
+      )
     order by similarity(p.name, ${q}) desc nulls last, latest.stars desc nulls last
     limit 20
   `;
