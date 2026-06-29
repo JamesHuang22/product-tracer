@@ -44,3 +44,61 @@ body {
   background: var(--background);
   color: var(--foreground);
 }
+
+/* ---------------------------------------------------------------------------
+   Landing page (/) animations — pure CSS, no JS dependency.
+   Hero "gradient mesh": a few large blurred radial blobs whose positions and
+   hue drift slowly, giving an alive-but-subtle backdrop. Floating dots add
+   depth. All motion is disabled under prefers-reduced-motion.
+--------------------------------------------------------------------------- */
+@keyframes lp-mesh-drift {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(2%, -3%, 0) scale(1.08);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes lp-float {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.35;
+  }
+  50% {
+    transform: translateY(-14px);
+    opacity: 0.8;
+  }
+}
+
+@keyframes lp-hue {
+  0% {
+    filter: hue-rotate(0deg);
+  }
+  100% {
+    filter: hue-rotate(40deg);
+  }
+}
+
+.lp-mesh {
+  animation:
+    lp-mesh-drift 18s ease-in-out infinite,
+    lp-hue 24s linear infinite alternate;
+  will-change: transform, filter;
+}
+
+.lp-float {
+  animation: lp-float 7s ease-in-out infinite;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-mesh,
+  .lp-float {
+    animation: none;
+  }
+}

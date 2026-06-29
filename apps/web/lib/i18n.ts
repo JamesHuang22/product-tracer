@@ -32,6 +32,7 @@ const en: Messages = {
   'hero.dailyEmail': 'Daily email digest',
   'home.sources.label': 'Tracking across',
 
+  'nav.dashboard': 'Dashboard',
   'nav.projects': 'Projects',
   'nav.insights': 'Insights',
   'nav.trends': 'Trends',
@@ -235,6 +236,29 @@ const en: Messages = {
   'trends.sourceUnchanged': 'unchanged',
   'trends.sourceShifted': 'shifted from {from}',
   'platform.name.other': 'Other',
+
+  // Landing page (/)
+  'landing.eyebrow': 'AI-tracked product signals',
+  'landing.tagline': 'Stay ahead of the curve.',
+  'landing.subtitle': 'Discover products building around the world, tracked daily by AI.',
+  'landing.cta': 'Get Started',
+  'landing.ctaDashboard': 'Go to dashboard',
+  'landing.featuresHeading': 'Everything you need to spot what’s next',
+  'landing.feature1.title': 'AI-Powered Discovery',
+  'landing.feature1.body':
+    'Every product is analyzed by AI, summarized, and categorized. No manual curation needed.',
+  'landing.feature2.title': 'Daily Updates',
+  'landing.feature2.body':
+    'New products tracked every 2 hours. See what’s building in real-time across GitHub and Reddit.',
+  'landing.feature3.title': 'Smart Insights',
+  'landing.feature3.body':
+    'Browse by category, score, tags, or trends. Find the needle in the haystack.',
+  'landing.stats.products': 'products tracked',
+  'landing.stats.summaries': 'AI summaries',
+  'landing.stats.cadence': 'Updated every 2 hours',
+  'landing.footer.tagline': 'Cross-platform signals for indie products.',
+  'landing.footer.about': 'About',
+  'landing.footer.dashboard': 'Dashboard',
 };
 
 const zh: Messages = {
@@ -248,6 +272,7 @@ const zh: Messages = {
   'hero.dailyEmail': '每日邮件摘要',
   'home.sources.label': '覆盖平台',
 
+  'nav.dashboard': '面板',
   'nav.projects': '项目',
   'nav.insights': '洞察',
   'nav.trends': '趋势',
@@ -446,6 +471,26 @@ const zh: Messages = {
   'trends.sourceUnchanged': '与上周相同',
   'trends.sourceShifted': '从 {from} 变化而来',
   'platform.name.other': '其他',
+
+  // Landing page (/)
+  'landing.eyebrow': 'AI 驱动的产品信号',
+  'landing.tagline': '抢先一步，洞见先机。',
+  'landing.subtitle': '发现全球正在涌现的产品，每日由 AI 追踪整理。',
+  'landing.cta': '立即开始',
+  'landing.ctaDashboard': '进入面板',
+  'landing.featuresHeading': '发现下一个爆款，所需尽在于此',
+  'landing.feature1.title': 'AI 智能发现',
+  'landing.feature1.body': '每个产品都经 AI 分析、摘要与分类，无需人工整理。',
+  'landing.feature2.title': '每日更新',
+  'landing.feature2.body': '每 2 小时追踪新产品，实时掌握 GitHub、Reddit 等平台的新动向。',
+  'landing.feature3.title': '智能洞察',
+  'landing.feature3.body': '按分类、评分、标签或趋势浏览，于海量信息中精准定位。',
+  'landing.stats.products': '个产品追踪中',
+  'landing.stats.summaries': '条 AI 摘要',
+  'landing.stats.cadence': '每 2 小时更新',
+  'landing.footer.tagline': '面向独立产品的跨平台信号。',
+  'landing.footer.about': '关于',
+  'landing.footer.dashboard': '面板',
 };
 
 const MESSAGES: Record<Locale, Messages> = { en, zh };
