@@ -1,5 +1,6 @@
 import {
   getActiveSignalCount,
+  getBookmarkedProjects,
   getLatestProjects,
   getLatestWeeklyTrend,
   getNewThisWeek,
@@ -7,8 +8,15 @@ import {
   getPlatformTop,
   getTopVideoInsights,
   getTotalProjectCount,
+  getUserSubmissions,
+  getUserUpvotes,
+  type ProjectListItem,
+  type UserSubmission,
+  type UserUpvote,
 } from '@/lib/db';
 import { HomeContent } from '@/components/home-content';
+import { PersonalDashboard } from '@/components/personal-dashboard';
+import { getUser } from '@/lib/supabase/server';
 import { cookies } from 'next/headers';
 import { DEFAULT_LOCALE, isLocale, LOCALE_COOKIE, type Locale } from '@/lib/i18n';
 import { localizedPair, localizedText } from '@/lib/format';
@@ -21,6 +29,41 @@ export const metadata: Metadata = {
 };
 
 export default async function DashboardPage() {
+  const cookieStore = await cookies();
+  const rawLocale = cookieStore.get(LOCALE_COOKIE)?.value;
+  const locale: Locale = isLocale(rawLocale) ? (rawLocale as Locale) : DEFAULT_LOCALE;
+
+  // Signed-in visitors get a personalized dashboard (their submissions, upvotes,
+  // bookmarks, recent activity). Anonymous visitors keep the generic overview.
+  const user = await getUser();
+  if (user) {
+    let submissions: UserSubmission[] = [];
+    let upvotes: UserUpvote[] = [];
+    let bookmarks: ProjectListItem[] = [];
+    try {
+      [submissions, upvotes, bookmarks] = await Promise.all([
+        getUserSubmissions(user.id),
+        getUserUpvotes(user.id),
+        getBookmarkedProjects(user.id),
+      ]);
+    } catch {
+      // Tolerate a missing table / transient DB error — render what we have.
+    }
+    const localizedBookmarks = bookmarks.map((b) => ({
+      ...b,
+      one_liner: localizedText(locale, b.one_liner),
+    }));
+    return (
+      <PersonalDashboard
+        locale={locale}
+        email={user.email ?? null}
+        submissions={submissions}
+        upvotes={upvotes}
+        bookmarks={localizedBookmarks}
+      />
+    );
+  }
+
   // Fetch all live platforms + overview stats in parallel (server-side); the UI
   // chrome itself is rendered by the client <HomeContent> so it can be localised.
   const [
@@ -65,9 +108,7 @@ export default async function DashboardPage() {
   // serialized RSC payload, so the page *source* carries one language per card.
   // `localizedPair` additionally guards the English case where the "English"
   // column itself holds Chinese (returning null rather than leaking it).
-  const cookieStore = await cookies();
-  const rawLocale = cookieStore.get(LOCALE_COOKIE)?.value;
-  const locale: Locale = isLocale(rawLocale) ? (rawLocale as Locale) : DEFAULT_LOCALE;
+  // (locale resolved at the top of the function.)
   // Resolve to the active locale, then DROP any insight with no displayable
   // text — those rendered as an empty card (just a "Watch on YouTube" link).
   // `localizedPair` already falls back zh→en in ZH mode; in EN mode it returns
