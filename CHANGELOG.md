@@ -3,6 +3,10 @@
 > Auto-generated summary of notable changes to product-tracer.
 > Format: Keep a Changelog — date, PR/commit, type, description.
 
+## 2026-06-28 — /trends hides the in-progress week
+
+- **fix(web)**: `/trends` no longer surfaces the current, not-yet-ended ISO week (#88, TASK-011). `getLatestWeeklyTrend`, `getTrendWeeks`, and `getRecentWeeklyTrends` now filter `week_end < current_date`, so the selector, default view, and week-over-week comparison only include fully-ended weeks; `getLatest`/`getRecent` also order by `week_start` (newest week, not most-recently-regenerated row). Used `week_end < current_date` rather than the spec's `week_start <= current_date` because the DB runs in UTC where `current_date` is already the new Monday — the latter would still show the in-progress week. Also moved the Weekly Hot Trends cron to `5 0 * * 1` (Mon 00:05 UTC). Verified on production: `/trends` defaults to "Week of 2026-06-22 – 06-28"; the 06-29 week is absent from the selector.
+
 ## 2026-06-28 — Footer GitHub link removed
 
 - **feat(web)**: removed the GitHub link from the landing-page footer (#87, TASK-009). The footer now shows only "OpenProduct © 2026" + the Dashboard link; dropped the now-unused `GITHUB_REPO` constant. Verified on production.
