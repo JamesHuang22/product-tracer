@@ -269,9 +269,44 @@
 
 ## [2026-06-29] TASK-014: Make "Submit Product" visible to all users (not just logged-in)
 - **Priority**: P1
-- **Status**: pending
+- **Status**: ready
 - **Locked by**:
 - **Locked at**:
 - **Acceptance**: The "Submit" link/button is visible in the nav to ALL visitors (logged-in or not). Anonymous users who click it see a modal/overlay saying "Sign in to submit your product" with a button to /login. Logged-in users go directly to /submit.
 - **Spec**:
-  *(filled by Planner)*
+  **Goal:** Make the product submission flow accessible to everyone. Logged-in users go directly to `/submit`. Anonymous users see an inline sign-in prompt instead of a 307 redirect or broken page.
+
+  **Files to touch:**
+
+  ### Part 1 — Submit link visible for everyone
+  - `apps/web/components/site-header.tsx`:
+    - Remove the `session` guard that hides the Submit link for anonymous users
+    - Always render the Submit nav item in the header
+    - The link target: for logged-in users → `/submit`; for logged-out users → keep it as `/submit` (the page itself will handle anonymous UX)
+
+  ### Part 2 — `/submit` page handles anonymous users gracefully
+  - `apps/web/app/submit/page.tsx`:
+    - Currently redirects to `/login` if not logged in. Change this:
+    - Detect anonymous session (check `session` — if null, the user is anonymous)
+    - If anonymous: render a clean, centered overlay/modal with:
+      - An icon (LockClosed or similar, 48px, muted)
+      - Heading: "Sign in to submit your product"
+      - Body: "You need an account to submit a product. It takes 30 seconds."
+      - CTA button: "Sign in with GitHub" (links to `/login` or triggers sign-in flow)
+      - Subtle text: "Already have an account? Sign in" (same link)
+      - No heading banner, no footer distractions — just this card centered
+    - If logged in: render the existing `<SubmitForm />` as-is
+
+  ### Part 3 — Clean up the route
+  - Remove the old `redirect('/login')` logic from `page.tsx` entirely
+  - The new anonymous page should be a server component that reads the session and conditionally renders the sign-in prompt vs. the form
+
+  **Keep unchanged:**
+  - The submission form, API route, worker, DB schema — all existing logic unaffected
+  - Auth flow (GitHub OAuth via Supabase) stays exactly as-is
+  - `/submit` route remains the same URL
+
+  **Don't do:**
+  - Don't add a modal/dialog library — keep it simple, just render inline on the page
+  - Don't change header styling or layout
+  - Don't add analytics events
