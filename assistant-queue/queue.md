@@ -22,9 +22,11 @@
 
 ## [2026-06-28] TASK-009: Remove GitHub link from footer
 - **Priority**: P2
-- **Status**: in-progress
+- **Status**: done
 - **Locked by**: coder-auto
 - **Locked at**: 2026-06-28 22:12 PDT
+- **PR**: #87 (merged)
+- **Verify**: PASS — production landing footer shows only "OpenProduct © 2026" + Dashboard; GitHub link removed (and unused GITHUB_REPO constant dropped); homepage 200.
 - **Acceptance**: Footer only shows "OpenProduct © 2026 · Dashboard" — no GitHub link/reference visible to users
 - **Spec**:
   *(filled by Planner)*

@@ -3,6 +3,10 @@
 > Auto-generated summary of notable changes to product-tracer.
 > Format: Keep a Changelog — date, PR/commit, type, description.
 
+## 2026-06-28 — Footer GitHub link removed
+
+- **feat(web)**: removed the GitHub link from the landing-page footer (#87, TASK-009). The footer now shows only "OpenProduct © 2026" + the Dashboard link; dropped the now-unused `GITHUB_REPO` constant. Verified on production.
+
 ## 2026-06-28 — Weekly trends history regenerated
 
 - **fix(data)**: regenerated the stale pre-fix weekly-trend rows so each week shows its own data (TASK-008). Triggered the **Weekly Hot Trends** GitHub Action (the LLM/DB secrets live there); the historical weeks were regenerated via a `--week` run earlier in the session and that data persists in the DB. With the TASK-007 ISO-week bounding, the weeks are now distinct: **06-22** → 137 signals, top products OpenKnowledge · Nub · Atlas · …; **06-15** → 0 signals (none collected that week), distinct themes. The duplicated "Are You in the Weights?" leaderboard is gone from both weeks. `/trends` (and `?week=`, `/en`, `/zh`) all 200; latest view shows the corrected 06-22 data.
