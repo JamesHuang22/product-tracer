@@ -2,7 +2,7 @@ name: Weekly Hot Trends
 
 on:
   schedule:
-    - cron: '0 4 * * 1' # every Monday UTC 04:00
+    - cron: '5 0 * * 1' # every Monday UTC 00:05 (just after the ISO week rolls over)
   workflow_dispatch:
 
 jobs:
