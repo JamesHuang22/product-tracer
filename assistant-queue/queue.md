@@ -462,10 +462,11 @@
 
 ## [2026-06-29] TASK-019: Full-text search for projects
 - **Priority**: P1
-- **Status**: in-progress
+- **Status**: done
 - **Locked by**: coder-auto
 - **Locked at**: 2026-06-29 10:20 PDT
-- **Acceptance**: /projects search searches names AND descriptions. Tag/category filter works with search combined.
+- **PR**: #97 (merged)
+- **Verify**: PASS — /projects 200; /api/search?q=track now returns description matches ("WebTorrent tracker", "devtrack"). Shipped: (1) table search reworked from tanstack column-only globalFilter to a client filter over name + one_liner + ai_summary + tags, combining with the category column filter; "{n} results found" line when a query is active; search box placeholder updated. (2) searchProjects (pg_trgm autocomplete) extended to substring-match one_liner + ai_summary alongside name. i18n EN+ZH. No migration. typecheck clean. NOTE: process slip — first impl commit accidentally landed on local main; recovered by moving it to feat/task-019, hard-resetting main to origin, then lock→rebase→PR (nothing bad pushed to origin main).
 - **Spec**:
   **Goal:** Search across project names and descriptions for better discovery.
 
