@@ -317,10 +317,11 @@
 
 ## [2026-06-29] TASK-015: Upvote/Downvote system for products
 - **Priority**: P0 FEATURE
-- **Status**: in-progress
+- **Status**: done
 - **Locked by**: coder-auto
 - **Locked at**: 2026-06-29 09:15 PDT
-- **Acceptance**: Users can upvote/downvote products. Products show vote count. /projects has a "Most Upvoted" sort option. Vote counts displayed on product detail pages.
+- **PR**: #93 (merged)
+- **Verify**: PASS — migration 0019 applied via Supabase MCP (app.product_vote table + RLS policies; upvotes/downvotes int cols on app.project, backfilled 0). /projects 200, /projects/tanstack-ai 200, POST /api/vote anon → 401 (correct). Shipped: voteOnProject/getUserVote in db.ts (toggle-off on repeat, recomputes tallies), /api/vote route (auth + validation), VoteButton client component (optimistic ▲/net/▼, 401→"Sign in to vote" inline prompt), "Most upvoted" sort + sortable Votes column on /projects (desktop table + mobile cards), VoteButton on detail header seeded with user's vote. i18n EN+ZH keys added. typecheck clean.
 - **Spec**:
   **Goal:** Add a full upvote/downvote system so users can vote on products and see rankings.
 
