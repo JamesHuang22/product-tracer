@@ -264,3 +264,14 @@
 - **Priority**: P0
 - **Status**: done
 - **PR**: #77
+
+---
+
+## [2026-06-29] TASK-014: Make "Submit Product" visible to all users (not just logged-in)
+- **Priority**: P1
+- **Status**: pending
+- **Locked by**:
+- **Locked at**:
+- **Acceptance**: The "Submit" link/button is visible in the nav to ALL visitors (logged-in or not). Anonymous users who click it see a modal/overlay saying "Sign in to submit your product" with a button to /login. Logged-in users go directly to /submit.
+- **Spec**:
+  *(filled by Planner)*
