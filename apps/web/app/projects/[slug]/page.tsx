@@ -5,15 +5,18 @@ import { cookies } from 'next/headers';
 import { ArrowUpRight, ChevronRight, Sparkles } from 'lucide-react';
 import {
   getProjectBySlug,
+  getUserVote,
   type ProjectDetail,
   type ProjectMetricPoint,
   type ProjectPlatformSnapshot,
 } from '@/lib/db';
+import { getUser } from '@/lib/supabase/server';
 import { fmtCount, cleanOneLiner, localizedText } from '@/lib/format';
 import { translate, DEFAULT_LOCALE, isLocale, LOCALE_COOKIE } from '@/lib/i18n';
 import { CategoryBadge } from '@/components/category-badge';
 import { RelatedProjects } from '@/components/related-projects';
 import { BookmarkButton } from '@/components/bookmark-button';
+import { VoteButton } from '@/components/vote-button';
 import { TagChips } from '@/components/tag-chips';
 
 // Live data — reflect the latest collector run on every request.
@@ -282,6 +285,11 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   const raw = cookieStore.get(LOCALE_COOKIE)?.value;
   const locale = isLocale(raw) ? (raw as 'en' | 'zh') : DEFAULT_LOCALE;
 
+  // The signed-in user's current vote (0 when anonymous or unvoted) seeds the
+  // VoteButton so the active arrow renders correctly on first paint.
+  const user = await getUser();
+  const userVote = user ? await getUserVote(user.id, project.id) : 0;
+
   // AI summary, suppressed in EN mode if it happens to be Chinese (same rule as
   // one-liners). Null until migration 0013 + the generate-summaries run populate it.
   const aiSummary = localizedText(locale, project.ai_summary);
@@ -323,6 +331,12 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
             </a>
           )}
           <BookmarkButton slug={project.slug} variant="labeled" />
+          <VoteButton
+            projectId={project.id}
+            initialUpvotes={project.upvotes}
+            initialDownvotes={project.downvotes}
+            initialUserVote={userVote}
+          />
           <span className="text-neutral-400">
             {translate(locale, 'projects.trackedSince', { date: project.created_at })}
           </span>

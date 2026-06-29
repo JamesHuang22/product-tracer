@@ -16,7 +16,7 @@ import {
   type PaginationState,
   type SortingState,
 } from '@tanstack/react-table';
-import { ArrowDown, ArrowUp, ArrowUpDown, GitFork, Star, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronUp, GitFork, Star, X } from 'lucide-react';
 import type { ProjectListItem } from '@/lib/db';
 import { LLM_CATEGORIES, formatCategory } from '@/lib/categories';
 import { fmtCount, cleanOneLiner, localizedText } from '@/lib/format';
@@ -50,6 +50,7 @@ function heatBorderClass(stars: number | null | undefined): string {
 const SORT_OPTIONS: { value: string; key: MessageKey; sorting: SortingState }[] = [
   { value: 'stars-desc', key: 'sort.starsDesc', sorting: [{ id: 'github_stars', desc: true }] },
   { value: 'stars-asc', key: 'sort.starsAsc', sorting: [{ id: 'github_stars', desc: false }] },
+  { value: 'votes-desc', key: 'sort.mostUpvoted', sorting: [{ id: 'net_votes', desc: true }] },
   { value: 'newest', key: 'sort.newest', sorting: [{ id: 'created_at', desc: true }] },
   { value: 'name-asc', key: 'sort.nameAsc', sorting: [{ id: 'name', desc: false }] },
 ];
@@ -209,6 +210,27 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
           </div>
         ),
       }),
+      ch.accessor((p) => (p.upvotes ?? 0) - (p.downvotes ?? 0), {
+        id: 'net_votes',
+        header: t('table.header.votes'),
+        cell: (info) => {
+          const v = info.getValue();
+          return (
+            <div
+              className={`text-right font-medium tabular-nums ${
+                v > 0
+                  ? 'text-emerald-600 dark:text-emerald-400'
+                  : v < 0
+                    ? 'text-red-600 dark:text-red-400'
+                    : 'text-neutral-400'
+              }`}
+            >
+              {v > 0 ? `+${fmtCount(v)}` : fmtCount(v)}
+            </div>
+          );
+        },
+        sortDescFirst: true,
+      }),
       // Hidden column — exists only so the "Newest first" sort option has a
       // created_at accessor to order by (ISO strings sort chronologically).
       ch.accessor('created_at', {
@@ -255,7 +277,8 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
   const { pageIndex, pageSize } = table.getState().pagination;
   const rangeStart = filteredCount === 0 ? 0 : pageIndex * pageSize + 1;
   const rangeEnd = Math.min((pageIndex + 1) * pageSize, filteredCount);
-  const numeric = (id: string) => id === 'github_stars' || id === 'github_forks';
+  const numeric = (id: string) =>
+    id === 'github_stars' || id === 'github_forks' || id === 'net_votes';
 
   // "Go to page" input. Held as free text while typing, kept in sync with the
   // real page index (so Prev/Next, page-size changes, and filter resets all
@@ -430,6 +453,21 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
                 <span className="inline-flex items-center gap-1 tabular-nums text-neutral-500">
                   <GitFork className="h-3 w-3" /> {fmtCount(p.github_forks)}
                 </span>
+                {(() => {
+                  const v = (p.upvotes ?? 0) - (p.downvotes ?? 0);
+                  if (v === 0) return null;
+                  return (
+                    <span
+                      className={`inline-flex items-center gap-1 tabular-nums ${
+                        v > 0
+                          ? 'text-emerald-600 dark:text-emerald-400'
+                          : 'text-red-600 dark:text-red-400'
+                      }`}
+                    >
+                      <ChevronUp className="h-3 w-3" /> {v > 0 ? `+${fmtCount(v)}` : fmtCount(v)}
+                    </span>
+                  );
+                })()}
               </div>
               {p.tags.length > 0 && <TagChips tags={p.tags} max={5} className="mt-2" />}
               <div className="absolute right-3 top-3">
