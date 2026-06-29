@@ -177,6 +177,17 @@ export async function getTotalProjectCount(): Promise<number> {
   return row?.n ?? 0;
 }
 
+/** Projects with a generated AI summary (landing stats strip). Read via to_jsonb
+ * so it returns 0 (not an error) until migration 0013 adds `ai_summary`. */
+export async function getAiSummaryCount(): Promise<number> {
+  const [row] = await sql<{ n: number }[]>`
+    select count(*)::int as n
+    from app.project p
+    where nullif(btrim(to_jsonb(p) ->> 'ai_summary'), '') is not null
+  `.catch(() => [{ n: 0 }] as { n: number }[]);
+  return row?.n ?? 0;
+}
+
 /** Projects created in the last 7 days (home stats bar). */
 export async function getNewThisWeek(): Promise<number> {
   const [row] = await sql<{ n: number }[]>`

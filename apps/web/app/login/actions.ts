@@ -33,7 +33,7 @@ async function resolveOrigin() {
 /**
  * Combined sign-in / sign-up server action driven by the `mode` field. On a
  * successful sign-in (or a sign-up that returns a session) the cookie is set
- * server-side and the user is redirected to /bookmarks. A sign-up that needs
+ * server-side and the user is redirected to /dashboard. A sign-up that needs
  * email confirmation returns a localized "check your email" notice instead.
  */
 export async function authenticate(_prev: AuthState, formData: FormData): Promise<AuthState> {
@@ -62,7 +62,7 @@ export async function authenticate(_prev: AuthState, formData: FormData): Promis
     // Email confirmation enabled → no session yet.
     if (!data.session) return { notice: t('auth.confirmPending') };
     revalidatePath('/', 'layout');
-    redirect('/bookmarks');
+    redirect('/dashboard');
   }
 
   const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -74,7 +74,7 @@ export async function authenticate(_prev: AuthState, formData: FormData): Promis
     return { error: error.message };
   }
   revalidatePath('/', 'layout');
-  redirect('/bookmarks');
+  redirect('/dashboard');
 }
 
 /** Resend the sign-up confirmation email for an address. */

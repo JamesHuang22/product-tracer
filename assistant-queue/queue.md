@@ -79,9 +79,9 @@
 
 ## [2026-06-28] TASK-005: Landing page — "OpenProduct" marketing homepage
 - **Priority**: P0
-- **Status**: ready
-- **Locked by**:
-- **Locked at**:
+- **Status**: in-progress
+- **Locked by**: coder-auto
+- **Locked at**: 2026-06-28 16:35 PDT
 - **Acceptance**:
   - A new landing page at `/` with flashy animations/effects that sells the product
   - Tagline: "Stay ahead of the curve. Discover the latest products building around the world."
