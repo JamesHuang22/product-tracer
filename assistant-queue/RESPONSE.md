@@ -1,5 +1,19 @@
 # Coder-Auto session — Response (2026-06-28)
 
+## TASK-007 — Weekly trends repeated across weeks (P0 BUG) ✅ code fixed & merged (PR #85)
+
+**Root cause (confirmed in DB):** the pipeline gathered its corpus with a trailing `now() - 7 days` window but keyed each row to the ISO week. With bursty/stalled collection, every run captured ~the same recent rows, so weeks 2026-06-15 and 2026-06-22 stored **identical top products** ("Are You in the Weights? | Elvin | Dropmatico | …") and near-duplicate themes. Those stored products didn't even match 06-22's real signal leaderboard.
+
+**Fix (`apps/worker/src/scripts/weekly-trend.ts`):** corpus bounded to the exact ISO week `[week_start, week_end)`; upsert keyed to that week; new `--week=YYYY-MM-DD` arg to regenerate any historical week from its own data; LLM prompt scoped to the week with an explicit "don't carry over previous weeks" instruction. Typechecks; verified at the data layer that bounded weeks differ.
+
+**⚠️ Not yet visible on /trends — handed off as TASK-008.** Per your decision (*merge code; regen later*), the already-stored rows stay as-is until the pipeline reruns:
+```
+pnpm --filter @product-tracer/worker run:weekly-trend --week=2026-06-15
+pnpm --filter @product-tracer/worker run:weekly-trend --week=2026-06-22
+```
+This needs `LLM_API_KEY` (DeepSeek) and DB access — I have neither locally, and the cron is billing-blocked (TASK-003). **Deeper data issue:** all 137 signals currently sit in week 06-22 (collectors stalled), so once regenerated, earlier weeks (e.g. 06-15) will legitimately have **empty** signal-based top products until collection resumes.
+
+
 ## TASK-005 — Marketing landing page (P0) ✅ shipped & verified (PR #84)
 
 New animated landing at `/`; the former homepage dashboard moved to **`/dashboard`**.
