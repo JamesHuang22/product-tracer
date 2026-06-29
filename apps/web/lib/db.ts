@@ -176,6 +176,49 @@ export async function getProjectsBySlugs(slugs: string[]): Promise<ProjectListIt
   `;
 }
 
+/**
+ * Projects by id, in the same shape as getAllProjects. Backs the /compare
+ * tool (ids come from the user's row selection). Empty input → empty list.
+ * Order follows the input id order so the compare columns match the selection.
+ */
+export async function getProjectsByIds(ids: string[]): Promise<ProjectListItem[]> {
+  if (ids.length === 0) return [];
+  const rows = await sql<ProjectListItem[]>`
+    select
+      p.id,
+      p.slug,
+      p.name,
+      p.one_liner,
+      (to_jsonb(p) ->> 'ai_summary') as ai_summary,
+      p.category,
+      p.llm_category,
+      p.primary_url,
+      latest.stars as github_stars,
+      latest.forks as github_forks,
+      to_char(p.created_at, 'YYYY-MM-DD') as created_at,
+      coalesce(p.tags, '{}') as tags,
+      coalesce((to_jsonb(p) ->> 'upvotes')::int, 0) as upvotes,
+      coalesce((to_jsonb(p) ->> 'downvotes')::int, 0) as downvotes,
+      coalesce(
+        (select array_agg(distinct il.platform)
+         from app.identity_link il where il.project_id = p.id),
+        '{}'
+      ) as platforms
+    from app.project p
+    left join lateral (
+      select s.stars, s.forks
+      from raw.snapshot s
+      where s.project_id = p.id and s.platform = 'github'
+      order by s.timestamp desc
+      limit 1
+    ) latest on true
+    where p.id = any(${ids})
+  `;
+  // Preserve the caller's id order (SQL returns arbitrary order).
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  return ids.map((id) => byId.get(id)).filter((r): r is ProjectListItem => r != null);
+}
+
 /** Total number of tracked projects (home stats bar). */
 export async function getTotalProjectCount(): Promise<number> {
   const [row] = await sql<{ n: number }[]>`select count(*)::int as n from app.project`;
