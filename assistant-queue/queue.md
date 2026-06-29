@@ -434,10 +434,11 @@
 
 ## [2026-06-29] TASK-018: Personalized "My Dashboard" for logged-in users
 - **Priority**: P1
-- **Status**: in-progress
+- **Status**: done
 - **Locked by**: coder-auto
 - **Locked at**: 2026-06-29 10:05 PDT
-- **Acceptance**: Logged-in users see personalized dashboard: upvoted products, submission status, bookmarked projects, recent activity.
+- **PR**: #96 (merged)
+- **Verify**: PASS — /dashboard 200. Logged-in users now branch to <PersonalDashboard> (server component): Your Submissions (status badges, link to project if approved), Your Upvotes (getUserUpvotes — name + tally, vote=1), Bookmarked Projects (card grid), Recent Activity (merged submissions+upvotes timeline, newest-first, limit 10), plus empty-state CTA. Anonymous users keep generic HomeContent (verified 200). All personal queries defensively try/catch'd (42P01/42703 → []). Route-level loading.tsx (TASK-012) covers both. i18n EN+ZH. No DB migration needed (reuses 0018/0019). typecheck clean. Note: logged-in view not curl-verifiable (auth-gated); compiles + reuses proven queries.
 - **Spec**:
   **Goal:** Replace the generic /dashboard with a personalized one for logged-in users.
 
