@@ -3,6 +3,10 @@
 > Auto-generated summary of notable changes to product-tracer.
 > Format: Keep a Changelog — date, PR/commit, type, description.
 
+## 2026-06-28 — Dashboard UI polish
+
+- **feat(web)**: refined the `/dashboard` UI for a more polished, professional feel (#90, TASK-012) without changing the color palette, layout structure, data, or i18n. StatCards use a softer `ring-1` + micro-shadow with tighter padding; section headers gain a divider and a refined `h2`/subtitle scale; interactive cards lift on hover (`transition-all` + `-translate-y-0.5`) with a light shadow; the hero badge goes white-with-shadow and the headline tightens (`leading-[1.05]`, `tracking-[-0.02em]`); section rhythm tightens; body text → `leading-[1.6]`; horizontal strips snap and hide their scrollbar; responsive padding (`px-5 sm:px-8 lg:px-6`). Added `app/dashboard/loading.tsx` — a pure-CSS `animate-pulse` skeleton mirroring the hero + stats rhythm. Verified on production; other pages unaffected.
+
 ## 2026-06-28 — YouTube insights translated to English (EN locale)
 
 - **fix(worker/data)**: `/youtube-insights` now shows English in EN locale for the rows that previously stored Chinese in the English `key_insight` column (#89, TASK-010). A new `backfill-insight-en` worker finds rows whose `key_insight` contains CJK, translates the canonical Chinese (`key_insight_zh`) to English via the LLM (DeepSeek), and overwrites `key_insight`; `key_insight_zh` is untouched so ZH locale is unchanged. Ran via a new manual **Backfill Insight English** GitHub Action (secrets live there). Result: 0 of 117 rows still have CJK in `key_insight` (was 20); production EN cards render English insights (e.g. "ByteDance unveiled the Doubao 2.1 Pro…") with no "Analysis pending" fallbacks, while ZH still shows Chinese. Idempotent (English rows no longer match the CJK filter); no frontend change needed since titles are only a fallback that no longer triggers.
