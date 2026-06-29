@@ -361,9 +361,9 @@
 
 ## [2026-06-29] TASK-016: Product share cards (OG image + social sharing)
 - **Priority**: P0 FEATURE
-- **Status**: ready
-- **Locked by**:
-- **Locked at**:
+- **Status**: in-progress
+- **Locked by**: coder-auto
+- **Locked at**: 2026-06-29 09:35 PDT
 - **Acceptance**: Each /projects/[slug] page generates a beautiful OG image and has Twitter/LinkedIn share buttons. Copy link button too.
 - **Spec**:
   **Goal:** Let users share product pages easily with rich previews on Twitter/LinkedIn.
