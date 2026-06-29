@@ -3,10 +3,6 @@
 > Auto-generated summary of notable changes to product-tracer.
 > Format: Keep a Changelog — date, PR/commit, type, description.
 
-## 2026-06-28 — Weekly trends history regenerated
-
-- **fix(data)**: regenerated the stale pre-fix weekly-trend rows so each week shows its own data (TASK-008). Triggered the **Weekly Hot Trends** GitHub Action (the LLM/DB secrets live there); the historical weeks were regenerated via a `--week` run earlier in the session and that data persists in the DB. With the TASK-007 ISO-week bounding, the weeks are now distinct: **06-22** → 137 signals, top products OpenKnowledge · Nub · Atlas · …; **06-15** → 0 signals (none collected that week), distinct themes. The duplicated "Are You in the Weights?" leaderboard is gone from both weeks. `/trends` (and `?week=`, `/en`, `/zh`) all 200; latest view shows the corrected 06-22 data.
-
 ## 2026-06-28 — Weekly trends scoped to the ISO week
 
 - **fix(worker)**: the weekly-trends pipeline no longer repeats stale data across weeks (#85, TASK-007). It gathered its corpus with a trailing `created_at >= now() - interval '7 days'` window while keying the row to `date_trunc('week', now())`; because collection is bursty (and currently stalled), consecutive runs scooped up ~the same recent rows, so weeks **2026-06-15** and **2026-06-22** stored identical top products and near-duplicate themes. Now every corpus query is bounded to the exact ISO week `[week_start, week_end)`, the upsert keys to that week, and an optional `--week=YYYY-MM-DD` arg regenerates any historical week from its own data (snapped to Monday). The LLM prompt states the explicit week range and instructs the model to use only this week's data and never carry over previous weeks' themes/phrasing. Verified at the data layer that bounded weeks differ (06-22 → OpenKnowledge/Nub/Agent 37/…; 06-15 → no signals that week). **Note:** the already-stored rows were generated before this fix and stay stale on `/trends` until the pipeline regenerates them — tracked as TASK-008 (needs `LLM_API_KEY`; the cron is billing-blocked, TASK-003).
