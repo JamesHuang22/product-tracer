@@ -873,8 +873,12 @@ export async function getLatestWeeklyTrend(weekStart?: string): Promise<WeeklyTr
         total_insights_collected,
         to_char(created_at, 'YYYY-MM-DD') as created_at
       from app.weekly_trend
-      ${weekStart ? sql`where week_start = ${weekStart}` : sql``}
-      order by created_at desc
+      -- Only weeks that have fully ended (week_end already in the past). Hides the
+      -- in-progress current week so /trends never shows an incomplete/empty report
+      -- (TASK-011). current_date is UTC, matching how week_start/_end are stored.
+      where week_end < current_date
+        ${weekStart ? sql`and week_start = ${weekStart}` : sql``}
+      order by week_start desc
       limit 1
     `;
     return rows[0] ?? null;
@@ -898,6 +902,8 @@ export async function getTrendWeeks(): Promise<{ week_start: string; week_end: s
         to_char(week_start, 'YYYY-MM-DD') as week_start,
         to_char(week_end, 'YYYY-MM-DD') as week_end
       from app.weekly_trend
+      -- Exclude the in-progress current week from the selector (TASK-011).
+      where week_end < current_date
       order by week_start desc
     `;
   } catch (err) {
@@ -929,7 +935,10 @@ export async function getRecentWeeklyTrends(limit = 2): Promise<WeeklyTrend[]> {
         total_insights_collected,
         to_char(created_at, 'YYYY-MM-DD') as created_at
       from app.weekly_trend
-      order by created_at desc
+      -- Exclude the in-progress current week so week-over-week compares only
+      -- fully-ended weeks (TASK-011).
+      where week_end < current_date
+      order by week_start desc
       limit ${limit}
     `;
   } catch (err) {
