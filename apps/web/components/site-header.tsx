@@ -44,6 +44,11 @@ export function SiteHeader({ userEmail }: { userEmail: string | null }) {
               {t(l.key)}
             </Link>
           ))}
+          {authed && (
+            <Link href="/submit" className={linkCls}>
+              {t('nav.submit')}
+            </Link>
+          )}
           <LanguageSwitcher />
           <ThemeToggle />
           {authed ? (
@@ -84,6 +89,11 @@ export function SiteHeader({ userEmail }: { userEmail: string | null }) {
               {t(l.key)}
             </Link>
           ))}
+          {authed && (
+            <Link href="/submit" onClick={() => setOpen(false)} className={`py-1.5 ${linkCls}`}>
+              {t('nav.submit')}
+            </Link>
+          )}
           {authed ? (
             <Link
               href="/account"

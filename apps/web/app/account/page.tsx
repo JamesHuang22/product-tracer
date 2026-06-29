@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { DEFAULT_LOCALE, isLocale, LOCALE_COOKIE, translate } from '@/lib/i18n';
 import { getUser } from '@/lib/supabase/server';
-import { getBookmarkedSlugs } from '@/lib/db';
+import { getBookmarkedSlugs, getUserSubmissions, type UserSubmission } from '@/lib/db';
 import { signOut } from '@/app/login/actions';
 
 export const metadata: Metadata = {
@@ -29,6 +29,26 @@ export default async function AccountPage() {
   } catch {
     savedCount = 0;
   }
+
+  let submissions: UserSubmission[] = [];
+  try {
+    submissions = await getUserSubmissions(user.id);
+  } catch {
+    submissions = [];
+  }
+
+  const statusLabel = (s: UserSubmission) => {
+    if (s.status === 'approved') return tr('submit.statusApproved');
+    if (s.status === 'rejected' || s.review_status === 'invalid') return tr('submit.statusRejected');
+    return tr('submit.statusPending');
+  };
+  const statusCls = (s: UserSubmission) => {
+    if (s.status === 'approved')
+      return 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300';
+    if (s.status === 'rejected' || s.review_status === 'invalid')
+      return 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300';
+    return 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300';
+  };
 
   const memberSince = user.created_at
     ? new Date(user.created_at).toLocaleDateString(locale === 'zh' ? 'zh-CN' : 'en-US', {
@@ -60,6 +80,36 @@ export default async function AccountPage() {
           </dd>
         </div>
       </dl>
+
+      {submissions.length > 0 && (
+        <section className="mt-10">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-lg font-semibold tracking-tight">{tr('submit.mySubmissions')}</h2>
+            <Link href="/submit" className="text-xs font-medium text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100">
+              {tr('submit.title')}
+            </Link>
+          </div>
+          <ul className="divide-y divide-neutral-200 rounded-xl border border-neutral-200 dark:divide-neutral-800 dark:border-neutral-800">
+            {submissions.map((s) => (
+              <li key={s.id} className="flex items-center justify-between gap-3 px-5 py-3">
+                <div className="min-w-0">
+                  {s.project_slug ? (
+                    <Link href={`/projects/${s.project_slug}`} className="truncate text-sm font-medium hover:underline">
+                      {s.product_name}
+                    </Link>
+                  ) : (
+                    <span className="truncate text-sm font-medium">{s.product_name}</span>
+                  )}
+                  <p className="text-xs tabular-nums text-neutral-400">{s.created_at}</p>
+                </div>
+                <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${statusCls(s)}`}>
+                  {statusLabel(s)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <form action={signOut} className="mt-6">
         <button
