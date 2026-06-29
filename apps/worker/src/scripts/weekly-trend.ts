@@ -122,8 +122,10 @@ function platformKey(url: string | null): string {
   }
 }
 
-/** Format the trailing-7-day corpus into a single LLM prompt. */
+/** Format this week's bounded corpus into a single LLM prompt. */
 function buildPrompt(
+  weekStart: string,
+  weekEndIncl: string,
   projectCount: number,
   topProducts: TopProductRow[],
   videos: VideoRow[],
@@ -147,21 +149,26 @@ function buildPrompt(
     : `(no video insights with relevance >= ${MIN_VIDEO_RELEVANCE} this week)`;
 
   return [
-    'Past 7 days summary for a tech / indie product radar:',
+    `Trends for the week of ${weekStart} to ${weekEndIncl} ONLY, for a tech / indie product radar.`,
+    'Every item below was collected DURING this week. Base the report solely on it.',
     '',
-    `New projects tracked: ${projectCount}`,
+    `New projects tracked this week: ${projectCount}`,
     '',
-    'Top projects by signal activity:',
+    'Top projects by signal activity this week:',
     productLines,
     '',
-    `Top video insights (relevance >= ${MIN_VIDEO_RELEVANCE}):`,
+    `Top video insights this week (relevance >= ${MIN_VIDEO_RELEVANCE}):`,
     videoLines,
     '',
     'Generate a JSON object with exactly these keys:',
-    '- summary_en: a 3-4 sentence English overview of the week\'s trends.',
+    `- summary_en: a 3-4 sentence English overview of THIS week's (${weekStart}–${weekEndIncl}) trends.`,
     '- summary_zh: a 3-4 sentence Chinese translation (natural Mandarin, not translationese).',
     '- emerging_themes: an array of short keyword strings describing this week\'s hot topics.',
     '- video_highlights: 1-2 sentences describing notable video coverage.',
+    '',
+    'IMPORTANT: Analyze ONLY the data above — it is exclusively from this week. Do NOT carry',
+    'over, restate, or recycle themes, products, or phrasing from any previous week. Each',
+    'weekly report must stand on its own and reflect only what is listed here.',
   ].join('\n');
 }
 
@@ -171,18 +178,42 @@ async function main(): Promise<void> {
     return;
   }
 
-  // Step 1 — gather the trailing-7-day corpus.
+  // Resolve the target ISO week. By default this is the current week; pass
+  // `--week=YYYY-MM-DD` to (re)generate any historical week from its OWN data
+  // (e.g. backfilling after this fix). The date is snapped to the Monday via
+  // date_trunc, so any day within the week works.
+  const weekArg = process.argv.find((a) => a.startsWith('--week='))?.split('=')[1] ?? null;
+  if (weekArg && !/^\d{4}-\d{2}-\d{2}$/.test(weekArg)) {
+    throw new Error(`[weekly-trend] --week must be YYYY-MM-DD, got "${weekArg}"`);
+  }
+
+  // Step 0 — resolve the week window. CRITICAL: the corpus is bounded to this
+  // exact ISO week [week_start, week_end_excl), NOT a trailing `now() - 7 days`
+  // span. The old trailing window meant every run captured roughly the same
+  // recent rows, so consecutive weeks came out near-identical (TASK-007). Bounding
+  // to the week makes each report contain ONLY that week's freshly-collected data.
+  const [bounds] = await sql<{ week_start: string; week_end_excl: string; week_end_incl: string }[]>`
+    select
+      to_char(date_trunc('week', coalesce(${weekArg}::timestamptz, now())), 'YYYY-MM-DD') as week_start,
+      to_char(date_trunc('week', coalesce(${weekArg}::timestamptz, now())) + interval '7 days', 'YYYY-MM-DD') as week_end_excl,
+      to_char(date_trunc('week', coalesce(${weekArg}::timestamptz, now())) + interval '6 days', 'YYYY-MM-DD') as week_end_incl
+  `;
+  const weekStart = bounds!.week_start;
+  const weekEndExcl = bounds!.week_end_excl; // next Monday (exclusive upper bound)
+  const weekEndIncl = bounds!.week_end_incl; // Sunday (stored as week_end)
+
+  // Step 1 — gather the corpus collected DURING this week only.
   const projects = await sql<ProjectRow[]>`
     select slug, name, one_liner, category, primary_url, created_at
     from app.project
-    where created_at >= now() - interval '7 days'
+    where created_at >= ${weekStart} and created_at < ${weekEndExcl}
   `;
 
   const topProducts = await sql<TopProductRow[]>`
     select p.slug, p.name, p.one_liner, p.primary_url, count(s.id)::int as signal_count
     from app.signal s
     join app.project p on p.id = s.project_id
-    where s.created_at >= now() - interval '7 days'
+    where s.created_at >= ${weekStart} and s.created_at < ${weekEndExcl}
     group by p.slug, p.name, p.one_liner, p.primary_url
     order by signal_count desc
     limit ${TOP_PRODUCTS}
@@ -191,40 +222,42 @@ async function main(): Promise<void> {
   const videos = await sql<VideoRow[]>`
     select video_title, channel_title, key_insight, key_insight_zh, relevance_score, sentiment
     from app.video_insight
-    where created_at >= now() - interval '7 days'
+    where created_at >= ${weekStart} and created_at < ${weekEndExcl}
       and relevance_score >= ${MIN_VIDEO_RELEVANCE}
     order by relevance_score desc
     limit ${TOP_VIDEOS}
   `;
 
-  // Accurate corpus totals (independent of the LIMITed prompt slices above).
+  // Accurate corpus totals (independent of the LIMITed prompt slices above),
+  // bounded to the same week window.
   const projectCountRows = await sql<{ count: number }[]>`
     select count(*)::int as count
     from app.project
-    where created_at >= now() - interval '7 days'
+    where created_at >= ${weekStart} and created_at < ${weekEndExcl}
   `;
   const signalCountRows = await sql<{ count: number }[]>`
     select count(*)::int as count
     from app.signal
-    where created_at >= now() - interval '7 days'
+    where created_at >= ${weekStart} and created_at < ${weekEndExcl}
   `;
   const insightCountRows = await sql<{ count: number }[]>`
     select count(*)::int as count
     from app.video_insight
-    where created_at >= now() - interval '7 days'
+    where created_at >= ${weekStart} and created_at < ${weekEndExcl}
   `;
   const project_count = projectCountRows[0]?.count ?? 0;
   const signal_count = signalCountRows[0]?.count ?? 0;
   const insight_count = insightCountRows[0]?.count ?? 0;
 
   console.log(
-    `[weekly-trend] Corpus: ${project_count} new projects, ${signal_count} signals, ` +
-      `${insight_count} insights (${topProducts.length} active products, ${videos.length} notable videos).`,
+    `[weekly-trend] Week ${weekStart}–${weekEndIncl} corpus: ${project_count} new projects, ` +
+      `${signal_count} signals, ${insight_count} insights ` +
+      `(${topProducts.length} active products, ${videos.length} notable videos).`,
   );
 
   // Step 2 + 3 — build the prompt and call DeepSeek. Raw callLlm (not
   // callLlmJson) so we can read token usage; we parse + validate ourselves.
-  const prompt = buildPrompt(project_count, topProducts, videos);
+  const prompt = buildPrompt(weekStart, weekEndIncl, project_count, topProducts, videos);
   const res = await callLlm(prompt, {
     json: true,
     maxTokens: 1200,
@@ -275,8 +308,8 @@ async function main(): Promise<void> {
       raw_llm_response, llm_prompt_tokens, llm_completion_tokens
     )
     values (
-      date_trunc('week', now())::date,
-      (date_trunc('week', now()) + interval '6 days')::date,
+      ${weekStart},
+      ${weekEndIncl},
       ${parsed.summary_en},
       ${parsed.summary_zh},
       ${sql.json(topProductsJson)},
