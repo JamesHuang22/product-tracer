@@ -745,6 +745,9 @@ export async function getVideoInsights(limit: number, offset = 0): Promise<Video
       nullif(btrim(vi.key_insight), '') is not null
       or nullif(btrim(to_jsonb(vi) ->> 'key_insight_zh'), '') is not null
     )
+      -- Hide non-tech content flagged by clean-irrelevant-youtube (migration 0021).
+      -- Read via to_jsonb so it's a no-op until the column exists.
+      and coalesce((to_jsonb(vi) ->> 'is_relevant')::boolean, true)
     order by vi.published_at desc nulls last, vi.created_at desc
     limit ${limit}
     offset ${offset}
@@ -786,6 +789,7 @@ export async function getTopVideoInsights(limit: number): Promise<VideoInsight[]
         nullif(btrim(vi.key_insight), '') is not null
         or nullif(btrim(to_jsonb(vi) ->> 'key_insight_zh'), '') is not null
       )
+      and coalesce((to_jsonb(vi) ->> 'is_relevant')::boolean, true)
     order by vi.published_at desc nulls last, vi.created_at desc
     limit ${limit}
   `;
@@ -827,6 +831,7 @@ export async function getVideoInsightsByCategories(
         nullif(btrim(vi.key_insight), '') is not null
         or nullif(btrim(to_jsonb(vi) ->> 'key_insight_zh'), '') is not null
       )
+      and coalesce((to_jsonb(vi) ->> 'is_relevant')::boolean, true)
     order by vi.published_at desc nulls last, vi.created_at desc
     limit ${limit}
     offset ${offset}
@@ -849,6 +854,7 @@ export async function getVideoInsightCount(categories?: string[]): Promise<numbe
             nullif(btrim(vi.key_insight), '') is not null
             or nullif(btrim(to_jsonb(vi) ->> 'key_insight_zh'), '') is not null
           )
+          and coalesce((to_jsonb(vi) ->> 'is_relevant')::boolean, true)
       `
       : await sql<{ n: number }[]>`
         select count(*)::int as n
@@ -857,6 +863,7 @@ export async function getVideoInsightCount(categories?: string[]): Promise<numbe
           nullif(btrim(vi.key_insight), '') is not null
           or nullif(btrim(to_jsonb(vi) ->> 'key_insight_zh'), '') is not null
         )
+          and coalesce((to_jsonb(vi) ->> 'is_relevant')::boolean, true)
       `;
   return row?.n ?? 0;
 }
@@ -878,6 +885,7 @@ export async function getVideoInsightCategories(): Promise<
       nullif(btrim(vi.key_insight), '') is not null
       or nullif(btrim(to_jsonb(vi) ->> 'key_insight_zh'), '') is not null
     )
+      and coalesce((to_jsonb(vi) ->> 'is_relevant')::boolean, true)
     group by 1
     order by cnt desc
   `;
