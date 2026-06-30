@@ -570,3 +570,14 @@
   - Don't change section layout/structure when data exists
   - Don't touch the anonymous dashboard experience
 
+---
+
+## [2026-06-29] TASK-022: Add Compare UI entry points on /projects
+- **Priority**: P1
+- **Status**: pending
+- **Locked by**:
+- **Locked at**:
+- **Acceptance**: Users can see and access the compare feature from the /projects page UI. Checkboxes on each table row + a visible action bar with "Compare (N)" button that becomes active when 2-3 are selected.
+- **Spec**:
+  *(filled by Planner)*
+
