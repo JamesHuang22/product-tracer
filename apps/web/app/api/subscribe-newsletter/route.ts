@@ -1,17 +1,30 @@
 import { NextResponse } from 'next/server';
-import { subscribeNewsletter } from '@/lib/db';
+// import { subscribeNewsletter } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * POST /api/subscribe-newsletter
+ *
+ * TEMPORARILY DISABLED (TASK-029) until an official email domain is set up.
+ * The implementation below is commented out and the route returns 501. The DB
+ * table (app.newsletter_subscriber) and subscriber data are untouched.
+ *
+ * To re-enable: restore the import above and the commented implementation, and
+ * delete this 501 stub (see TASK-017 for the original feature).
+ */
+export async function POST() {
+  return NextResponse.json(
+    { error: 'Newsletter subscription is temporarily disabled' },
+    { status: 501 },
+  );
+}
+
+/*
 // Pragmatic email shape check — full RFC validation belongs to the mail
 // provider; this just rejects obvious junk before it hits the table.
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-/**
- * POST /api/subscribe-newsletter  { email }
- * Captures a landing-page newsletter signup. Idempotent — a repeat email
- * succeeds quietly. Returns { success: true } or { error }.
- */
 export async function POST(request: Request) {
   let email: unknown;
   try {
@@ -36,3 +49,4 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'subscribe_failed' }, { status: 500 });
   }
 }
+*/
