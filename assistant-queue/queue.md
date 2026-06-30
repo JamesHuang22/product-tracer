@@ -501,34 +501,72 @@
 
 ## [2026-06-29] TASK-021: Add empty states to personalized dashboard sections
 - **Priority**: P1
-- **Status**: pending
-- **Locked by**:
-- **Locked at**:
+- **Status**: ready
+- **Locked by**: planner
+- **Locked at**: 2026-06-29 21:10 PDT
 - **Acceptance**: When a logged-in user has no bookmarks, no upvotes, and no submissions yet, the dashboard shows helpful empty state messages + CTA instead of blank sections.
 - **Spec**:
-  *(filled by Planner)* (name+link, category, description, stars, platforms, net votes, tracked-since); /compare (no ids) → 200 empty state; /projects → 200. Shipped: getProjectsByIds (id-order-preserving), projects-table row checkboxes (desktop + mobile, max 3, selection via tanstack meta to avoid stale closures), "Compare (N)" action bar (enabled at ≥2) → /compare?ids=…, Clear button, CompareTable responsive grid (sm:2/lg:3), /compare server route w/ UUID validation + og:title "Compare products on OpenProduct" + Add another/Back links, i18n EN+ZH. No migration. typecheck clean.
-- **Spec**:
-  **Goal:** Let users compare 2-3 products side by side.
+  **Goal:** Add empty state messages to every section of the personalized dashboard (`/dashboard` for logged-in users) so new users see clear guidance instead of blank/empty sections.
 
-  **Part 1 — Compare mode on /projects**
-  - Add a checkbox on each row in the /projects table for selecting products to compare
-  - Max 3 selections. Show "Compare (N)" button that becomes active when N >= 2
-  - When clicked, navigate to `/compare?ids=uuid1,uuid2`
+  **Files to touch:**
+  - `apps/web/app/dashboard/page.tsx` — may need to receive empty-state props or detect emptiness server-side
+  - `apps/web/components/personal-dashboard.tsx` — the PersonalizedDashboard component (from TASK-018), where the actual sections live
 
-  **Part 2 — /compare route**
-  - Server component that loads projects by IDs
-  - Renders a `CompareTable` component: side-by-side columns
-  - Rows: Name, Description, GitHub Stars, Platforms, Category, Submitted Date
-  - Simple responsive grid: 2-column on tablet, 3-column on desktop
+  **Specific sections that need empty states:**
 
-  **Part 3 — Cleanup**
-  - Clear selection button
-  - "Add another" link back to /projects
-  - Proper meta tags (og:title = "Compare products on OpenProduct")
+  ### 1. "Your Submissions" empty state
+  - Show when the submissions query returns 0 rows
+  - Display: icon (PaperAirplane or DocumentPlus, 48px, muted neutral-400), heading "No submissions yet", body "Submit a product to get started — our AI will review it quickly.", CTA button "Submit a Product" → `/submit`
 
-  **Files:**
-  - New: `apps/web/app/compare/page.tsx`
-  - New: `apps/web/components/compare-table.tsx`
-  - Modified: `apps/web/app/projects/page.tsx` — add checkboxes to table rows
-  - Modified: `apps/web/app/projects/projects-table.tsx` — selection state
+  ### 2. "Your Upvotes" empty state
+  - Show when upvotes query returns 0 rows
+  - Display: icon (HandThumbUp outline, 48px, muted), heading "No upvotes yet", body "Browse projects and upvote the ones you like. Your votes help the community discover great products.", CTA button "Browse Projects" → `/projects`
+
+  ### 3. "Bookmarked Projects" empty state
+  - Show when bookmarks query returns 0 rows
+  - Display: icon (Bookmark outline, 48px, muted), heading "No bookmarks yet", body "Bookmark projects you want to keep an eye on. They'll appear here for quick access.", CTA button "Discover Projects" → `/projects`
+
+  ### 4. "Recent Activity" empty state
+  - Show when the recent activity timeline has 0 items
+  - Display: simpler treatment — heading "No recent activity", body "Your actions — submissions, upvotes, bookmarks — will show up here." (no CTA, as other CTAs already cover it)
+
+  **Design rules for all empty states:**
+  - Centered within their section container, `py-12` vertical padding
+  - Icon: 48×48, `text-neutral-300` / `dark:text-neutral-600`, use existing Lucide icons already in the project
+  - Heading: `text-base font-medium text-neutral-600 dark:text-neutral-300`
+  - Body: `text-sm text-neutral-400 dark:text-neutral-500 max-w-sm mx-auto text-balance`
+  - CTA button (where applicable): `text-sm`, use the project's existing button styling (`Button` component or inline `<a>` with `text-emerald-600 hover:text-emerald-700`)
+  - Each empty state wrapped in a `div` with the existing section container classes
+
+  **Implementation approach:**
+  - Add a helper component `EmptyState` inside `personal-dashboard.tsx` (or a new file `apps/web/components/empty-state.tsx`):
+    ```tsx
+    function EmptyState({ icon, title, description, cta }: { icon: LucideIcon; title: string; description: string; cta?: { label: string; href: string } }) {
+      return (
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <Icon className="h-12 w-12 text-neutral-300 dark:text-neutral-600 mb-4" />
+          <h3 className="text-base font-medium text-neutral-600 dark:text-neutral-300">{title}</h3>
+          <p className="text-sm text-neutral-400 dark:text-neutral-500 max-w-sm mx-auto text-balance mt-1">{description}</p>
+          {cta && (
+            <Link href={cta.href} className="mt-4 text-sm text-emerald-600 hover:text-emerald-700 font-medium">
+              {cta.label} →
+            </Link>
+          )}
+        </div>
+      );
+    }
+    ```
+  - In each section of `PersonalDashboard`, check if the data array is empty → render `<EmptyState>` instead of the list/grid
+  - Default imports: `import { Bookmark, HandThumbUp, PaperAirplane, Clock } from '@heroicons/react/24/outline'` or the equivalent Lucide icons already used in the project
+
+  **Keep unchanged:**
+  - All data fetching, query logic, existing components
+  - The anonymous HomeContent (TASK-018 kept it for non-logged-in users, that's fine)
+  - `/dashboard` route structure
+  - i18n (ENG only for now — empty state text can live in the component directly, or add i18n keys if preferred)
+
+  **Don't do:**
+  - Don't add new dependencies or animation libraries
+  - Don't change section layout/structure when data exists
+  - Don't touch the anonymous dashboard experience
 
