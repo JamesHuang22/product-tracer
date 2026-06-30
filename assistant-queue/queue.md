@@ -576,10 +576,11 @@
 
 ## [2026-06-29] TASK-022: Add Compare UI entry points on /projects
 - **Priority**: P1
-- **Status**: in-progress
+- **Status**: done
 - **Locked by**: coder-auto
 - **Locked at**: 2026-06-29 21:30 PDT
-- **Acceptance**: Users can see and access the compare feature from the /projects page UI. Checkboxes on each table row + a visible action bar with "Compare (N)" button that becomes active when 2-3 are selected.
+- **PR**: #100 (merged)
+- **Verify**: PASS — /projects 200. Builds on the compare feature from TASK-020. This task's deltas: (1) compare action bar converted from inline to a FIXED floating bottom bar (fixed inset-x-0 bottom-0 z-50, border-t, shadow-lg, backdrop-blur, dark-mode) centered to max-w-6xl; appears at ≥1 selected, Compare button enabled at ≥2 / greyed at 1, Clear button. (2) checkbox moved to FIRST column (before project name) on desktop; mobile card checkbox already present. (3) pb-20 spacer on the table container so the fixed bar never covers pagination. typecheck clean.
 - **Spec**:
   **Goal:** Make the compare feature discoverable from /projects.
 
