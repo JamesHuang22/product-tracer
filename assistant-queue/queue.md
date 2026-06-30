@@ -722,9 +722,11 @@
 
 ## [2026-06-30] TASK-027: Prevent recurrence of non-tech YouTube videos appearing — add ANTI_KEYWORDS + bilingual LLM prompt
 - **Priority**: P0 BUG
-- **Status**: in-progress
+- **Status**: done
 - **Locked by**: coder-auto
 - **Locked at**: 2026-06-30 00:25 PDT
+- **PR**: #104 (merged)
+- **Verify**: PASS — re-ran Clean Irrelevant YouTube (success, 1m): processed 126 → 118 relevant, 8 flagged (1 via anti-keyword, 16 LLM). Now flags 8 (was 7) incl. 2 new bilingual catches — Nate Silver politics + 鹅腿阿姨 gossip — plus 端午 dumpling vlog ("好吃的" anti-keyword); no dev content over-pruned. /youtube-insights 200. Shipped in clean-irrelevant-youtube.ts: split TECH_KEYWORDS into ASCII (whole-word regex) + CJK (substring: 编程/程序员/人工智能/科技/初创/开源/算法/芯片…); ANTI_KEYWORDS (吃的/美食/做饭/vlog/日常/养生/健康/生活…) → instant is_relevant=false, no LLM, but only when no tech keyword present (so 健康科技-style content isn't false-flagged); bilingual LLM prompt (CJK-detect → 中文 prompt "只回答：是 或 否", parses 否/不/no). typecheck clean.
 - **Acceptance**: Future YouTube ingestion no longer lets food vlogs or irrelevant Chinese content slip through. The clean-irrelevant-youtube.ts is updated with:
   (1) Chinese tech keywords
   (2) ANTI_KEYWORDS that skip non-tech content without LLM
