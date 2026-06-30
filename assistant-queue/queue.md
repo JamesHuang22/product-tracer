@@ -860,10 +860,11 @@
 
 ## [2026-06-30] TASK-029: Comment out newsletter subscription feature (UI + API + script) for later re-enable
 - **Priority**: P2
-- **Status**: in-progress
+- **Status**: done
 - **Locked by**: coder-auto
 - **Locked at**: 2026-06-30 01:30 PDT
-- **Acceptance**: Newsletter signup form removed from landing page. POST /api/subscribe-newsletter returns 501. send-newsletter.ts marked inactive. All code stays in repo, just disabled, so it can be quickly re-enabled.
+- **PR**: #107 (merged)
+- **Verify**: PASS — / 200 (newsletter section gone); POST /api/subscribe-newsletter → 501 {"error":"Newsletter subscription is temporarily disabled"}. Shipped: landing.tsx NewsletterSignup import + section commented out (with re-enable note); route.ts returns 501 stub, original impl kept in a /* */ block; send-newsletter.ts has top "// DISABLED" marker + early `console.log('[send-newsletter] DISABLED'); return;` in main(). Left untouched per spec: app.newsletter_subscriber table + data, 0020 migration, newsletter.* i18n keys. typecheck clean (web+worker). Re-enable = uncomment + drop the 501 stub.
 - **Spec**:
   **Goal:** Disable the newsletter feature from both UI and backend without deleting any code. Comment out rather than remove.
 
