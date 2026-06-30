@@ -752,10 +752,11 @@
 
 ## [2026-06-30] TASK-028: Fix Chinese key_insight not translated for EN locale — auto-translate on ingestion + backfill
 - **Priority**: P0 BUG
-- **Status**: in-progress
+- **Status**: done
 - **Locked by**: coder-auto
 - **Locked at**: 2026-06-30 00:45 PDT
-- **Acceptance**: When locale is EN, all YouTube insight cards show English text. Chinese-only videos get their key_insight translated to English on ingestion. Existing Chinese key_insight rows are backfilled.
+- **PR**: #105 (merged)
+- **Verify**: PASS — ran Backfill Insight English (success, 27s): CJK-in-key_insight went 3→0; key_insight_zh now populated on 125 rows. Spot-check confirms split: en="US AI safety regulation is targeting the wrong threat…" / zh="美国AI安全监管打错了靶子…". /youtube-insights 200. Shipped: Part1 ingestion — ensureEnglishKeyInsight() in youtube-insights.ts runs before storeInsight; if key_insight has CJK, preserves Chinese into key_insight_zh and LLM-translates a fresh English key_insight (falls through unchanged on failure). Part2 backfill — backfill-insight-en.ts now also sets key_insight_zh = coalesce(nullif(zh,''), original Chinese) so ZH locale keeps the text; reused existing "Backfill Insight English" workflow (spec's backfill-chinese-insights.ts name → existing script is the same purpose). Part3 web safety net — youtube-insights/page.tsx wraps the video_title fallback in localizedText so a Chinese title is dropped in EN (honest "analysis pending" over leaked CJK), upholding acceptance #1. typecheck clean (web+worker). NOTE: spec said collectors/youtube.ts but insight writes live in scripts/youtube-insights.ts.
 - **Spec**:
   **Problem:** Videos collected with Chinese summaries write the Chinese text into `key_insight` (the EN field) and leave `key_insight_zh` NULL. The frontend reads `key_insight` for EN locale, so Chinese text is shown regardless of locale setting.
 
