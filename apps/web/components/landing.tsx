@@ -5,7 +5,8 @@ import type { Route } from 'next';
 import { ArrowRight, Sparkles, RefreshCw, Compass } from 'lucide-react';
 import { useI18n } from '@/lib/i18n-context';
 import { Reveal } from '@/components/reveal';
-import { NewsletterSignup } from '@/components/newsletter-signup';
+// Newsletter signup — disabled until official email domain is set up (TASK-029).
+// import { NewsletterSignup } from '@/components/newsletter-signup';
 
 /** Round down to a clean "N+" figure (e.g. 4,512 → "4,500+"); small counts show as-is. */
 function approxCount(n: number): string {
@@ -149,7 +150,7 @@ export function Landing({
         </div>
       </section>
 
-      {/* ---- Newsletter ---- */}
+      {/* ---- Newsletter — disabled until official email domain is set up (TASK-029) ----
       <section className="mx-auto max-w-5xl px-6 py-16 sm:py-20">
         <Reveal>
           <div className="mx-auto max-w-xl text-center">
@@ -165,6 +166,7 @@ export function Landing({
           </div>
         </Reveal>
       </section>
+      */}
 
       {/* ---- Footer ---- */}
       <footer className="mx-auto max-w-5xl px-6 py-12">

@@ -1,3 +1,4 @@
+// DISABLED — see TASK-017 for re-enable instructions (TASK-029).
 /**
  * Weekly newsletter send (TASK-017, Part 4 — OUTLINE ONLY).
  *
@@ -28,6 +29,11 @@ interface TrendProduct {
 }
 
 async function main() {
+  // DISABLED — see TASK-017 for re-enable instructions (TASK-029). Remove this
+  // early return once an official email domain + delivery is set up.
+  console.log('[send-newsletter] DISABLED');
+  return;
+
   // 1. Active recipients.
   const subscribers = await sql<Subscriber[]>`
     select email
