@@ -1,10 +1,13 @@
 name: Clean Irrelevant YouTube
 
-# Flags non-tech YouTube content (app.video_insight.is_relevant) so it drops out
-# of /youtube-insights. Keyword fast-path + LLM for borderline rows. On-demand
-# only — run after a backlog of new insights. Secrets come from GitHub. (TASK-024)
+# Audits app.video_insight with the LLM (no keyword lists) and DELETEs any
+# non-tech content, so /youtube-insights carries zero food/lifestyle/daily-chat
+# rows. Runs weekly (Sunday 06:00 UTC) over the last 7 days, and on demand for a
+# full re-scan. Secrets come from GitHub. (TASK-024 → TASK-028-REV)
 
 on:
+  schedule:
+    - cron: '0 6 * * 0' # Sundays 06:00 UTC — weekly audit of recent rows
   workflow_dispatch: {}
 
 concurrency:
@@ -31,3 +34,6 @@ jobs:
           LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
           LLM_MODEL: ${{ secrets.LLM_MODEL }}
           LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
+          # Scheduled runs audit only the last 7 days; manual dispatch (empty
+          # github.event.schedule) audits the whole table.
+          AUDIT_DAYS: ${{ github.event.schedule && '7' || '0' }}

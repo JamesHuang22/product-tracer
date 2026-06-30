@@ -191,8 +191,21 @@ export default async function YoutubeInsightsPage({
   const page = Number.isNaN(parsed) ? 1 : Math.min(Math.max(parsed, 1), pageCount);
   const offset = (page - 1) * PAGE_SIZE;
 
-  const insights =
+  const fetched =
     total === 0 ? [] : await getVideoInsightsByCategories(selectedCategories, PAGE_SIZE, offset);
+
+  // Last-resort circuit breaker (TASK-028-REV): in EN locale, drop any card that
+  // has no English-displayable text — i.e. its insight is CJK/empty AND its title
+  // is CJK/empty. The DB-level LLM audit should already remove non-tech content,
+  // so this rarely fires; it guarantees the EN UI never shows a Chinese-only card.
+  const insights =
+    locale === 'en'
+      ? fetched.filter(
+          (i) =>
+            localizedPair('en', i.key_insight, i.key_insight_zh) !== null ||
+            localizedText('en', i.video_title) !== null,
+        )
+      : fetched;
 
   // Dropdown options (fixed canonical set) annotated with live counts; the "All"
   // count is the unfiltered total across every category bucket.
