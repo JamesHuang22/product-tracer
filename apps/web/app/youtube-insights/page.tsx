@@ -16,7 +16,7 @@ import {
   type Locale,
   type MessageKey,
 } from '@/lib/i18n';
-import { localizedPair } from '@/lib/format';
+import { localizedPair, localizedText } from '@/lib/format';
 import { InsightsControls, type CategoryOption } from './insights-controls';
 
 const OG_TITLE = 'YouTube Insights — OpenProduct';
@@ -103,10 +103,11 @@ function DigestCard({
   const insightText = localizedPair(locale, insight.key_insight, insight.key_insight_zh);
   // Never leave a card textless. When the AI summary is missing — or gets
   // suppressed because EN mode drops a Chinese-only key_insight — fall back to
-  // the video title (raw source content, like a product name), then to a muted
-  // "analysis pending" note. The DB layer already drops rows with no usable text
-  // in either language; this covers the locale-suppression case.
-  const fallbackTitle = insight.video_title?.trim() || null;
+  // the video title, then to a muted "analysis pending" note. The title is run
+  // through localizedText so a Chinese title is itself dropped in EN mode rather
+  // than leaking CJK into the EN UI (TASK-028 safety net) — better an honest
+  // "analysis pending" than stray Chinese in an English card.
+  const fallbackTitle = localizedText(locale, insight.video_title?.trim() || null);
   const text = insightText ?? fallbackTitle;
   const isFallback = !insightText;
 

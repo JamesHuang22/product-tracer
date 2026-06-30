@@ -295,6 +295,41 @@ function isRelevantInsight(video: YoutubeVideo, insight: Insight): boolean {
   return keyword || insight.relevance_score >= 4;
 }
 
+// CJK ideographs + Japanese kana — mirrors the web `hasCjk` test.
+const CJK_RE = /[぀-ヿ㐀-䶿一-鿿豈-﫿]/;
+
+/**
+ * Guarantee `key_insight` (the English field the EN UI reads) is actually
+ * English (TASK-028). The model occasionally returns Chinese for a Chinese
+ * video, which then leaks into the EN locale. When that happens we move the
+ * Chinese into `key_insight_zh` (unless it already holds Chinese) and translate
+ * a fresh English summary into `key_insight`. On translation failure we leave
+ * the insight as-is rather than block ingestion.
+ */
+async function ensureEnglishKeyInsight(insight: Insight): Promise<Insight> {
+  if (!CJK_RE.test(insight.key_insight)) return insight;
+
+  // The EN field is Chinese — preserve it as the canonical ZH text if ZH is
+  // empty or itself non-Chinese, then translate to English.
+  const zh = CJK_RE.test(insight.key_insight_zh) ? insight.key_insight_zh : insight.key_insight;
+
+  const res = await callLlm(
+    `Translate the following Chinese tech/product video insight into natural, fluent English. ` +
+      `Keep it 2-4 sentences, preserve the meaning, do not add commentary or quotation marks. ` +
+      `Return ONLY the English translation.\n\n${insight.key_insight}`,
+    {
+      maxTokens: 400,
+      systemPrompt:
+        'You are a professional zh→en translator for a tech product digest. ' +
+        'Output only the English translation — no preamble, no notes.',
+    },
+  );
+  const english = res?.content?.trim().replace(/^["']|["']$/g, '').trim();
+  if (!english || CJK_RE.test(english)) return insight; // translation failed — keep as-is
+
+  return { ...insight, key_insight: english, key_insight_zh: zh };
+}
+
 /**
  * Persist one analysed video. on conflict (video_id) do UPDATE the insight fields
  * (not the immutable video metadata) so a re-analysed row — e.g. an old row that
@@ -425,7 +460,8 @@ async function main(): Promise<void> {
         promptTokens += result.usage.promptTokens;
         completionTokens += result.usage.completionTokens;
       }
-      await storeInsight(video, result.insight, result.raw, result.usage);
+      const insight = await ensureEnglishKeyInsight(result.insight);
+      await storeInsight(video, insight, result.raw, result.usage);
       analysed++;
     } catch (err) {
       // One bad video shouldn't sink the run — log and move on. It stays "new"

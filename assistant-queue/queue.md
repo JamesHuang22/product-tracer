@@ -793,3 +793,47 @@
   - `apps/worker/src/collectors/youtube.ts`
   - `apps/worker/src/scripts/backfill-chinese-insights.ts` (update existing)
   - `apps/web/app/youtube-insights/page.tsx`
+
+## [2026-06-30] TASK-028-REV: REVISION — Chinese-to-English translation script must run and be reliable. Not just collector fix.
+- **Priority**: P0 BUG
+- **Status**: ready
+- **Locked by**:
+- **Locked at**:
+- **Acceptance**: Zero misclassified Chinese food/daily/lifestyle videos appear in /youtube-insights or anywhere in the product. The solution must be automated and self-correcting — not a one-time SQL update.
+
+## [2026-06-30] TASK-029: Comment out newsletter subscription feature (UI + API + script) for later re-enable
+- **Priority**: P2
+- **Status**: ready
+- **Locked by**:
+- **Locked at**:
+- **Acceptance**: Newsletter signup form removed from landing page. POST /api/subscribe-newsletter returns 501. send-newsletter.ts marked inactive. All code stays in repo, just disabled, so it can be quickly re-enabled.
+- **Spec**:
+  **Goal:** Disable the newsletter feature from both UI and backend without deleting any code. Comment out rather than remove.
+
+  **What to do:**
+
+  1. **Landing page UI** (`apps/web/app/page.tsx` or wherever `<NewsletterSignup>` is rendered):
+     - Comment out the `<NewsletterSignup>` component import and JSX
+     - Add a comment: `{/* Newsletter signup — disabled until official email domain is set up */}`
+
+  2. **API route** (`apps/web/app/api/subscribe-newsletter/route.ts`):
+     - Comment out the implementation
+     - Return 501 with `{ "error": "Newsletter subscription is temporarily disabled" }`
+     - Add a comment explaining this is temporary and how to re-enable
+
+  3. **Send script** (`apps/worker/src/scripts/send-newsletter.ts`):
+     - Add a top comment: `// DISABLED — see TASK-017 for re-enable instructions`
+     - Add early-return at top of main(): `console.log('[send-newsletter] DISABLED'); return;`
+
+  4. **Don't touch:**
+     - DB table `app.newsletter_subscriber` — keep all subscriber data intact
+     - Migration files — leave 0020_newsletter.sql as-is
+     - i18n keys — leave them, they're harmless
+     - Any tests
+
+  **To re-enable later:** Remove the comment blocks, re-enable the API route logic.
+
+  **Files to touch:**
+  - `apps/web/app/page.tsx`
+  - `apps/web/app/api/subscribe-newsletter/route.ts`
+  - `apps/worker/src/scripts/send-newsletter.ts`

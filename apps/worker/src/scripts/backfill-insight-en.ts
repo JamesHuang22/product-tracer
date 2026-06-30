@@ -77,7 +77,15 @@ async function main(): Promise<void> {
       continue;
     }
 
-    await sql`update app.video_insight set key_insight = ${english} where id = ${row.id}::uuid`;
+    // Preserve the canonical Chinese in key_insight_zh (so ZH locale still has
+    // it) when that field is empty — the Chinese currently in key_insight would
+    // otherwise be lost once we overwrite it with English (TASK-028).
+    await sql`
+      update app.video_insight
+      set key_insight = ${english},
+          key_insight_zh = coalesce(nullif(btrim(key_insight_zh), ''), ${source})
+      where id = ${row.id}::uuid
+    `;
     fixed += 1;
     console.log(`[backfill-insight-en] ✓ ${row.id}: ${english.slice(0, 70)}…`);
   }
