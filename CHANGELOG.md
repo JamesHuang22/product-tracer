@@ -3,6 +3,10 @@
 > Auto-generated summary of notable changes to product-tracer.
 > Format: Keep a Changelog — date, PR/commit, type, description.
 
+## 2026-06-29 — Personalized dashboard empty states
+
+- **feat(web)**: each section of the signed-in `/dashboard` now shows a helpful empty state instead of silently vanishing (#99, TASK-021). Added an `EmptyState` helper in `personal-dashboard.tsx` (muted 48px Lucide icon + heading + body + optional CTA); when the user has activity in some sections but not others, the empty ones — Your Submissions (→ /submit), Your Upvotes (→ /projects), Bookmarked Projects (→ /projects), Recent Activity (no CTA) — render guidance. The all-empty welcome card (brand-new users) is intentionally left unchanged, so no redundant stacked cards. Fully bilingual: 11 new `dashboard.empty.*` keys added to both EN and ZH. Verified on production; typecheck + build green, other pages unaffected.
+
 ## 2026-06-28 — Dashboard UI polish
 
 - **feat(web)**: refined the `/dashboard` UI for a more polished, professional feel (#90, TASK-012) without changing the color palette, layout structure, data, or i18n. StatCards use a softer `ring-1` + micro-shadow with tighter padding; section headers gain a divider and a refined `h2`/subtitle scale; interactive cards lift on hover (`transition-all` + `-translate-y-0.5`) with a light shadow; the hero badge goes white-with-shadow and the headline tightens (`leading-[1.05]`, `tracking-[-0.02em]`); section rhythm tightens; body text → `leading-[1.6]`; horizontal strips snap and hide their scrollbar; responsive padding (`px-5 sm:px-8 lg:px-6`). Added `app/dashboard/loading.tsx` — a pure-CSS `animate-pulse` skeleton mirroring the hero + stats rhythm. Verified on production; other pages unaffected.

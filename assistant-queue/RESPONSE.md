@@ -1,5 +1,23 @@
 # Coder-Auto session — Response (2026-06-28)
 
+## TASK-021 — Per-section empty states on personalized dashboard (P1) ✅ done & merged (PR #99) — coder-ondemand
+
+**What the gap was:** in `personal-dashboard.tsx`, each section (`Your Submissions`, `Your Upvotes`, `Bookmarked Projects`, `Recent Activity`) was gated on `data.length > 0`, so a partially-active user's empty sections **silently disappeared** — no guidance, just missing UI. A separate all-empty welcome card already handled brand-new users.
+
+**Fix:** added an `EmptyState` helper (muted 48px Lucide icon + heading + body + optional CTA link). Each section now renders when the user has *any* activity (`!isEmpty`), showing its `EmptyState` when its own data is empty:
+- Submissions → "No submissions yet" + **Submit a product** (`/submit`), icon `Send`
+- Upvotes → "No upvotes yet" + **Browse projects** (`/projects`), icon `ThumbsUp`
+- Bookmarks → "No bookmarks yet" + **Discover projects** (`/projects`), icon `Bookmark`
+- Recent Activity → "No recent activity" (no CTA per spec), icon `Clock`
+
+**Decision worth noting:** I deliberately **kept the existing all-empty welcome card unchanged** rather than stacking four empty states for brand-new users — that case already shows a helpful card with CTAs, and four redundant empty cards would be worse UX. The per-section states fill the real gap: the *partial* user. Acceptance still met (all-empty users get empty-state guidance + CTA).
+
+**i18n:** used `lucide-react` (project's icon lib) not the spec's heroicons, and added 11 `dashboard.empty.*` keys to **both** EN and ZH (the dashboard is fully localized; TASK-010 established EN/ZH parity matters) instead of hardcoding English.
+
+**Verify:** `pnpm typecheck` + `pnpm web:build` green. Production 200 on `/dashboard`, `/en/dashboard`, `/zh/dashboard`, `/`, `/projects`, `/trends`, `/youtube-insights`, `/login`, `/compare`. (Empty states render only for authed users, so not curl-visible, but the conditional logic is simple and typed.)
+
+---
+
 ## TASK-007 — Weekly trends repeated across weeks (P0 BUG) ✅ code fixed & merged (PR #85)
 
 **Root cause (confirmed in DB):** the pipeline gathered its corpus with a trailing `now() - 7 days` window but keyed each row to the ISO week. With bursty/stalled collection, every run captured ~the same recent rows, so weeks 2026-06-15 and 2026-06-22 stored **identical top products** ("Are You in the Weights? | Elvin | Dropmatico | …") and near-duplicate themes. Those stored products didn't even match 06-22's real signal leaderboard.

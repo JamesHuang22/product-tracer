@@ -501,9 +501,11 @@
 
 ## [2026-06-29] TASK-021: Add empty states to personalized dashboard sections
 - **Priority**: P1
-- **Status**: in-progress
+- **Status**: done
 - **Locked by**: coder-ondemand
 - **Locked at**: 2026-06-29 21:15 PDT
+- **PR**: #99 (merged)
+- **Verify**: PASS — typecheck + `web:build` green; production `/dashboard`, `/en/dashboard`, `/zh/dashboard` all 200, plus `/`, `/projects`, `/trends`, `/youtube-insights`, `/login`, `/compare`. Each personalized section (Submissions, Upvotes, Bookmarks, Recent Activity) now renders a bilingual `EmptyState` (icon + heading + body + CTA) when empty but the user has activity elsewhere; the all-empty welcome card is unchanged.
 - **Acceptance**: When a logged-in user has no bookmarks, no upvotes, and no submissions yet, the dashboard shows helpful empty state messages + CTA instead of blank sections.
 - **Spec**:
   **Goal:** Add empty state messages to every section of the personalized dashboard (`/dashboard` for logged-in users) so new users see clear guidance instead of blank/empty sections.
