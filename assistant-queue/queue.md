@@ -576,43 +576,133 @@
 
 ## [2026-06-29] TASK-022: Add Compare UI entry points on /projects
 - **Priority**: P1
-- **Status**: pending
+- **Status**: ready
 - **Locked by**:
 - **Locked at**:
 - **Acceptance**: Users can see and access the compare feature from the /projects page UI. Checkboxes on each table row + a visible action bar with "Compare (N)" button that becomes active when 2-3 are selected.
 - **Spec**:
-  *(filled by Planner)*
+  **Goal:** Make the compare feature discoverable from /projects.
+
+  **Part 1 — Checkboxes on table rows**
+  - `apps/web/components/projects-table.tsx` (or wherever the project table rows render):
+    - Add a checkbox column before the project name
+    - Desktop: show checkbox on each row
+    - Mobile: show checkbox on each card
+    - Track selection state (array of selected project IDs, max 3)
+
+  **Part 2 — Floating action bar**
+  - When N >= 1 selected, show a sticky bottom bar:
+    - "N selected" text
+    - "Compare (N)" button (enabled only when N >= 2, disabled greyed out when N=1)
+    - "Clear" button
+    - On "Compare" click: navigate to `/compare?ids=id1,id2`
+    - On "Clear": reset selection
+
+  **Part 3 — Visual**
+  - Sticky bar: `fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg p-3 z-50`
+  - Checkbox: simple `<input type="checkbox">` or custom styled checkbox
+  - Dark mode support
+
+  **Files:**
+  - `apps/web/app/projects/page.tsx` — add comparison state management
+  - `apps/web/components/projects-table.tsx` — checkboxes + bar
+  - OR `apps/web/components/projects-search.tsx` if the table lives inside it
 
 ---
 
 ## [2026-06-29] TASK-023: Show default dashboard when logged-in user has no data
 - **Priority**: P1 BUG
-- **Status**: pending
+- **Status**: ready
 - **Locked by**:
 - **Locked at**:
-- **Acceptance**: When a logged-in user has no bookmarks, upvotes, or submissions, the /dashboard shows the normal generic dashboard (HomeContent) instead of an empty personalized view. Only show personalized sections when there's actual data to show.
+- **Acceptance**: When a logged-in user has no bookmarks, upvotes, or submissions, the /dashboard shows the normal generic dashboard (HomeContent) instead of empty personalized view.
 - **Spec**:
-  *(filled by Planner)*
+  **Goal:** Instead of showing "Your dashboard is empty" when a logged-in user has no data, fall back to the generic dashboard.
+
+  **In `apps/web/app/dashboard/page.tsx`:**
+  - After fetching personalized data (submissions, upvotes, bookmarks), check if ALL are empty
+  - If user has no submissions AND no upvotes AND no bookmarks → render `<HomeContent />` (the same component shown to anonymous users)
+  - Only show `<PersonalDashboard />` if at least one section has data
+
+  **Note:** The HomeContent component already exists from TASK-018 — it shows stats, platform sections, latest activity. It's the generic view. Just reuse it.
+
+  **Files to touch:**
+  - `apps/web/app/dashboard/page.tsx` — conditional render based on data presence
 
 ---
 
 ## [2026-06-29] TASK-024: Filter out irrelevant YouTube content (food vlogs, non-tech) + clean existing data
 - **Priority**: P0 BUG
-- **Status**: pending
+- **Status**: ready
 - **Locked by**:
 - **Locked at**:
 - **Acceptance**: YouTube insights no longer shows non-tech/irrelevant videos (food, daily vlogs, gossip, random thoughts). Existing non-tech videos are removed from DB. Collector filters before storing.
 - **Spec**:
-  *(filled by Planner)*
+  **Goal:** Remove non-tech YouTube content from the platform — both existing data and future collections.
+
+  **Part 1 — Quick cleanup script (existing data)**
+  - Write a script `apps/worker/src/clean-irrelevant-youtube.ts`
+  - Fetch all videos from `app.youtube_video` where `key_insight` is non-null
+  - For each, call LLM (DeepSeek) with a simple prompt:
+    ```
+    Is this video relevant to indie developers, AI, startups, or tech? Respond only: "yes" or "no"
+    Title: {title}
+    Description: {description}
+    Key insight: {key_insight}
+    ```
+  - If "no": set `is_relevant = false` on the video row (add this column first, see migration below)
+  - If "yes": set `is_relevant = true`
+  - Run via `gh workflow run` with a dedicated workflow
+
+  **Part 2 — DB migration (0021_youtube_relevance.sql)**
+  ```sql
+  alter table app.youtube_video add column if not exists is_relevant boolean not null default true;
+  create index if not exists youtube_video_relevant_idx on app.youtube_video (is_relevant);
+  ```
+
+  **Part 3 — Update collector to filter at ingestion**
+  - `apps/worker/src/collectors/youtube.ts`:
+    - After fetching each video's transcript/summary, before storing:
+    - Quick keyword check: if none of these appear in title/description → skip:
+      `ai, ml, llm, gpt, cloud, startup, code, programming, developer, tech, software, engineer, data, web, app, product, security, saas, open source, framework, api, agent`
+    - (This catches food vlogs, gossip, random life content)
+    - Then LLM check (same prompt as Part 1) for borderline cases
+    - Only insert into DB if `is_relevant = true`
+
+  **Part 4 — Update YouTube insights query**
+  - `apps/web/lib/db.ts`: all YouTube insight queries add `WHERE is_relevant = true`
+  - This immediately hides all flagged content from the UI
+
+  **Files:**
+  - New: `apps/worker/src/clean-irrelevant-youtube.ts`
+  - New: `packages/db/migrations/0021_youtube_relevance.sql`
+  - Modified: `apps/worker/src/collectors/youtube.ts`
+  - Modified: `apps/web/lib/db.ts`
 
 ---
 
 ## [2026-06-29] TASK-025: Fix GitHub collector timeout — batch smaller, skip blocked repos
 - **Priority**: P0 BUG
-- **Status**: pending
+- **Status**: ready
 - **Locked by**:
 - **Locked at**:
-- **Acceptance**: GitHub Actions collect-github workflow completes without getting cancelled. Skips repos that 403/blocked instead of retrying. Batches API calls to avoid timeout.
+- **Acceptance**: GitHub Actions collect-github workflow completes within the 15-min timeout. Handles 403 blocked repos gracefully (skip, don't retry). Batches refreshes into chunks.
 - **Spec**:
-  *(filled by Planner)*
+  **Goal:** Fix the collect-github workflow that keeps getting cancelled because it tries to refresh 2900+ repos within the GitHub Actions 15-min timeout.
+
+  **Root cause:** The collector refreshes ALL known repos (~2900) in a single pass. With API rate limits and 403 responses on blocked repos, it times out.
+
+  **Fix in `apps/worker/src/scripts/collect-github.ts`:**
+  1. **Batch the refresh:** Instead of fetching all 2900 repos in one loop, process in batches of 100 repos per batch. After each batch, log progress and yield (short sleep 1-2s).
+  2. **Skip blocked repos instantly:** When a repo returns 403 with "Repository access blocked", catch the error and immediately skip — don't retry, don't slow down the batch. Mark it as "skip" in the cache.
+  3. **Add a timeout guard:** If the total elapsed time exceeds 10 minutes, stop refreshing and store whatever has been processed so far. Next run picks up the rest.
+  4. **Log batch progress:** Print "Batch X/Y complete (Z repos stored, elapsed N min)" every 5 batches for visibility.
+
+  **Also update the workflow timeout:**
+  - `.github/workflows/collect-github.yml`: change `timeout-minutes: 15` → `timeout-minutes: 20` (a bit more headroom)
+
+  **File to touch:**
+  - `apps/worker/src/scripts/collect-github.ts`
+  - `.github/workflows/collect-github.yml`
+
 
