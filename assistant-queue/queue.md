@@ -686,9 +686,9 @@
 
 ## [2026-06-29] TASK-025: Fix GitHub collector timeout — batch smaller, skip blocked repos
 - **Priority**: P0 BUG
-- **Status**: ready
-- **Locked by**:
-- **Locked at**:
+- **Status**: in-progress
+- **Locked by**: coder-auto
+- **Locked at**: 2026-06-29 22:15 PDT
 - **Acceptance**: GitHub Actions collect-github workflow completes within the 15-min timeout. Handles 403 blocked repos gracefully (skip, don't retry). Batches refreshes into chunks.
 - **Spec**:
   **Goal:** Fix the collect-github workflow that keeps getting cancelled because it tries to refresh 2900+ repos within the GitHub Actions 15-min timeout.
