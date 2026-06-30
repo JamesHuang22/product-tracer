@@ -635,10 +635,11 @@
 
 ## [2026-06-29] TASK-024: Filter out irrelevant YouTube content (food vlogs, non-tech) + clean existing data
 - **Priority**: P0 BUG
-- **Status**: in-progress
+- **Status**: done
 - **Locked by**: coder-auto
 - **Locked at**: 2026-06-29 22:00 PDT
-- **Acceptance**: YouTube insights no longer shows non-tech/irrelevant videos (food, daily vlogs, gossip, random thoughts). Existing non-tech videos are removed from DB. Collector filters before storing.
+- **PR**: #102 (merged)
+- **Verify**: PASS — cleanup workflow ran (success, 37s): flagged 7 non-tech videos (端午 food, summer life vlog, parenting, "Socialism rising", channel promo, Ackman/Wendy's finance, 山姆 news), kept 116 relevant — no dev content over-pruned. /youtube-insights 200, now hides the 7. Shipped: migration 0021 (app.video_insight.is_relevant bool default true + index — applied via MCP; NOTE spec's table name app.youtube_video was wrong, real table is app.video_insight); all 6 web video-insight queries filter `coalesce((to_jsonb(vi)->>'is_relevant')::boolean,true)` (defensive); ingestion gate isRelevantInsight() in youtube-insights.ts (keyword match OR relevance_score>=4) writes is_relevant on insert+conflict; clean-irrelevant-youtube.ts script (keyword fast-path + LLM yes/no for borderline, never deletes) + youtube:clean pnpm script + Clean Irrelevant YouTube workflow. typecheck clean (web+worker).
 - **Spec**:
   **Goal:** Remove non-tech YouTube content from the platform — both existing data and future collections.
 
