@@ -794,6 +794,13 @@
   - `apps/worker/src/scripts/backfill-chinese-insights.ts` (update existing)
   - `apps/web/app/youtube-insights/page.tsx`
 
+## [2026-06-30] TASK-028-REV: REVISION — Chinese-to-English translation script must run and be reliable. Not just collector fix.
+- **Priority**: P0 BUG
+- **Status**: ready
+- **Locked by**:
+- **Locked at**:
+- **Acceptance**: Zero misclassified Chinese food/daily/lifestyle videos appear in /youtube-insights or anywhere in the product. The solution must be automated and self-correcting — not a one-time SQL update.
+
 ## [2026-06-30] TASK-029: Comment out newsletter subscription feature (UI + API + script) for later re-enable
 - **Priority**: P2
 - **Status**: ready
