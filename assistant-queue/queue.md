@@ -605,3 +605,14 @@
 - **Spec**:
   *(filled by Planner)*
 
+---
+
+## [2026-06-29] TASK-025: Fix GitHub collector timeout — batch smaller, skip blocked repos
+- **Priority**: P0 BUG
+- **Status**: pending
+- **Locked by**:
+- **Locked at**:
+- **Acceptance**: GitHub Actions collect-github workflow completes without getting cancelled. Skips repos that 403/blocked instead of retrying. Batches API calls to avoid timeout.
+- **Spec**:
+  *(filled by Planner)*
+
