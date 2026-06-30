@@ -262,6 +262,39 @@ async function analyseVideo(
   return { insight: Insight.parse(raw), raw, usage: res.usage };
 }
 
+// Obvious tech/indie-dev signals — a hit on any keeps a video relevant even if
+// the model under-scored it. Kept in sync with clean-irrelevant-youtube.ts.
+const TECH_KEYWORDS = [
+  'ai', 'ml', 'llm', 'gpt', 'cloud', 'startup', 'code', 'coding', 'programming',
+  'developer', 'devtool', 'tech', 'software', 'engineer', 'data', 'web', 'app',
+  'product', 'security', 'saas', 'open source', 'open-source', 'framework', 'api',
+  'agent', 'database', 'react', 'python', 'javascript', 'typescript', 'devops',
+  'kubernetes', 'docker', 'model', 'neural', 'gpu', 'compiler', 'terminal',
+];
+
+/**
+ * Whether an analysed video is relevant to an indie-dev / AI / tech audience
+ * (TASK-024). A tech keyword anywhere in the title/insight/topics/tools keeps it
+ * relevant; otherwise we trust the model's relevance_score (>= 4 = keep). This
+ * drops food vlogs, gossip, and daily-life content (no keywords + low score)
+ * without a second LLM call.
+ */
+function isRelevantInsight(video: YoutubeVideo, insight: Insight): boolean {
+  const hay = [
+    video.title ?? '',
+    insight.key_insight,
+    ...insight.topics,
+    ...insight.tools_mentioned,
+  ]
+    .join(' ')
+    .toLowerCase();
+  const keyword = TECH_KEYWORDS.some((kw) => {
+    const re = new RegExp(`(^|[^a-z])${kw.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}([^a-z]|$)`);
+    return re.test(hay);
+  });
+  return keyword || insight.relevance_score >= 4;
+}
+
 /**
  * Persist one analysed video. on conflict (video_id) do UPDATE the insight fields
  * (not the immutable video metadata) so a re-analysed row — e.g. an old row that
@@ -273,17 +306,18 @@ async function storeInsight(
   raw: unknown,
   usage: LlmUsage | null,
 ): Promise<void> {
+  const isRelevant = isRelevantInsight(video, insight);
   await sql`
     insert into app.video_insight (
       video_id, channel_id, channel_title, video_title, video_url, thumbnail_url,
       published_at, trends, topics, tools_mentioned, sentiment, key_insight,
-      key_insight_zh, relevance_score, category, raw_llm_response, llm_prompt_tokens, llm_completion_tokens
+      key_insight_zh, relevance_score, category, is_relevant, raw_llm_response, llm_prompt_tokens, llm_completion_tokens
     ) values (
       ${video.id}, ${video.channelId}, ${video.channelTitle}, ${video.title},
       ${video.videoUrl}, ${video.thumbnailUrl}, ${video.publishedAt || null},
       ${sql.json(insight.trends)}, ${sql.json(insight.topics)}, ${sql.json(insight.tools_mentioned)},
       ${insight.sentiment}, ${insight.key_insight}, ${insight.key_insight_zh}, ${insight.relevance_score},
-      ${insight.category}, ${sql.json(raw as never)}, ${usage?.promptTokens ?? 0}, ${usage?.completionTokens ?? 0}
+      ${insight.category}, ${isRelevant}, ${sql.json(raw as never)}, ${usage?.promptTokens ?? 0}, ${usage?.completionTokens ?? 0}
     )
     on conflict (video_id) do update set
       trends                = excluded.trends,
@@ -294,6 +328,7 @@ async function storeInsight(
       key_insight_zh        = excluded.key_insight_zh,
       relevance_score       = excluded.relevance_score,
       category              = excluded.category,
+      is_relevant           = excluded.is_relevant,
       raw_llm_response      = excluded.raw_llm_response,
       llm_prompt_tokens     = excluded.llm_prompt_tokens,
       llm_completion_tokens = excluded.llm_completion_tokens

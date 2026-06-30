@@ -1,0 +1,33 @@
+name: Clean Irrelevant YouTube
+
+# Flags non-tech YouTube content (app.video_insight.is_relevant) so it drops out
+# of /youtube-insights. Keyword fast-path + LLM for borderline rows. On-demand
+# only — run after a backlog of new insights. Secrets come from GitHub. (TASK-024)
+
+on:
+  workflow_dispatch: {}
+
+concurrency:
+  group: clean-irrelevant-youtube
+  cancel-in-progress: false
+
+jobs:
+  clean:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @product-tracer/worker youtube:clean
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          LLM_MODEL: ${{ secrets.LLM_MODEL }}
+          LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
