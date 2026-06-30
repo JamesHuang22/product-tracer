@@ -156,46 +156,96 @@ export async function discoverRepos(
  *   - 429 / 403-RL   → one wait-and-retry; if it still fails, `blocked`
  * Genuine unexpected errors (auth 401, 5xx, network throws) still bubble up.
  */
+// Refresh tuning (TASK-024 → TASK-025). The known-repo set has grown past ~2900,
+// which can't be re-snapshotted within the Actions window. We process in batches
+// and stop refreshing once the time budget is spent — callers pass repos
+// stalest-first, so each capped run advances the most-overdue repos and coverage
+// rotates across runs.
+const REFRESH_BATCH_SIZE = 100;
+const REFRESH_BATCH_PAUSE_MS = 1500;
+const DEFAULT_REFRESH_BUDGET_MS = 10 * 60 * 1000; // 10 minutes
+
 export async function fetchKnownReposByIds(
   ids: number[],
-): Promise<{ repos: GithubRepo[]; missing: number[]; blocked: number[] }> {
+  budgetMs: number = DEFAULT_REFRESH_BUDGET_MS,
+): Promise<{
+  repos: GithubRepo[];
+  missing: number[];
+  blocked: number[];
+  processed: number;
+  stoppedEarly: boolean;
+}> {
   const repos: GithubRepo[] = [];
   const missing: number[] = [];
   const blocked: number[] = [];
 
-  for (const id of ids) {
-    let res = await ghFetch(`/repositories/${id}`);
+  const start = Date.now();
+  const totalBatches = Math.ceil(ids.length / REFRESH_BATCH_SIZE) || 0;
+  let processed = 0;
+  let stoppedEarly = false;
 
-    // Rate limited — wait out the window once, then retry this id.
-    if (isRateLimited(res)) {
-      await sleep(rateLimitWaitMs(res));
-      res = await ghFetch(`/repositories/${id}`);
-    }
-
-    if (res.status === 404) {
-      missing.push(id);
-      continue;
-    }
-    // 403 (incl. TOS block / still rate-limited), 451 (legal) → skip this repo,
-    // don't crash the collector. Drain the body so the connection is freed.
-    if (res.status === 403 || res.status === 451) {
-      const body = await res.text().catch(() => '');
-      blocked.push(id);
+  for (let b = 0; b < totalBatches; b++) {
+    // Time-budget guard: stop before the Actions job is force-cancelled and
+    // persist whatever we have. The next run resumes with the now-stalest repos.
+    if (Date.now() - start > budgetMs) {
+      stoppedEarly = true;
       console.warn(
-        `  ⚠ skipping repo ${id}: ${res.status} ${res.statusText} — ${body.slice(0, 160)}`,
+        `  ⏱ refresh budget (${Math.round(budgetMs / 60000)}m) reached after ` +
+          `${processed}/${ids.length} repos — stopping; next run continues.`,
       );
-      continue;
+      break;
     }
-    if (!res.ok) {
-      const body = await res.text();
-      throw new Error(
-        `GitHub repo ${id} failed: ${res.status} ${res.statusText} — ${body.slice(0, 200)}`,
+
+    const batch = ids.slice(b * REFRESH_BATCH_SIZE, (b + 1) * REFRESH_BATCH_SIZE);
+    for (const id of batch) {
+      let res = await ghFetch(`/repositories/${id}`);
+
+      // Rate limited — wait out the window once, then retry this id.
+      if (isRateLimited(res)) {
+        await sleep(rateLimitWaitMs(res));
+        res = await ghFetch(`/repositories/${id}`);
+      }
+
+      processed++;
+
+      if (res.status === 404) {
+        missing.push(id);
+        continue;
+      }
+      // 403 (incl. TOS block / still rate-limited), 451 (legal) → skip this repo
+      // instantly, no retry, so one blocked repo never slows the batch. Drain the
+      // body so the connection is freed.
+      if (res.status === 403 || res.status === 451) {
+        const body = await res.text().catch(() => '');
+        blocked.push(id);
+        console.warn(
+          `  ⚠ skipping repo ${id}: ${res.status} ${res.statusText} — ${body.slice(0, 160)}`,
+        );
+        continue;
+      }
+      if (!res.ok) {
+        const body = await res.text();
+        throw new Error(
+          `GitHub repo ${id} failed: ${res.status} ${res.statusText} — ${body.slice(0, 200)}`,
+        );
+      }
+      repos.push(GithubRepo.parse(await res.json()));
+    }
+
+    // Progress every 5 batches (and on the final batch) for run visibility.
+    if ((b + 1) % 5 === 0 || b === totalBatches - 1) {
+      const elapsedMin = ((Date.now() - start) / 60000).toFixed(1);
+      console.log(
+        `  Batch ${b + 1}/${totalBatches} complete ` +
+          `(${repos.length} stored, ${blocked.length} blocked, ${missing.length} missing, elapsed ${elapsedMin}m)`,
       );
     }
-    repos.push(GithubRepo.parse(await res.json()));
+
+    // Brief yield between batches to ease rate-limit pressure.
+    if (b < totalBatches - 1) await sleep(REFRESH_BATCH_PAUSE_MS);
   }
 
-  return { repos, missing, blocked };
+  return { repos, missing, blocked, processed, stoppedEarly };
 }
 
 // ---------------------------------------------------------------------------
