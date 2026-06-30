@@ -33,8 +33,10 @@ export default async function DashboardPage() {
   const rawLocale = cookieStore.get(LOCALE_COOKIE)?.value;
   const locale: Locale = isLocale(rawLocale) ? (rawLocale as Locale) : DEFAULT_LOCALE;
 
-  // Signed-in visitors get a personalized dashboard (their submissions, upvotes,
-  // bookmarks, recent activity). Anonymous visitors keep the generic overview.
+  // Signed-in visitors with activity get a personalized dashboard (their
+  // submissions, upvotes, bookmarks). Visitors with NO data fall through to the
+  // generic overview below — same view anonymous visitors see (TASK-023) —
+  // rather than an empty "your dashboard is empty" shell.
   const user = await getUser();
   if (user) {
     let submissions: UserSubmission[] = [];
@@ -49,19 +51,23 @@ export default async function DashboardPage() {
     } catch {
       // Tolerate a missing table / transient DB error — render what we have.
     }
-    const localizedBookmarks = bookmarks.map((b) => ({
-      ...b,
-      one_liner: localizedText(locale, b.one_liner),
-    }));
-    return (
-      <PersonalDashboard
-        locale={locale}
-        email={user.email ?? null}
-        submissions={submissions}
-        upvotes={upvotes}
-        bookmarks={localizedBookmarks}
-      />
-    );
+    const hasData = submissions.length > 0 || upvotes.length > 0 || bookmarks.length > 0;
+    if (hasData) {
+      const localizedBookmarks = bookmarks.map((b) => ({
+        ...b,
+        one_liner: localizedText(locale, b.one_liner),
+      }));
+      return (
+        <PersonalDashboard
+          locale={locale}
+          email={user.email ?? null}
+          submissions={submissions}
+          upvotes={upvotes}
+          bookmarks={localizedBookmarks}
+        />
+      );
+    }
+    // else: fall through to the generic HomeContent dashboard below.
   }
 
   // Fetch all live platforms + overview stats in parallel (server-side); the UI
