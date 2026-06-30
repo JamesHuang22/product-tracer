@@ -795,12 +795,67 @@
   - `apps/worker/src/scripts/backfill-chinese-insights.ts` (update existing)
   - `apps/web/app/youtube-insights/page.tsx`
 
-## [2026-06-30] TASK-028-REV: REVISION — Chinese-to-English translation script must run and be reliable. Not just collector fix.
+## [2026-06-30] TASK-028-REV: Zero tolerance for non-tech YouTube content — LLM-only review, no hardcoded keywords
 - **Priority**: P0 BUG
 - **Status**: ready
 - **Locked by**:
 - **Locked at**:
-- **Acceptance**: Zero misclassified Chinese food/daily/lifestyle videos appear in /youtube-insights or anywhere in the product. The solution must be automated and self-correcting — not a one-time SQL update.
+- **Acceptance**: No food vlogs, lifestyle content, Chinese daily chat, or any non-tech/indie-dev content ever appears in /youtube-insights. Hardcoded keyword lists must be REMOVED — only LLM review.
+- **Spec**:
+  **Why hardcoded keywords failed:** They're a whack-a-mole game. "美食" gets blocked but "烹饪教程" doesn't. You can't enumerate all non-tech content. Hardcoded lists are brittle.
+
+  **The correct approach: LLM-only review. No keyword lists.**
+
+  **Strategy:**
+  - Every YouTube video that gets ingested goes into the DB (no keyword pre-filter)
+  - The EXISTING LLM classification pipeline (`classify-videos.ts`) is the right place — augment it with a strict relevance gate
+  - No hardcoded DENY_LIST or TECH_KEYWORDS in ANY source file. ALL filtering is LLM-bassed.
+
+  **Changes:**
+
+  **1. Remove all hardcoded keyword lists from youtube.ts and clean-irrelevant-youtube.ts**
+  - Delete `TECH_KEYWORDS`, `ANTI_KEYWORDS`, and any `hasTechKeyword()` function
+  - Every video is judged solely by LLM
+
+  **2. Augment the LLM prompt for strict relevance classification**
+  - Bilingual prompt so Chinese content is correctly judged:
+    ```
+    This video is for a tech/indie-dev product discovery platform.
+    Is this video relevant to developers, startups, AI, or tech products?
+    Only answer "yes" or "no".
+
+    Title: {title}
+    Summary: {summary}
+
+    如果视频内容与独立开发、技术、AI、创业无关，回答 "no"。
+    只回答 yes 或 no。
+    ```
+
+  **3. Relevance check at every ingestion**
+  - In `youtube.ts`: after generating the key_insight, call LLM for relevance check
+  - If "no" with high confidence → skip inserting
+  - If "yes" → insert normally
+
+  **4. Audit on every collector run**
+  - After batch insert, audit all newly inserted rows with LLM
+  - "no" → DELETE from DB immediately (not just flag)
+
+  **5. Weekly audit workflow**
+  - New GitHub Actions workflow: runs every Sunday
+  - Fetches last 7 days of video_insight
+  - LLM rechecks each one; "no" → DELETE
+
+  **6. Frontend final filter**
+  - In /youtube-insights page.tsx:
+    - If result contains CJK characters and locale is EN → filter out the card entirely
+    - Last-resort circuit breaker
+
+  **Files to touch:**
+  - `apps/worker/src/collectors/youtube.ts` — remove all keyword lists, use LLM only
+  - `apps/worker/src/scripts/clean-irrelevant-youtube.ts` — remove keyword lists, pure LLM
+  - `apps/worker/src/scripts/classify-videos.ts` — add relevance gate with bilingual prompt
+  - `.github/workflows/` (new: weekly audit)
+  - `apps/web/app/youtube-insights/page.tsx` — CJK circuit breaker
 
 ## [2026-06-30] TASK-029: Comment out newsletter subscription feature (UI + API + script) for later re-enable
 - **Priority**: P2
