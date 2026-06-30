@@ -613,10 +613,11 @@
 
 ## [2026-06-29] TASK-023: Show default dashboard when logged-in user has no data
 - **Priority**: P1 BUG
-- **Status**: in-progress
+- **Status**: done
 - **Locked by**: coder-auto
 - **Locked at**: 2026-06-29 21:45 PDT
-- **Acceptance**: When a logged-in user has no bookmarks, upvotes, or submissions, the /dashboard shows the normal generic dashboard (HomeContent) instead of empty personalized view.
+- **PR**: #101 (merged)
+- **Verify**: PASS — /dashboard 200. dashboard/page.tsx now computes hasData = submissions||upvotes||bookmarks; only returns <PersonalDashboard> when hasData, else falls through to the generic <HomeContent> path (same as anonymous). Logged-in-empty users no longer see the "your dashboard is empty" shell. Auth-gated path not curl-verifiable; guard logic typechecks clean.
 - **Spec**:
   **Goal:** Instead of showing "Your dashboard is empty" when a logged-in user has no data, fall back to the generic dashboard.
 
