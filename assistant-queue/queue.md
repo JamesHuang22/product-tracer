@@ -748,4 +748,46 @@
   **Files to touch:**
   - `apps/worker/src/scripts/clean-irrelevant-youtube.ts`*
 
+## [2026-06-30] TASK-028: Fix Chinese key_insight not translated for EN locale — auto-translate on ingestion + backfill
+- **Priority**: P0 BUG
+- **Status**: ready
+- **Locked by**:
+- **Locked at**:
+- **Acceptance**: When locale is EN, all YouTube insight cards show English text. Chinese-only videos get their key_insight translated to English on ingestion. Existing Chinese key_insight rows are backfilled.
+- **Spec**:
+  **Problem:** Videos collected with Chinese summaries write the Chinese text into `key_insight` (the EN field) and leave `key_insight_zh` NULL. The frontend reads `key_insight` for EN locale, so Chinese text is shown regardless of locale setting.
 
+  **Root cause chain:**
+  1. YouTube collector fetches Chinese video → generates Chinese summary
+  2. Summary goes into `key_insight` (intended for EN)
+  3. `key_insight_zh` stays NULL — no code reverse-fills or translates
+  4. TASK-010 only backfilled once — new videos still hit this bug
+
+  **Fix:**
+
+  **Part 1 — Collector-level fix in `apps/worker/src/collectors/youtube.ts`:**
+  - Before writing a new video insight row, check if the generated summary contains CJK characters (Chinese/Japanese/Korean), e.g. regex `[一-鿿㐀-䶿]`.
+  - If yes → it's a Chinese summary:
+    - Write it to `key_insight_zh` instead of `key_insight`
+    - Call LLM: "Translate the following Chinese to English (keep concise, 2-4 sentences): {summary}"
+    - Write the English result to `key_insight`
+  - Also update the INSERT SQL in `youtube.ts` to always write both fields
+
+  **Part 2 — Backfill script for existing rows:**
+  - Create or update `apps/worker/src/scripts/backfill-chinese-insights.ts`
+  - Query: `select id, key_insight from app.video_insight where key_insight ~ '[一-鿿㐀-䶿]' and (key_insight_zh is null or key_insight_zh = '')`
+  - For each row:
+    - `key_insight_zh = key_insight` (move Chinese to ZH field)
+    - LLM: "Translate to English: {key_insight}"
+    - `key_insight = translated_english`
+  - Add a GitHub workflow or reuse existing to run this script
+
+  **Part 3 — Web UI guard (safety net):**
+  - In `apps/web/app/youtube-insights/page.tsx`, after `localizedPair()`:
+    - If EN locale and result contains CJK chars → show a warning or the raw text as-is (at least visible)
+    - This catches any edge cases that slip through
+
+  **Files to touch:**
+  - `apps/worker/src/collectors/youtube.ts`
+  - `apps/worker/src/scripts/backfill-chinese-insights.ts` (update existing)
+  - `apps/web/app/youtube-insights/page.tsx`
