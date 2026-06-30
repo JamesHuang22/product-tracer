@@ -172,6 +172,33 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
 
   const columns = useMemo(
     () => [
+      // Compare checkbox — first column, before the project name (TASK-022).
+      // Reads selection state from table meta (kept current each render) and
+      // raises itself above the row link overlay so toggling never navigates.
+      ch.display({
+        id: 'compare',
+        header: '',
+        cell: (info) => {
+          const id = info.row.original.id;
+          const meta = info.table.options.meta as CompareMeta;
+          const checked = meta.isSelected(id);
+          const disabled = !checked && meta.selectionFull;
+          return (
+            <div className="flex justify-center">
+              <input
+                type="checkbox"
+                checked={checked}
+                disabled={disabled}
+                onChange={() => meta.toggleSelected(id)}
+                onClick={(e) => e.stopPropagation()}
+                aria-label={meta.compareLabel}
+                title={disabled ? meta.compareMaxTitle : meta.compareLabel}
+                className="relative z-10 h-4 w-4 cursor-pointer accent-emerald-600 disabled:cursor-not-allowed disabled:opacity-40"
+              />
+            </div>
+          );
+        },
+      }),
       ch.accessor('name', {
         header: t('table.header.project'),
         cell: (info) => {
@@ -285,32 +312,6 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
           </div>
         ),
       }),
-      // Compare checkbox. Reads selection state from table meta (kept current
-      // each render) and raises itself above the row link overlay.
-      ch.display({
-        id: 'compare',
-        header: '',
-        cell: (info) => {
-          const id = info.row.original.id;
-          const meta = info.table.options.meta as CompareMeta;
-          const checked = meta.isSelected(id);
-          const disabled = !checked && meta.selectionFull;
-          return (
-            <div className="flex justify-center">
-              <input
-                type="checkbox"
-                checked={checked}
-                disabled={disabled}
-                onChange={() => meta.toggleSelected(id)}
-                onClick={(e) => e.stopPropagation()}
-                aria-label={meta.compareLabel}
-                title={disabled ? meta.compareMaxTitle : meta.compareLabel}
-                className="relative z-10 h-4 w-4 cursor-pointer accent-emerald-600 disabled:cursor-not-allowed disabled:opacity-40"
-              />
-            </div>
-          );
-        },
-      }),
     ],
     [t, locale],
   );
@@ -368,7 +369,7 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
   };
 
   return (
-    <div>
+    <div className={selected.length > 0 ? 'pb-20' : undefined}>
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-1 items-center gap-2">
           <input
@@ -416,34 +417,38 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
         </div>
       )}
 
+      {/* Floating compare action bar — fixed to the viewport bottom (TASK-022).
+          Appears once ≥1 row is selected; the Compare button activates at ≥2. */}
       {selected.length > 0 && (
-        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-emerald-500/30 bg-emerald-50/60 px-4 py-2.5 dark:border-emerald-500/20 dark:bg-emerald-500/5">
-          <span className="text-sm font-medium text-neutral-700 dark:text-neutral-200">
-            {t('compare.selected', { count: selected.length, max: MAX_COMPARE })}
-          </span>
-          <div className="ml-auto flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setSelected([])}
-              className="rounded-md px-2.5 py-1.5 text-sm font-medium text-neutral-500 transition-colors hover:text-neutral-900 dark:hover:text-neutral-100"
-            >
-              {t('compare.clear')}
-            </button>
-            {selected.length >= 2 ? (
-              <Link
-                href={compareHref as Route}
-                className="rounded-md bg-emerald-600 px-3.5 py-1.5 text-sm font-medium text-white transition-colors hover:bg-emerald-700"
+        <div className="fixed inset-x-0 bottom-0 z-50 border-t border-neutral-200 bg-white/95 shadow-lg backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/95">
+          <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-5 py-3 sm:px-8 lg:px-6">
+            <span className="text-sm font-medium text-neutral-700 dark:text-neutral-200">
+              {t('compare.selected', { count: selected.length, max: MAX_COMPARE })}
+            </span>
+            <div className="ml-auto flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSelected([])}
+                className="rounded-md px-2.5 py-1.5 text-sm font-medium text-neutral-500 transition-colors hover:text-neutral-900 dark:hover:text-neutral-100"
               >
-                {t('compare.cta', { count: selected.length })}
-              </Link>
-            ) : (
-              <span
-                className="cursor-not-allowed rounded-md bg-neutral-200 px-3.5 py-1.5 text-sm font-medium text-neutral-400 dark:bg-neutral-800 dark:text-neutral-500"
-                title={t('compare.needTwo')}
-              >
-                {t('compare.cta', { count: selected.length })}
-              </span>
-            )}
+                {t('compare.clear')}
+              </button>
+              {selected.length >= 2 ? (
+                <Link
+                  href={compareHref as Route}
+                  className="rounded-md bg-emerald-600 px-3.5 py-1.5 text-sm font-medium text-white transition-colors hover:bg-emerald-700"
+                >
+                  {t('compare.cta', { count: selected.length })}
+                </Link>
+              ) : (
+                <span
+                  className="cursor-not-allowed rounded-md bg-neutral-200 px-3.5 py-1.5 text-sm font-medium text-neutral-400 dark:bg-neutral-800 dark:text-neutral-500"
+                  title={t('compare.needTwo')}
+                >
+                  {t('compare.cta', { count: selected.length })}
+                </span>
+              )}
+            </div>
           </div>
         </div>
       )}
