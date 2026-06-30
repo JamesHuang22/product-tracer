@@ -752,9 +752,9 @@
 
 ## [2026-06-30] TASK-028: Fix Chinese key_insight not translated for EN locale — auto-translate on ingestion + backfill
 - **Priority**: P0 BUG
-- **Status**: ready
-- **Locked by**:
-- **Locked at**:
+- **Status**: in-progress
+- **Locked by**: coder-auto
+- **Locked at**: 2026-06-30 00:45 PDT
 - **Acceptance**: When locale is EN, all YouTube insight cards show English text. Chinese-only videos get their key_insight translated to English on ingestion. Existing Chinese key_insight rows are backfilled.
 - **Spec**:
   **Problem:** Videos collected with Chinese summaries write the Chinese text into `key_insight` (the EN field) and leave `key_insight_zh` NULL. The frontend reads `key_insight` for EN locale, so Chinese text is shown regardless of locale setting.
