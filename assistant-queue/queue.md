@@ -592,3 +592,14 @@
 - **Spec**:
   *(filled by Planner)*
 
+---
+
+## [2026-06-29] TASK-024: Filter out irrelevant YouTube content (food vlogs, non-tech) + clean existing data
+- **Priority**: P0 BUG
+- **Status**: pending
+- **Locked by**:
+- **Locked at**:
+- **Acceptance**: YouTube insights no longer shows non-tech/irrelevant videos (food, daily vlogs, gossip, random thoughts). Existing non-tech videos are removed from DB. Collector filters before storing.
+- **Spec**:
+  *(filled by Planner)*
+
