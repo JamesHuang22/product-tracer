@@ -709,4 +709,15 @@
   - `apps/worker/src/scripts/collect-github.ts`
   - `.github/workflows/collect-github.yml`
 
+---
+
+## [2026-06-30] TASK-026: Remove test submissions from "Recently Submitted by Developers"
+- **Priority**: P1
+- **Status**: pending
+- **Locked by**:
+- **Locked at**:
+- **Acceptance**: "Recently Submitted by Developers" section on /projects does NOT show test data ("Excalidraw TEST-013" etc). Either delete test submissions from DB or add admin flag to hide them.
+- **Spec**:
+  *(filled by Planner)*
+
 
