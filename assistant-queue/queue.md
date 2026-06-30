@@ -576,9 +576,9 @@
 
 ## [2026-06-29] TASK-022: Add Compare UI entry points on /projects
 - **Priority**: P1
-- **Status**: ready
-- **Locked by**:
-- **Locked at**:
+- **Status**: in-progress
+- **Locked by**: coder-auto
+- **Locked at**: 2026-06-29 21:30 PDT
 - **Acceptance**: Users can see and access the compare feature from the /projects page UI. Checkboxes on each table row + a visible action bar with "Compare (N)" button that becomes active when 2-3 are selected.
 - **Spec**:
   **Goal:** Make the compare feature discoverable from /projects.
