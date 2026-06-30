@@ -860,9 +860,9 @@
 
 ## [2026-06-30] TASK-029: Comment out newsletter subscription feature (UI + API + script) for later re-enable
 - **Priority**: P2
-- **Status**: ready
-- **Locked by**:
-- **Locked at**:
+- **Status**: in-progress
+- **Locked by**: coder-auto
+- **Locked at**: 2026-06-30 01:30 PDT
 - **Acceptance**: Newsletter signup form removed from landing page. POST /api/subscribe-newsletter returns 501. send-newsletter.ts marked inactive. All code stays in repo, just disabled, so it can be quickly re-enabled.
 - **Spec**:
   **Goal:** Disable the newsletter feature from both UI and backend without deleting any code. Comment out rather than remove.
