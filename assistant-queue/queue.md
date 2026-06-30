@@ -713,7 +713,23 @@
 
 ## [2026-06-30] TASK-026: Remove test submissions from "Recently Submitted by Developers"
 - **Priority**: P1
-- **Status**: pending
+- **Status**: ready
+- **Locked by**:
+- **Locked at**:
+- **Acceptance**: "Recently Submitted by Developers" section on /projects no longer shows test data ("Excalidraw TEST-013" etc).
+- **Spec**:
+  **Goal:** Delete the test submission row and its associated project from the database.
+
+  **Steps:**
+  1. Find the project linked to the test submission: `select project_id from app.user_submission where product_name ilike '%test%' or product_name ilike '%excalidraw%test%'`
+  2. Delete from child tables first: `app.identity_link where project_id = ?`, `app.vote where project_id = ?`
+  3. Delete from `app.project where id = ?`
+  4. Delete from `app.user_submission where product_name ilike '%test%'`
+  5. Verify: `/projects` should no longer show the test entry
+
+  **Note:** This is a one-time DB cleanup. Run via psql (MCP Supabase) or deploy a migration script via GitHub Actions.
+  
+  **Or simpler:** Use the Supabase Dashboard → SQL Editor → run the DELETE queries directly.
 - **Locked by**:
 - **Locked at**:
 - **Acceptance**: "Recently Submitted by Developers" section on /projects does NOT show test data ("Excalidraw TEST-013" etc). Either delete test submissions from DB or add admin flag to hide them.
