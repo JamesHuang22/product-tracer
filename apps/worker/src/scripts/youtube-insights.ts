@@ -43,6 +43,7 @@ loadRepoEnv(import.meta.url);
 import { z } from 'zod';
 import { createSqlClient } from '@product-tracer/db';
 import { callLlm, isLlmConfigured, type LlmUsage } from '../lib/llm.js';
+import { isVideoRelevant } from '../lib/youtube-relevance.js';
 import {
   DEFAULT_CHANNELS,
   YoutubeChannelList,
@@ -262,39 +263,6 @@ async function analyseVideo(
   return { insight: Insight.parse(raw), raw, usage: res.usage };
 }
 
-// Obvious tech/indie-dev signals — a hit on any keeps a video relevant even if
-// the model under-scored it. Kept in sync with clean-irrelevant-youtube.ts.
-const TECH_KEYWORDS = [
-  'ai', 'ml', 'llm', 'gpt', 'cloud', 'startup', 'code', 'coding', 'programming',
-  'developer', 'devtool', 'tech', 'software', 'engineer', 'data', 'web', 'app',
-  'product', 'security', 'saas', 'open source', 'open-source', 'framework', 'api',
-  'agent', 'database', 'react', 'python', 'javascript', 'typescript', 'devops',
-  'kubernetes', 'docker', 'model', 'neural', 'gpu', 'compiler', 'terminal',
-];
-
-/**
- * Whether an analysed video is relevant to an indie-dev / AI / tech audience
- * (TASK-024). A tech keyword anywhere in the title/insight/topics/tools keeps it
- * relevant; otherwise we trust the model's relevance_score (>= 4 = keep). This
- * drops food vlogs, gossip, and daily-life content (no keywords + low score)
- * without a second LLM call.
- */
-function isRelevantInsight(video: YoutubeVideo, insight: Insight): boolean {
-  const hay = [
-    video.title ?? '',
-    insight.key_insight,
-    ...insight.topics,
-    ...insight.tools_mentioned,
-  ]
-    .join(' ')
-    .toLowerCase();
-  const keyword = TECH_KEYWORDS.some((kw) => {
-    const re = new RegExp(`(^|[^a-z])${kw.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}([^a-z]|$)`);
-    return re.test(hay);
-  });
-  return keyword || insight.relevance_score >= 4;
-}
-
 // CJK ideographs + Japanese kana — mirrors the web `hasCjk` test.
 const CJK_RE = /[぀-ヿ㐀-䶿一-鿿豈-﫿]/;
 
@@ -341,7 +309,8 @@ async function storeInsight(
   raw: unknown,
   usage: LlmUsage | null,
 ): Promise<void> {
-  const isRelevant = isRelevantInsight(video, insight);
+  // Non-relevant videos are gated out before this call (TASK-028-REV), so every
+  // stored row is relevant — is_relevant stays true (kept for the web filter).
   await sql`
     insert into app.video_insight (
       video_id, channel_id, channel_title, video_title, video_url, thumbnail_url,
@@ -352,7 +321,7 @@ async function storeInsight(
       ${video.videoUrl}, ${video.thumbnailUrl}, ${video.publishedAt || null},
       ${sql.json(insight.trends)}, ${sql.json(insight.topics)}, ${sql.json(insight.tools_mentioned)},
       ${insight.sentiment}, ${insight.key_insight}, ${insight.key_insight_zh}, ${insight.relevance_score},
-      ${insight.category}, ${isRelevant}, ${sql.json(raw as never)}, ${usage?.promptTokens ?? 0}, ${usage?.completionTokens ?? 0}
+      ${insight.category}, true, ${sql.json(raw as never)}, ${usage?.promptTokens ?? 0}, ${usage?.completionTokens ?? 0}
     )
     on conflict (video_id) do update set
       trends                = excluded.trends,
@@ -363,7 +332,7 @@ async function storeInsight(
       key_insight_zh        = excluded.key_insight_zh,
       relevance_score       = excluded.relevance_score,
       category              = excluded.category,
-      is_relevant           = excluded.is_relevant,
+      is_relevant           = true,
       raw_llm_response      = excluded.raw_llm_response,
       llm_prompt_tokens     = excluded.llm_prompt_tokens,
       llm_completion_tokens = excluded.llm_completion_tokens
@@ -445,6 +414,7 @@ async function main(): Promise<void> {
 
   // 3) Analyse + store, one LLM call per video.
   let analysed = 0;
+  let skipped = 0;
   let failedVideos = 0;
   let promptTokens = 0;
   let completionTokens = 0;
@@ -461,6 +431,13 @@ async function main(): Promise<void> {
         completionTokens += result.usage.completionTokens;
       }
       const insight = await ensureEnglishKeyInsight(result.insight);
+      // LLM-only relevance gate (TASK-028-REV): skip storing non-tech content.
+      // `false` = LLM said no → drop; `null` = undecided/unavailable → keep.
+      const relevant = await isVideoRelevant(video.title, insight.key_insight);
+      if (relevant === false) {
+        skipped++;
+        continue;
+      }
       await storeInsight(video, insight, result.raw, result.usage);
       analysed++;
     } catch (err) {
@@ -499,7 +476,7 @@ async function main(): Promise<void> {
 
   console.log(
     `[youtube-insights] ✓ Analysed ${analysed}/${toAnalyse.length} videos ` +
-      `(${failedVideos} failed, ${failedChannels} channels failed). ` +
+      `(${skipped} skipped as non-tech, ${failedVideos} failed, ${failedChannels} channels failed). ` +
       `Tokens in/out ${promptTokens}/${completionTokens} ≈ $${totalCost.toFixed(4)}.`,
   );
 }
