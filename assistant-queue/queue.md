@@ -501,9 +501,9 @@
 
 ## [2026-06-29] TASK-021: Add empty states to personalized dashboard sections
 - **Priority**: P1
-- **Status**: ready
-- **Locked by**: planner
-- **Locked at**: 2026-06-29 21:10 PDT
+- **Status**: in-progress
+- **Locked by**: coder-ondemand
+- **Locked at**: 2026-06-29 21:15 PDT
 - **Acceptance**: When a logged-in user has no bookmarks, no upvotes, and no submissions yet, the dashboard shows helpful empty state messages + CTA instead of blank sections.
 - **Spec**:
   **Goal:** Add empty state messages to every section of the personalized dashboard (`/dashboard` for logged-in users) so new users see clear guidance instead of blank/empty sections.
