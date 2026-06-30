@@ -1,6 +1,15 @@
 import Link from 'next/link';
 import type { Route } from 'next';
-import { ArrowUpRight, Bookmark, ChevronUp, FileText } from 'lucide-react';
+import {
+  ArrowUpRight,
+  Bookmark,
+  ChevronUp,
+  Clock,
+  FileText,
+  Send,
+  ThumbsUp,
+  type LucideIcon,
+} from 'lucide-react';
 import type { ProjectListItem, UserSubmission, UserUpvote } from '@/lib/db';
 import { translate, type Locale, type MessageKey } from '@/lib/i18n';
 import { localizedText } from '@/lib/format';
@@ -11,6 +20,41 @@ type ActivityItem = {
   date: string;
   href: string | null;
 };
+
+/**
+ * Per-section empty state (TASK-021): shown when a section has no data but the
+ * user has activity elsewhere, so empty sections read as intentional guidance
+ * instead of silently vanishing. Pure markup — safe in a server component.
+ */
+function EmptyState({
+  icon: Icon,
+  title,
+  body,
+  cta,
+}: {
+  icon: LucideIcon;
+  title: string;
+  body: string;
+  cta?: { label: string; href: string };
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-neutral-200 px-6 py-12 text-center dark:border-neutral-800">
+      <Icon className="mb-4 h-12 w-12 text-neutral-300 dark:text-neutral-600" aria-hidden />
+      <h3 className="text-base font-medium text-neutral-600 dark:text-neutral-300">{title}</h3>
+      <p className="mx-auto mt-1 max-w-sm text-balance text-sm text-neutral-400 dark:text-neutral-500">
+        {body}
+      </p>
+      {cta && (
+        <Link
+          href={cta.href as Route}
+          className="mt-4 text-sm font-medium text-emerald-600 transition-colors hover:text-emerald-700 dark:text-emerald-400"
+        >
+          {cta.label} →
+        </Link>
+      )}
+    </div>
+  );
+}
 
 /**
  * Personalized dashboard for signed-in users (TASK-018): their submissions,
@@ -100,12 +144,20 @@ export function PersonalDashboard({
 
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-2">
         {/* Your Submissions */}
-        {submissions.length > 0 && (
+        {!isEmpty && (
           <section>
             <h2 className={sectionHead}>
               <FileText className="h-4 w-4 text-neutral-400" aria-hidden />
               {tr('submit.mySubmissions')}
             </h2>
+            {submissions.length === 0 ? (
+              <EmptyState
+                icon={Send}
+                title={tr('dashboard.empty.submissionsTitle')}
+                body={tr('dashboard.empty.submissionsBody')}
+                cta={{ label: tr('dashboard.empty.submissionsCta'), href: '/submit' }}
+              />
+            ) : (
             <ul className="divide-y divide-neutral-200 rounded-xl border border-neutral-200 dark:divide-neutral-800 dark:border-neutral-800">
               {submissions.slice(0, 8).map((s) => (
                 <li key={s.id} className="flex items-center justify-between gap-3 px-4 py-3">
@@ -130,16 +182,25 @@ export function PersonalDashboard({
                 </li>
               ))}
             </ul>
+            )}
           </section>
         )}
 
         {/* Your Upvotes */}
-        {upvotes.length > 0 && (
+        {!isEmpty && (
           <section>
             <h2 className={sectionHead}>
               <ChevronUp className="h-4 w-4 text-emerald-500" aria-hidden />
               {tr('dashboard.yourUpvotes')}
             </h2>
+            {upvotes.length === 0 ? (
+              <EmptyState
+                icon={ThumbsUp}
+                title={tr('dashboard.empty.upvotesTitle')}
+                body={tr('dashboard.empty.upvotesBody')}
+                cta={{ label: tr('dashboard.empty.upvotesCta'), href: '/projects' }}
+              />
+            ) : (
             <ul className="divide-y divide-neutral-200 rounded-xl border border-neutral-200 dark:divide-neutral-800 dark:border-neutral-800">
               {upvotes.slice(0, 8).map((u) => (
                 <li key={u.slug} className="flex items-center justify-between gap-3 px-4 py-3">
@@ -156,17 +217,26 @@ export function PersonalDashboard({
                 </li>
               ))}
             </ul>
+            )}
           </section>
         )}
       </div>
 
       {/* Bookmarked Projects */}
-      {bookmarks.length > 0 && (
+      {!isEmpty && (
         <section className="mt-10">
           <h2 className={sectionHead}>
             <Bookmark className="h-4 w-4 text-neutral-400" aria-hidden />
             {tr('dashboard.yourBookmarks')}
           </h2>
+          {bookmarks.length === 0 ? (
+            <EmptyState
+              icon={Bookmark}
+              title={tr('dashboard.empty.bookmarksTitle')}
+              body={tr('dashboard.empty.bookmarksBody')}
+              cta={{ label: tr('dashboard.empty.bookmarksCta'), href: '/projects' }}
+            />
+          ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {bookmarks.slice(0, 9).map((p) => {
               const oneLiner = localizedText(locale, p.one_liner);
@@ -188,13 +258,21 @@ export function PersonalDashboard({
               );
             })}
           </div>
+          )}
         </section>
       )}
 
       {/* Recent Activity */}
-      {activity.length > 0 && (
+      {!isEmpty && (
         <section className="mt-10">
           <h2 className={sectionHead}>{tr('dashboard.recentActivity')}</h2>
+          {activity.length === 0 ? (
+            <EmptyState
+              icon={Clock}
+              title={tr('dashboard.empty.activityTitle')}
+              body={tr('dashboard.empty.activityBody')}
+            />
+          ) : (
           <ul className="space-y-2">
             {activity.map((a, i) => {
               const verb =
@@ -225,6 +303,7 @@ export function PersonalDashboard({
               );
             })}
           </ul>
+          )}
         </section>
       )}
     </main>
