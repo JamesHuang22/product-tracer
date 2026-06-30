@@ -797,9 +797,9 @@
 
 ## [2026-06-30] TASK-028-REV: Zero tolerance for non-tech YouTube content — LLM-only review, no hardcoded keywords
 - **Priority**: P0 BUG
-- **Status**: ready
-- **Locked by**:
-- **Locked at**:
+- **Status**: in-progress
+- **Locked by**: coder-auto
+- **Locked at**: 2026-06-30 01:05 PDT
 - **Acceptance**: No food vlogs, lifestyle content, Chinese daily chat, or any non-tech/indie-dev content ever appears in /youtube-insights. Hardcoded keyword lists must be REMOVED — only LLM review.
 - **Spec**:
   **Why hardcoded keywords failed:** They're a whack-a-mole game. "美食" gets blocked but "烹饪教程" doesn't. You can't enumerate all non-tech content. Hardcoded lists are brittle.
