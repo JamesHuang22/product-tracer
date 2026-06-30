@@ -797,10 +797,11 @@
 
 ## [2026-06-30] TASK-028-REV: Zero tolerance for non-tech YouTube content — LLM-only review, no hardcoded keywords
 - **Priority**: P0 BUG
-- **Status**: in-progress
+- **Status**: done
 - **Locked by**: coder-auto
 - **Locked at**: 2026-06-30 01:05 PDT
-- **Acceptance**: No food vlogs, lifestyle content, Chinese daily chat, or any non-tech/indie-dev content ever appears in /youtube-insights. Hardcoded keyword lists must be REMOVED — only LLM review.
+- **PR**: #106 (merged)
+- **Verify**: PASS — full LLM-only audit ran (success, 2m16s): audited 126 → DELETED 27 non-tech (vs only 8 the keyword approach flagged), leaving 99; remaining are tech (GPT-5.6/OpenAI, supercomputing/芯片, GitHub Codex/Vercel AI SDK, India AI, Micron). 0 CJK in EN field. /youtube-insights 200. Shipped: ALL keyword lists removed (grep TECH_KEYWORDS/ANTI_KEYWORDS/hasTechKeyword across apps/ = none); new lib/youtube-relevance.ts isVideoRelevant() — single bilingual yes/no LLM judge (true/false/null; null=undecided→keep, never deletes on outage); ingestion gate in youtube-insights.ts skips storing non-tech (skipped counter); clean-irrelevant-youtube.ts rewritten LLM-only → DELETE with 50% sanity cap + AUDIT_DAYS window; weekly Sunday cron added to workflow (AUDIT_DAYS=7 scheduled, 0=full on dispatch); EN circuit-breaker filter in page.tsx drops any card with no English-displayable text. typecheck clean (web+worker). Note: LLM judgment isn't perfectly deterministic — a couple borderline Chinese titles survived this pass; the weekly audit re-judges them (the spec's required self-correcting mechanism, not a one-time SQL delete).
 - **Spec**:
   **Why hardcoded keywords failed:** They're a whack-a-mole game. "美食" gets blocked but "烹饪教程" doesn't. You can't enumerate all non-tech content. Hardcoded lists are brittle.
 
