@@ -581,3 +581,14 @@
 - **Spec**:
   *(filled by Planner)*
 
+---
+
+## [2026-06-29] TASK-023: Show default dashboard when logged-in user has no data
+- **Priority**: P1 BUG
+- **Status**: pending
+- **Locked by**:
+- **Locked at**:
+- **Acceptance**: When a logged-in user has no bookmarks, upvotes, or submissions, the /dashboard shows the normal generic dashboard (HomeContent) instead of an empty personalized view. Only show personalized sections when there's actual data to show.
+- **Spec**:
+  *(filled by Planner)*
+
