@@ -106,10 +106,20 @@ async function main(): Promise<void> {
       `+ freshness (-${denoised.length - filtered.length}) filters`,
   );
 
-  // 3. Refresh known repos discovery didn't already cover
-  console.log('→ Loading known repos for re-snapshot…');
+  // 3. Refresh known repos discovery didn't already cover. Order stalest-first
+  // (oldest / never snapshotted leads) so when the refresh hits its time budget
+  // it has advanced the most-overdue repos; coverage rotates across runs.
+  console.log('→ Loading known repos for re-snapshot (stalest first)…');
   const known = await sql<{ external_id: string }[]>`
-    select external_id from app.identity_link where platform = 'github'
+    select il.external_id
+    from app.identity_link il
+    left join lateral (
+      select max(s.timestamp) as last_ts
+      from raw.snapshot s
+      where s.project_id = il.project_id and s.platform = 'github'
+    ) latest on true
+    where il.platform = 'github'
+    order by latest.last_ts asc nulls first
   `;
   const knownIds = known.map((r) => Number(r.external_id));
   const coveredByDiscovery = new Set(filtered.map((r) => r.id));
@@ -118,7 +128,17 @@ async function main(): Promise<void> {
     `  ${knownIds.length} known, ${idsToRefresh.length} need refresh (${knownIds.length - idsToRefresh.length} already in discovery)`,
   );
 
-  const { repos: refreshed, missing, blocked } = await fetchKnownReposByIds(idsToRefresh);
+  const {
+    repos: refreshed,
+    missing,
+    blocked,
+    processed,
+    stoppedEarly,
+  } = await fetchKnownReposByIds(idsToRefresh);
+  console.log(
+    `  refreshed ${refreshed.length}/${idsToRefresh.length} known repos ` +
+      `(${processed} processed${stoppedEarly ? ', stopped at time budget — rest next run' : ''})`,
+  );
   if (missing.length > 0) {
     console.log(`  ${missing.length} known repos no longer accessible (deleted/private)`);
   }
