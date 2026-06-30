@@ -722,9 +722,9 @@
 
 ## [2026-06-30] TASK-027: Prevent recurrence of non-tech YouTube videos appearing — add ANTI_KEYWORDS + bilingual LLM prompt
 - **Priority**: P0 BUG
-- **Status**: ready
-- **Locked by**:
-- **Locked at**:
+- **Status**: in-progress
+- **Locked by**: coder-auto
+- **Locked at**: 2026-06-30 00:25 PDT
 - **Acceptance**: Future YouTube ingestion no longer lets food vlogs or irrelevant Chinese content slip through. The clean-irrelevant-youtube.ts is updated with:
   (1) Chinese tech keywords
   (2) ANTI_KEYWORDS that skip non-tech content without LLM
