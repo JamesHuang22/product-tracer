@@ -495,7 +495,18 @@
 - **Locked by**: coder-auto
 - **Locked at**: 2026-06-29 10:35 PDT
 - **PR**: #98 (merged)
-- **Verify**: PASS — /compare?ids=<uuid>,<uuid> → 200 rendering 2 side-by-side cards (name+link, category, description, stars, platforms, net votes, tracked-since); /compare (no ids) → 200 empty state; /projects → 200. Shipped: getProjectsByIds (id-order-preserving), projects-table row checkboxes (desktop + mobile, max 3, selection via tanstack meta to avoid stale closures), "Compare (N)" action bar (enabled at ≥2) → /compare?ids=…, Clear button, CompareTable responsive grid (sm:2/lg:3), /compare server route w/ UUID validation + og:title "Compare products on OpenProduct" + Add another/Back links, i18n EN+ZH. No migration. typecheck clean.
+- **Verify**: PASS — /compare?ids=<uuid>,<uuid> → 200 rendering 2 side-by-side cards
+
+---
+
+## [2026-06-29] TASK-021: Add empty states to personalized dashboard sections
+- **Priority**: P1
+- **Status**: pending
+- **Locked by**:
+- **Locked at**:
+- **Acceptance**: When a logged-in user has no bookmarks, no upvotes, and no submissions yet, the dashboard shows helpful empty state messages + CTA instead of blank sections.
+- **Spec**:
+  *(filled by Planner)* (name+link, category, description, stars, platforms, net votes, tracked-since); /compare (no ids) → 200 empty state; /projects → 200. Shipped: getProjectsByIds (id-order-preserving), projects-table row checkboxes (desktop + mobile, max 3, selection via tanstack meta to avoid stale closures), "Compare (N)" action bar (enabled at ≥2) → /compare?ids=…, Clear button, CompareTable responsive grid (sm:2/lg:3), /compare server route w/ UUID validation + og:title "Compare products on OpenProduct" + Add another/Back links, i18n EN+ZH. No migration. typecheck clean.
 - **Spec**:
   **Goal:** Let users compare 2-3 products side by side.
 
