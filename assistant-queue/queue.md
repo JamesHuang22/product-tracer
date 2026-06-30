@@ -716,6 +716,36 @@
 - **Status**: done
 - **Locked by**: james (manual)
 - **Locked at**: 2026-06-30 08:08 PDT
+- **Acceptance**: ✅ Test data removed via Supabase SQL Editor.
+
+---
+
+## [2026-06-30] TASK-027: Clean remaining non-tech YouTube videos (Chinese food/daily vlogs misclassified by LLM)
+- **Priority**: P0 BUG
+- **Status**: ready
+- **Locked by**:
+- **Locked at**:
+- **Acceptance**: All Chinese food vlog / daily life / non-tech videos no longer appear on /youtube-insights.
+- **Spec**:
+  **Problem:** The clean-irrelevant-youtube LLM prompt asks in English, but some Chinese-language videos' key_insight are in Chinese. English keyword filter misses them, and the LLM sometimes misclassifies Chinese content as "relevant".
+
+  **Fix (two parts):**
+
+  **Part 1 — Immediate cleanup:**
+  - Find misclassified videos: `select id, video_title, key_insight from app.video_insight where key_insight like '%没吃过%' or key_insight like '%周日了%' or video_title like '%吃%'`
+  - Set them: `update app.video_insight set is_relevant = false where ...`
+  - Use Supabase Dashboard → SQL Editor to run the DELETE.
+
+  **Part 2 — Prevent recurrence in clean-irrelevant-youtube.ts:**
+  - Add Chinese keywords to TECH_KEYWORDS: `'编程', '程序员', '开发者', '人工智能', 'AI', '科技', '数据', '软件', '技术', '初创'`
+  - Also add ANTI_KEYWORDS that suggest non-tech: `'吃的', '好吃的', '美食', '做饭', '菜谱', '生食', 'vlog', '日常'`
+  - Videos matching ANTI_KEYWORDS → skip (is_relevant = false) without LLM call
+  - Update the LLM prompt to handle Chinese titles: add a Chinese version of the instruction or do a quick langdetect and use Chinese prompt for Chinese text
+
+  **Files:**
+  - `apps/worker/src/scripts/clean-irrelevant-youtube.ts`
+- **Locked by**: james (manual)
+- **Locked at**: 2026-06-30 08:08 PDT
 - **Acceptance**: ✅ Test data removed via Supabase SQL Editor. Coder doesn't need to work on this.
 - **Locked by**:
 - **Locked at**:
