@@ -1061,9 +1061,9 @@
 
 ## [2026-07-01] TASK-033: Add "Submit Feature Request" form for logged-in users; sign-in prompt for guests
 - **Priority**: P1 FEATURE
-- **Status**: ready
-- **Locked by**:
-- **Locked at**:
+- **Status**: in-progress
+- **Locked by**: coder-auto
+- **Locked at**: 2026-07-01 10:05 PDT
 - **Acceptance**: Logged-in users can submit a feature request via a form. Guest users see the button but get a modal saying "Sign in to submit a feature request."
 - **Spec**:
   **Changes:**
