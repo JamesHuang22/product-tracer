@@ -1000,3 +1000,128 @@
 
   **Files to touch:**
   - `apps/web/lib/format.ts`
+
+## [2026-07-01] TASK-032: Extend compare from max 3 to max 6 projects + modal warning at limit
+- **Priority**: P1
+- **Status**: ready
+- **Locked by**:
+- **Locked at**:
+- **Acceptance**: Users can select up to 6 projects to compare. When trying to add a 7th, a modal/toast warns "You can compare up to 6 projects at once."
+- **Spec**:
+  **Changes:**
+
+  **1. Update MAX_COMPARE constant**
+  - In `apps/web/app/projects/projects-table.tsx` (line 150):
+    - Change `const MAX_COMPARE = 3;` → `const MAX_COMPARE = 6;`
+
+  **2. Update compare page to handle 6 projects**
+  - In `apps/web/app/compare/page.tsx`:
+    - The current code reads ids from query params and fetches projects
+    - Ensure it handles up to 6 IDs (currently fine, just remove any hardcoded 3 limit)
+    - Check `apps/web/components/compare-table.tsx` — ensure the table layout supports 6 columns without breaking (may need horizontal scroll or smaller cell padding for 6)
+
+  **3. Add modal/toast when user tries to exceed 6**
+  - In `projects-table.tsx`, update `toggleSelected`:
+    ```tsx
+    const [showMaxModal, setShowMaxModal] = useState(false);
+
+    const toggleSelected = (id: string) => {
+      setSelected((prev) => {
+        if (prev.includes(id)) return prev.filter((x) => x !== id);
+        if (prev.length >= MAX_COMPARE) {
+          setShowMaxModal(true);
+          return prev;
+        }
+        return [...prev, id];
+      });
+    };
+    ```
+  - Add a modal component (or use a simple alert/toast):
+    ```tsx
+    {showMaxModal && (
+      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40" onClick={() => setShowMaxModal(false)}>
+        <div className="rounded-lg bg-white p-6 shadow-xl dark:bg-neutral-800" onClick={(e) => e.stopPropagation()}>
+          <h3 className="text-lg font-semibold">Compare limit reached</h3>
+          <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
+            You can compare up to {MAX_COMPARE} projects at once. Deselect one to add another.
+          </p>
+          <button onClick={() => setShowMaxModal(false)} className="mt-4 rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white">
+            Got it
+          </button>
+        </div>
+      </div>
+    )}
+    ```
+
+  **Files to touch:**
+  - `apps/web/app/projects/projects-table.tsx`
+
+## [2026-07-01] TASK-033: Add "Submit Feature Request" form for logged-in users; sign-in prompt for guests
+- **Priority**: P1 FEATURE
+- **Status**: ready
+- **Locked by**:
+- **Locked at**:
+- **Acceptance**: Logged-in users can submit a feature request via a form. Guest users see the button but get a modal saying "Sign in to submit a feature request."
+- **Spec**:
+  **Changes:**
+
+  **Part 1 — DB: New migration (0022_feature_request.sql)**
+  ```sql
+  create table if not exists app.feature_request (
+    id         uuid        default gen_random_uuid() primary key,
+    user_id    uuid        references app.user(id) not null,
+    title      text        not null,
+    description text       not null,
+    created_at timestamptz not null default now()
+  );
+  alter table app.feature_request enable row level security;
+  create policy "Users can insert own feature requests"
+    on app.feature_request for insert
+    with check (auth.uid() = user_id);
+  ```
+
+  **Part 2 — API: POST /api/feature-request**
+  - Body: `{ title, description }`
+  - Validate: title 5-100 chars, description 10-5000 chars
+  - Insert into `app.feature_request`
+  - Return `{ success: true }` or `{ error }`
+  - Return 401 if not authenticated
+
+  **Part 3 — Frontend: /feature-request page**
+  - `apps/web/app/feature-request/page.tsx`:
+    - If not logged in: show sign-in prompt (redirect to /login)
+    - If logged in: show a form with title + description inputs + submit button
+    - After submit: show success message "Thanks for your feedback!"
+  - Styling: match existing form style (like /submit page)
+
+  **Part 4 — Navigation: add "Feature Request" button**
+  - In the nav/header, add a "Feedback" or "Feature Request" link
+  - If guest user clicks: show modal "Please sign in to submit a feature request" with link to /login
+  - If logged-in: navigate to /feature-request
+
+  **Files to create/modify:**
+  - New: `packages/db/src/supabase/migrations/0022_feature_request.sql`
+  - New: `apps/web/app/feature-request/page.tsx`
+  - New: `apps/web/app/api/feature-request/route.ts`
+  - Modified: nav/header component (add the link)
+  - Modified: `apps/web/lib/db.ts` (add query functions if needed)
+
+## [2026-07-01] TASK-034: Rename "Submit" nav button to "Submit your project"
+- **Priority**: P2
+- **Status**: ready
+- **Locked by**:
+- **Locked at**:
+- **Acceptance**: The navigation button that was labeled "Submit" now shows "Submit your project" for more clarity.
+- **Spec**:
+  **Problem:** The nav button just says "Submit" — not clear what users are submitting.
+
+  **Fix:**
+  Find the nav/header component and change the button/link text from "Submit" to "Submit your project".
+
+  Look in:
+  - `apps/web/components/header.tsx` or `apps/web/components/nav.tsx`
+  - Also check i18n keys in `apps/web/lib/i18n.ts` for the submit nav label
+
+  **Files to touch:**
+  - `apps/web/components/header.tsx` (or wherever the nav is rendered)
+  - `apps/web/lib/i18n.ts` (if the label uses i18n key)
