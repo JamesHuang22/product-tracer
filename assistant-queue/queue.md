@@ -1112,9 +1112,9 @@
 
 ## [2026-07-01] TASK-034: Rename "Submit" nav button to "Submit your project"
 - **Priority**: P2
-- **Status**: ready
-- **Locked by**:
-- **Locked at**:
+- **Status**: in-progress
+- **Locked by**: coder-auto
+- **Locked at**: 2026-07-01 10:25 PDT
 - **Acceptance**: The navigation button that was labeled "Submit" now shows "Submit your project" for more clarity.
 - **Spec**:
   **Problem:** The nav button just says "Submit" — not clear what users are submitting.
