@@ -1130,3 +1130,41 @@
   **Files to touch:**
   - `apps/web/components/header.tsx` (or wherever the nav is rendered)
   - `apps/web/lib/i18n.ts` (if the label uses i18n key)
+
+## [2026-07-01] TASK-035: Remove "Sign in with GitHub" text — replace with "Sign in" across all auth prompt cards
+- **Priority**: P1
+- **Status**: ready
+- **Locked by**:
+- **Locked at**:
+- **Acceptance**: No "Sign in with GitHub" text appears anywhere. All auth prompt cards show a simple "Sign in" button linking to /login.
+- **Spec**:
+  **Problem:** Two pages show "Sign in with GitHub" as the CTA button text, but OpenProduct uses email/password auth, not GitHub OAuth. This is misleading.
+
+  **Fix — change button text in two files:**
+
+  **1. `apps/web/app/feature-request/page.tsx` (line 35):**
+    Change: `Sign in with GitHub` → `Sign in`
+    The href="/login" stays the same.
+
+  **2. `apps/web/app/submit/page.tsx` (line 35):**
+    Change: `Sign in with GitHub` → `Sign in`
+    The href="/login" stays the same.
+
+  **Also consider:**
+  - i18n keys in apps/web/lib/i18n.ts: check if there's a key for the auth button. If so, make it consistent.
+  - The login page itself at /login already says just "Sign in" — that's correct.
+
+  **Don't touch:**
+  - The actual login flow / login page
+  - Any mention of GitHub in platform context (like platform-section, that's about project data sources)
+  - The "Already have an account? Sign in" link under the button
+
+  **Test:**
+  - Visit /feature-request as guest → button says "Sign in"
+  - Visit /submit as guest → button says "Sign in"
+  - Both link to /login
+  - Typecheck clean
+
+  **Files to touch:**
+  - `apps/web/app/feature-request/page.tsx`
+  - `apps/web/app/submit/page.tsx`
