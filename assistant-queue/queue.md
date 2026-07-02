@@ -895,3 +895,45 @@
   - `apps/web/app/page.tsx`
   - `apps/web/app/api/subscribe-newsletter/route.ts`
   - `apps/worker/src/scripts/send-newsletter.ts`
+
+## [2026-07-01] TASK-030: Fix HTML entities (&#x2F;, &amp;, etc.) appearing in one-liner text on dashboard + projects
+- **Priority**: P0 BUG
+- **Status**: ready
+- **Locked by**:
+- **Locked at**:
+- **Acceptance**: No HTML entities (&#x2F;, &amp;, &quot;, etc.) visible anywhere in the UI. All one_liner text is properly decoded.
+- **Spec**:
+  **Problem:** The one_liner text from HN/PH collector contains raw HTML entities like &#x2F; (for /), &amp;, &quot;. The existing `cleanOneLiner()` function in apps/web/lib/format.ts already decodes these, but it's NOT being called in the dashboard's data pipeline.
+
+  **Root cause:**
+  - `localizedText(locale, r.one_liner)` strips Chinese in EN locale, but doesn't call `cleanOneLiner()`
+  - The dashboard server page fetches one_liner directly from DB and sends to client without decoding
+  - Other pages (projects, etc.) may also be affected
+
+  **Fix:**
+  **In apps/web/lib/format.ts**, modify `localizedText()` to also call `cleanOneLiner()` on the result:
+  ```ts
+  export function localizedText(locale, text) {
+    if (!text) return null;
+    const cleaned = cleanOneLiner(text);
+    if (!cleaned) return null;
+    if (locale === 'en' && hasCjk(cleaned)) return null;
+    return cleaned;
+  }
+  ```
+
+  **Also audit** all places that render one_liner directly without going through localizedText/cleanOneLiner:
+  - `apps/web/app/projects/page.tsx` (project table)
+  - `apps/web/app/projects/projects-table.tsx`
+  - `apps/web/app/platform/[platform]/page.tsx`
+  - `apps/web/app/trends/page.tsx`
+  - `apps/web/app/dashboard/page.tsx`
+
+  **Test:**
+  - Visit dashboard, look at the "OpenKnowledge" card — should show "/" not "&#x2F;"
+  - Visit /projects, same verification
+  - Visit /trends, same verification
+  - Typecheck clean
+
+  **Files to touch:**
+  - `apps/web/lib/format.ts`
