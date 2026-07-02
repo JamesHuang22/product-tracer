@@ -214,6 +214,9 @@ const en: Messages = {
   'compare.row.platforms': 'Platforms',
   'compare.row.votes': 'Net votes',
   'compare.row.created': 'Tracked since',
+  'compare.limitTitle': 'Compare limit reached',
+  'compare.limitBody': 'You can compare up to {max} projects at once. Deselect one to add another.',
+  'compare.limitGotIt': 'Got it',
 
   'theme.toDark': 'Switch to dark mode',
   'theme.toLight': 'Switch to light mode',
@@ -525,6 +528,9 @@ const zh: Messages = {
   'compare.row.platforms': '平台',
   'compare.row.votes': '净票数',
   'compare.row.created': '收录于',
+  'compare.limitTitle': '已达对比上限',
+  'compare.limitBody': '一次最多可对比 {max} 个产品。取消选择一个后再添加。',
+  'compare.limitGotIt': '知道了',
 
   'theme.toDark': '切换到深色模式',
   'theme.toLight': '切换到浅色模式',
