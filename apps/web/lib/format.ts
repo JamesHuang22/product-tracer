@@ -24,13 +24,32 @@ export function hasCjk(text: string | null | undefined): boolean {
  * would otherwise leak its Chinese into the EN UI — so the only CJK left in EN
  * is genuine product names (rendered separately). Chinese mode shows it as-is.
  */
+/**
+ * Decode the HTML entities that HN/PH collector text carries raw (&#x2F; → /,
+ * &amp; → &, …). Shared by `localizedText` and `cleanOneLiner` so entities never
+ * reach the UI regardless of which path renders the text (TASK-030).
+ */
+export function decodeHtmlEntities(text: string): string {
+  return text
+    .replace(/&#x2F;/g, '/')
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&#39;/g, "'");
+}
+
 export function localizedText(
   locale: 'en' | 'zh',
   text: string | null | undefined,
 ): string | null {
   if (!text) return null;
-  if (locale === 'en' && hasCjk(text)) return null;
-  return text;
+  // Decode entities on every path (TASK-030) — but do NOT truncate here, since
+  // this also serves ai_summary / titles that render in full elsewhere.
+  const decoded = decodeHtmlEntities(text).trim();
+  if (!decoded) return null;
+  if (locale === 'en' && hasCjk(decoded)) return null;
+  return decoded;
 }
 
 /**
@@ -55,14 +74,7 @@ export function localizedPair(
 // a sane preview length before showing it anywhere in the UI.
 export function cleanOneLiner(text: string | null): string | null {
   if (!text) return null;
-  const decoded = text
-    .replace(/&#x2F;/g, '/')
-    .replace(/&quot;/g, '"')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&#39;/g, "'")
-    .trim();
+  const decoded = decodeHtmlEntities(text).trim();
   if (!decoded) return null;
   const chars = [...decoded];
   if (chars.length > 120) return chars.slice(0, 120).join('').trimEnd() + '…';
