@@ -1005,9 +1005,9 @@
 
 ## [2026-07-01] TASK-032: Extend compare from max 3 to max 6 projects + modal warning at limit
 - **Priority**: P1
-- **Status**: ready
-- **Locked by**:
-- **Locked at**:
+- **Status**: in-progress
+- **Locked by**: coder-auto
+- **Locked at**: 2026-07-01 09:45 PDT
 - **Acceptance**: Users can select up to 6 projects to compare. When trying to add a 7th, a modal/toast warns "You can compare up to 6 projects at once."
 - **Spec**:
   **Changes:**
