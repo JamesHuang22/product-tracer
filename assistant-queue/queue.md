@@ -898,9 +898,9 @@
 
 ## [2026-07-01] TASK-030: Fix HTML entities (&#x2F;, &amp;, etc.) appearing in one-liner text on dashboard + projects
 - **Priority**: P0 BUG
-- **Status**: ready
-- **Locked by**:
-- **Locked at**:
+- **Status**: in-progress
+- **Locked by**: coder-auto
+- **Locked at**: 2026-07-01 09:00 PDT
 - **Acceptance**: No HTML entities (&#x2F;, &amp;, &quot;) visible anywhere in the UI. All one_liner text is properly decoded.
 - **Spec**:
   **Problem:** The one_liner text from HN/PH collector contains raw HTML entities like &#x2F; (for /), &amp;, &quot;. The existing `cleanOneLiner()` function in apps/web/lib/format.ts already decodes these, but it's NOT being called in the dashboard's data pipeline.
