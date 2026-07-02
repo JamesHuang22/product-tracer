@@ -1005,10 +1005,11 @@
 
 ## [2026-07-01] TASK-032: Extend compare from max 3 to max 6 projects + modal warning at limit
 - **Priority**: P1
-- **Status**: in-progress
+- **Status**: done
 - **Locked by**: coder-auto
 - **Locked at**: 2026-07-01 09:45 PDT
-- **Acceptance**: Users can select up to 6 projects to compare. When trying to add a 7th, a modal/toast warns "You can compare up to 6 projects at once."
+- **PR**: #111 (merged)
+- **Verify**: PASS — /compare?ids=<6 uuids> → 200 rendering all 6 cards (6 "Tracked since"). Shipped: MAX_COMPARE 3→6 in projects-table.tsx; toggleSelected opens a warning modal (showMaxModal state) instead of silently capping; modal (backdrop + "Got it", i18n EN+ZH compare.limit*) with {max} interpolation; /compare page id cap 3→6. compare-table grid (sm:2/lg:3) wraps 6 into 2 rows cleanly — no layout change needed. Modal is client-side (not curl-verifiable); typechecks + follows proven pattern. typecheck clean.
 - **Spec**:
   **Changes:**
 
