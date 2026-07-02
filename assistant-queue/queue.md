@@ -1133,7 +1133,11 @@
 
 ## [2026-07-01] TASK-035: Remove "Sign in with GitHub" text — replace with "Sign in" across all auth prompt cards
 - **Priority**: P1
-- **Status**: ready
+- **Status**: done
+- **Locked by**: alex
+- **Locked at**: 2026-07-01 22:17 PDT
+- **PR**: #114 (merged)
+- **Verify**: PASS — /feature-request 200, /submit 200, both show "Sign in" button
 - **Locked by**:
 - **Locked at**:
 - **Acceptance**: No "Sign in with GitHub" text appears anywhere. All auth prompt cards show a simple "Sign in" button linking to /login.
