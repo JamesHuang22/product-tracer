@@ -1301,6 +1301,27 @@ export async function getRecentlySubmittedProjects(limit = 12): Promise<ProjectL
 }
 
 // ---------------------------------------------------------------------------
+// Feature requests (app.feature_request, migration 0022)
+// ---------------------------------------------------------------------------
+
+/**
+ * Record a feature request / feedback item for the authenticated user. Inserts
+ * via the session-verified user id (service-role connection). Returns the new id.
+ */
+export async function submitFeatureRequest(
+  userId: string,
+  title: string,
+  description: string,
+): Promise<{ id: string }> {
+  const [row] = await sql<{ id: string }[]>`
+    insert into app.feature_request (user_id, title, description)
+    values (${userId}, ${title}, ${description})
+    returning id::text as id
+  `;
+  return { id: row!.id };
+}
+
+// ---------------------------------------------------------------------------
 // Newsletter subscribers (app.newsletter_subscriber, migration 0020)
 // ---------------------------------------------------------------------------
 
