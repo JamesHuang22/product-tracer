@@ -32,7 +32,7 @@ export default async function SubmitPage() {
             href="/login"
             className="mt-6 inline-flex w-full items-center justify-center rounded-lg bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-neutral-700 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200"
           >
-            Sign in with GitHub
+            Sign in
           </Link>
           <p className="mt-4 text-xs text-neutral-400 dark:text-neutral-500">
             Already have an account?{' '}
