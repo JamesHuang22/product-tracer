@@ -302,7 +302,9 @@ export function HomeContent({ data }: { data: HomeData }) {
             {t('hero.browseAll')}
             <ArrowRight className="h-3.5 w-3.5" />
           </Link>
-          <span className="text-sm text-neutral-500">{t('hero.dailyEmail')}</span>
+          {/* "Daily email digest" hidden until the newsletter feature ships (TASK-031).
+              i18n key hero.dailyEmail is kept in the dictionary for easy re-enable.
+          <span className="text-sm text-neutral-500">{t('hero.dailyEmail')}</span> */}
         </div>
 
         {/* Coverage at a glance — the four integrated sources. */}
