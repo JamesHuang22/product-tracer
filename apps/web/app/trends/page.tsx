@@ -14,6 +14,7 @@ import {
 } from '@/lib/db';
 import { TrendWeekSelect } from './trend-week-select';
 import { formatCategory } from '@/lib/categories';
+import { decodeHtmlEntities } from '@/lib/format';
 import {
   DEFAULT_LOCALE,
   isLocale,
@@ -328,7 +329,7 @@ export default async function TrendsPage({
               <section>
                 <SectionHeading>{translate(locale, 'trends.summary')}</SectionHeading>
                 <p className="text-[15px] leading-relaxed text-neutral-700 dark:text-neutral-300">
-                  {summary}
+                  {decodeHtmlEntities(summary)}
                 </p>
               </section>
             ) : null;

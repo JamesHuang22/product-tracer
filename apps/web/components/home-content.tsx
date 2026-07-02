@@ -14,7 +14,7 @@ import {
   Youtube,
 } from 'lucide-react';
 import type { PlatformTopItem, ProjectListItem, VideoInsight, WeeklyTrendProduct } from '@/lib/db';
-import { cleanOneLiner, fmtCount, localizedPair, localizedText } from '@/lib/format';
+import { cleanOneLiner, decodeHtmlEntities, fmtCount, localizedPair, localizedText } from '@/lib/format';
 import { useI18n } from '@/lib/i18n-context';
 import type { MessageKey } from '@/lib/i18n';
 import { LivePlatformSection, Monogram, PLATFORM_VISUALS } from '@/components/platform-section';
@@ -179,7 +179,9 @@ function TrendProductCard({ product }: { product: WeeklyTrendProduct }) {
         )}
       </div>
       {product.description && (
-        <p className="line-clamp-2 text-sm leading-[1.6] text-neutral-500">{product.description}</p>
+        <p className="line-clamp-2 text-sm leading-[1.6] text-neutral-500">
+          {decodeHtmlEntities(product.description)}
+        </p>
       )}
     </Link>
   );
@@ -454,7 +456,7 @@ export function HomeContent({ data }: { data: HomeData }) {
           <div className="space-y-6">
             {data.trend.summary && (
               <p className="max-w-3xl text-[15px] leading-[1.6] text-neutral-700 dark:text-neutral-300">
-                {data.trend.summary}
+                {decodeHtmlEntities(data.trend.summary)}
               </p>
             )}
 
