@@ -47,6 +47,9 @@ export function SiteHeader({ userEmail }: { userEmail: string | null }) {
           <Link href="/submit" className={linkCls}>
             {t('nav.submit')}
           </Link>
+          <Link href="/feature-request" className={linkCls}>
+            {t('nav.feedback')}
+          </Link>
           <LanguageSwitcher />
           <ThemeToggle />
           {authed ? (
@@ -89,6 +92,13 @@ export function SiteHeader({ userEmail }: { userEmail: string | null }) {
           ))}
           <Link href="/submit" onClick={() => setOpen(false)} className={`py-1.5 ${linkCls}`}>
             {t('nav.submit')}
+          </Link>
+          <Link
+            href="/feature-request"
+            onClick={() => setOpen(false)}
+            className={`py-1.5 ${linkCls}`}
+          >
+            {t('nav.feedback')}
           </Link>
           {authed ? (
             <Link
