@@ -898,10 +898,11 @@
 
 ## [2026-07-01] TASK-030: Fix HTML entities (&#x2F;, &amp;, etc.) appearing in one-liner text on dashboard + projects
 - **Priority**: P0 BUG
-- **Status**: in-progress
+- **Status**: done
 - **Locked by**: coder-auto
 - **Locked at**: 2026-07-01 09:00 PDT
-- **Acceptance**: No HTML entities (&#x2F;, &amp;, &quot;) visible anywhere in the UI. All one_liner text is properly decoded.
+- **PR**: #108 + #109 (both merged)
+- **Verify**: PASS — /dashboard, /projects, /trends all 200; grep of live HTML for &#x2F; / &amp;#x2F; / &amp;quot; = 0 on all three (was leaking "OpenKnowledge (https:&#x2F;&#x2F;…" on /dashboard). Shipped: format.ts — extracted decodeHtmlEntities() shared helper; localizedText() now decodes entities on every path (NOT truncating, so ai_summary/titles that render full elsewhere are unaffected — deliberate deviation from spec's literal "call cleanOneLiner" which would truncate ai_summary to 120 on the detail page); cleanOneLiner() reuses the helper. Follow-up (#109): weekly-trend text renders outside localizedText — decoded data.trend.summary + top_products.description in home-content.tsx and trend summary in trends/page.tsx (the actual OpenKnowledge leak source). typecheck clean.
 - **Spec**:
   **Problem:** The one_liner text from HN/PH collector contains raw HTML entities like &#x2F; (for /), &amp;, &quot;. The existing `cleanOneLiner()` function in apps/web/lib/format.ts already decodes these, but it's NOT being called in the dashboard's data pipeline.
 
