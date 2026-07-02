@@ -1061,10 +1061,11 @@
 
 ## [2026-07-01] TASK-033: Add "Submit Feature Request" form for logged-in users; sign-in prompt for guests
 - **Priority**: P1 FEATURE
-- **Status**: in-progress
+- **Status**: done
 - **Locked by**: coder-auto
 - **Locked at**: 2026-07-01 10:05 PDT
-- **Acceptance**: Logged-in users can submit a feature request via a form. Guest users see the button but get a modal saying "Sign in to submit a feature request."
+- **PR**: #112 (merged)
+- **Verify**: PASS — migration 0022 applied via MCP (app.feature_request + RLS insert/select-own; FK → auth.users, NOT spec's nonexistent app.user). /feature-request 200 for anon rendering the sign-in prompt; POST /api/feature-request anon → 401. Shipped: submitFeatureRequest db fn; API route (auth + title 5–100 / description 10–5000 validation); FeatureRequestForm client component (mirrors SubmitForm: validation, success state); /feature-request page (auth-gated with sign-in-prompt card, same pattern as /submit from TASK-014); "Feedback" nav link (desktop + mobile, visible to all — page handles anon, consistent with Submit); i18n EN+ZH (nav.feedback + feature.*). typecheck clean. Note: guest UX is the /feature-request sign-in card (server-rendered) rather than a client modal — matches the established /submit pattern and the acceptance intent ("Sign in to submit a feature request").
 - **Spec**:
   **Changes:**
 
