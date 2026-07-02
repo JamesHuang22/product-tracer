@@ -938,9 +938,9 @@
 
 ## [2026-07-01] TASK-031: Remove "Daily email digest" text from home-content.tsx hero (feature not ready)
 - **Priority**: P2
-- **Status**: ready
-- **Locked by**:
-- **Locked at**:
+- **Status**: in-progress
+- **Locked by**: coder-auto
+- **Locked at**: 2026-07-01 09:30 PDT
 - **Acceptance**: "Daily email digest" no longer appears below the "Browse all projects" button on the landing page / dashboard.
 - **Spec**:
   **Problem:** "Daily email digest" is displayed in the hero section of home-content.tsx (line 303), but the feature doesn't work yet (newsletter is commented out, send script is a stub).
