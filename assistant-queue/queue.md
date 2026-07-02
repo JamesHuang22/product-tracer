@@ -901,6 +901,69 @@
 - **Status**: ready
 - **Locked by**:
 - **Locked at**:
+- **Acceptance**: No HTML entities (&#x2F;, &amp;, &quot;) visible anywhere in the UI. All one_liner text is properly decoded.
+- **Spec**:
+  **Problem:** The one_liner text from HN/PH collector contains raw HTML entities like &#x2F; (for /), &amp;, &quot;. The existing `cleanOneLiner()` function in apps/web/lib/format.ts already decodes these, but it's NOT being called in the dashboard's data pipeline.
+
+  **Root cause:**
+  - `localizedText(locale, r.one_liner)` strips Chinese in EN locale, but doesn't call `cleanOneLiner()`
+  - The dashboard / projects page fetches one_liner directly from DB and sends to client without decoding
+
+  **Fix:**
+  **In apps/web/lib/format.ts**, modify `localizedText()` to also call `cleanOneLiner()` on the result:
+  ```ts
+  export function localizedText(locale, text) {
+    if (!text) return null;
+    const cleaned = cleanOneLiner(text);
+    if (!cleaned) return null;
+    if (locale === 'en' && hasCjk(cleaned)) return null;
+    return cleaned;
+  }
+  ```
+
+  **Also audit** all places that render one_liner directly:
+  - apps/web/app/projects/projects-table.tsx
+  - apps/web/app/platform/[platform]/page.tsx
+  - apps/web/app/trends/page.tsx
+  - apps/web/app/dashboard/page.tsx
+
+  **Test:**
+  - Visit dashboard — "OpenKnowledge" card should show "/" not "&#x2F;"
+  - Visit /projects — same
+  - Typecheck clean
+
+  **Files to touch:**
+  - `apps/web/lib/format.ts`
+
+## [2026-07-01] TASK-031: Remove "Daily email digest" text from home-content.tsx hero (feature not ready)
+- **Priority**: P2
+- **Status**: ready
+- **Locked by**:
+- **Locked at**:
+- **Acceptance**: "Daily email digest" no longer appears below the "Browse all projects" button on the landing page / dashboard.
+- **Spec**:
+  **Problem:** "Daily email digest" is displayed in the hero section of home-content.tsx (line 303), but the feature doesn't work yet (newsletter is commented out, send script is a stub).
+
+  **Fix:**
+  In `apps/web/components/home-content.tsx`, remove or comment out line 303:
+  ```tsx
+  {/* <span className="text-sm text-neutral-500">{t('hero.dailyEmail')}</span> */}
+  ```
+
+  **Don't touch:**
+  - i18n keys — leave hero.dailyEmail in the dictionary
+  - Any other code
+
+  **Test:**
+  - Visit / or /dashboard — "Daily email digest" should not appear
+  - Typecheck clean
+
+  **File to touch:**
+  - `apps/web/components/home-content.tsx`
+- **Priority**: P0 BUG
+- **Status**: ready
+- **Locked by**:
+- **Locked at**:
 - **Acceptance**: No HTML entities (&#x2F;, &amp;, &quot;, etc.) visible anywhere in the UI. All one_liner text is properly decoded.
 - **Spec**:
   **Problem:** The one_liner text from HN/PH collector contains raw HTML entities like &#x2F; (for /), &amp;, &quot;. The existing `cleanOneLiner()` function in apps/web/lib/format.ts already decodes these, but it's NOT being called in the dashboard's data pipeline.
