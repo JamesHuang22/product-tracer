@@ -147,15 +147,20 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
   };
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 50 });
 
-  // Compare selection (TASK-020): up to 3 project ids, persisted in component
-  // state across pagination/sort. The "Compare (N)" bar links to /compare.
+  // Compare selection (TASK-020): up to MAX_COMPARE project ids, persisted in
+  // component state across pagination/sort. The "Compare (N)" bar links to
+  // /compare. Trying to exceed the cap opens a warning modal (TASK-032).
   const [selected, setSelected] = useState<string[]>([]);
-  const MAX_COMPARE = 3;
+  const [showMaxModal, setShowMaxModal] = useState(false);
+  const MAX_COMPARE = 6;
   const isSelected = (id: string) => selected.includes(id);
   const toggleSelected = (id: string) => {
     setSelected((prev) => {
       if (prev.includes(id)) return prev.filter((x) => x !== id);
-      if (prev.length >= MAX_COMPARE) return prev; // cap at 3
+      if (prev.length >= MAX_COMPARE) {
+        setShowMaxModal(true);
+        return prev;
+      }
       return [...prev, id];
     });
   };
@@ -449,6 +454,34 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
                 </span>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Compare-limit warning modal (TASK-032) — shown when a 7th selection is
+          attempted. Click backdrop or "Got it" to dismiss. */}
+      {showMaxModal && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4"
+          onClick={() => setShowMaxModal(false)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="w-full max-w-sm rounded-lg bg-white p-6 shadow-xl dark:bg-neutral-800"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-semibold tracking-tight">{t('compare.limitTitle')}</h3>
+            <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
+              {t('compare.limitBody', { max: MAX_COMPARE })}
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowMaxModal(false)}
+              className="mt-4 rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-neutral-700 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200"
+            >
+              {t('compare.limitGotIt')}
+            </button>
           </div>
         </div>
       )}

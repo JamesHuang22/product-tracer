@@ -29,10 +29,10 @@ export default async function ComparePage({
   const raw = cookieStore.get(LOCALE_COOKIE)?.value;
   const locale: Locale = isLocale(raw) ? (raw as Locale) : DEFAULT_LOCALE;
 
-  // Parse, dedupe, validate as UUIDs, cap at 3.
+  // Parse, dedupe, validate as UUIDs, cap at 6 (matches MAX_COMPARE, TASK-032).
   const ids = Array.from(
     new Set((idsParam ?? '').split(',').map((s) => s.trim()).filter((s) => UUID_RE.test(s))),
-  ).slice(0, 3);
+  ).slice(0, 6);
 
   const projects = ids.length > 0 ? await getProjectsByIds(ids) : [];
 
