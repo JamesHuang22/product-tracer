@@ -1112,10 +1112,11 @@
 
 ## [2026-07-01] TASK-034: Rename "Submit" nav button to "Submit your project"
 - **Priority**: P2
-- **Status**: in-progress
+- **Status**: done
 - **Locked by**: coder-auto
 - **Locked at**: 2026-07-01 10:25 PDT
-- **Acceptance**: The navigation button that was labeled "Submit" now shows "Submit your project" for more clarity.
+- **PR**: #113 (merged)
+- **Verify**: PASS — / and /projects both render ">Submit your project<" (1 each), old bare ">Submit<" nav label gone; pages 200. The nav link uses the nav.submit i18n key — updated EN "Submit"→"Submit your project" and ZH "提交"→"提交你的项目" (single source drives desktop + mobile nav). typecheck clean.
 - **Spec**:
   **Problem:** The nav button just says "Submit" — not clear what users are submitting.
 
