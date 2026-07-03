@@ -268,7 +268,7 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
         cell: (info) => (
           <div className="text-right font-medium tabular-nums">{fmtCount(info.getValue())}</div>
         ),
-        sortDescFirst: true,
+        enableSorting: false,
       }),
       ch.accessor('github_forks', {
         header: t('table.header.forks'),
