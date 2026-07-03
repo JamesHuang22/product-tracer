@@ -277,6 +277,7 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
             {fmtCount(info.getValue())}
           </div>
         ),
+        enableSorting: false,
       }),
       ch.accessor((p) => (p.upvotes ?? 0) - (p.downvotes ?? 0), {
         id: 'net_votes',
