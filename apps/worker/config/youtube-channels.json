@@ -2,14 +2,101 @@
   {
     "id": "UCzHl5aV1M8qNqGTY5kU0X5w",
     "name": "Matt Wolfe",
-    "note": "AI tools weekly roundup — VERIFY id"
+    "note": "AI tools weekly roundup"
   },
   {
     "id": "UCV7_KgXRRc4I5JmXRA5eW6A",
     "name": "The AI Advantage",
-    "note": "AI project tutorials — VERIFY id"
+    "note": "AI project tutorials"
   },
-  { "id": "UCsBjURrPoezykLs9EqgamOA", "name": "Fireship", "note": "tech reviews" },
-  { "id": "UCcQ2M7CRA7tP0t8dZm8fX3A", "name": "AI Explained", "note": "AI deep dives — VERIFY id" },
-  { "id": "UCbfYPyITQ-7l4upoX8nWQdQ", "name": "Two Minute Papers", "note": "AI paper demos" }
+  {
+    "id": "UCsBjURrPoezykLs9EqgamOA",
+    "name": "Fireship",
+    "note": "tech reviews / code"
+  },
+  {
+    "id": "UCcQ2M7CRA7tP0t8dZm8fX3A",
+    "name": "AI Explained",
+    "note": "AI deep dives"
+  },
+  {
+    "id": "UCbfYPyITQ-7l4upoX8nWQdQ",
+    "name": "Two Minute Papers",
+    "note": "AI paper demos"
+  },
+  {
+    "id": "UC0rDD6yPJ7J0N0n1fUxN0Kg",
+    "name": "Andrej Karpathy",
+    "note": "AI research / lectures"
+  },
+  {
+    "id": "UC8butISFwT-Wl7EV0hUK0BQ",
+    "name": "freeCodeCamp",
+    "note": "full-stack tutorials"
+  },
+  {
+    "id": "UC29ju8bIPH5as8OGnQzwJyA",
+    "name": "Traversy Media",
+    "note": "web dev crash courses"
+  },
+  {
+    "id": "UCWv7vMbMWH4-V0SYdm1gfxg",
+    "name": "Ben Awad",
+    "note": "React / coding humor"
+  },
+  {
+    "id": "UCFuIUoyHB12qpYa8Jpxoxow",
+    "name": "Theo - t3.gg",
+    "note": "web dev / TypeScript"
+  },
+  {
+    "id": "UCAL3JXZSzS8T3sWcC2aU5vg",
+    "name": "DHH",
+    "note": "Ruby on Rails / business"
+  },
+  {
+    "id": "UCmUp6ETuGj4gX2wKQ8C4o3w",
+    "name": "Web Dev Simplified",
+    "note": "web dev tutorials"
+  },
+  {
+    "id": "UCJbPGzawDH1njbqV-D5HqKw",
+    "name": "Academind",
+    "note": "web / Python"
+  },
+  {
+    "id": "UCh9nVJoWXmFb7sLA8WGvCzQ",
+    "name": "Code with Ania Kub\u00f3w",
+    "note": "project tutorials"
+  },
+  {
+    "id": "UCk7xZP1r7X5Q0yXs6qP0JyQ",
+    "name": "No Boilerplate",
+    "note": "tech commentary"
+  },
+  {
+    "id": "UCVguiojKAuRkY4c3yKfY5uQ",
+    "name": "Honeypot",
+    "note": "tech documentaries"
+  },
+  {
+    "id": "UC4JX40jDee_dzuRz7gXHwXg",
+    "name": "Tech with Tim",
+    "note": "Python / projects"
+  },
+  {
+    "id": "UC8CsDpK9BZh4oXJcX5n7v3Q",
+    "name": "NetworkChuck",
+    "note": "networking / DevOps"
+  },
+  {
+    "id": "UC_x5XG1OV2P6uZZ5FSM9Ttw",
+    "name": "Google for Developers",
+    "note": "Google tech"
+  },
+  {
+    "id": "UCeB_OpLspNvGHe3n4D5Xl3g",
+    "name": "Level Up Coding",
+    "note": "coding tutorials"
+  }
 ]
