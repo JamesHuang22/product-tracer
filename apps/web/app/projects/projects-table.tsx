@@ -55,14 +55,34 @@ function heatBorderClass(stars: number | null | undefined): string {
   return 'border-l-4 border-l-transparent';
 }
 
-/** Sort dropdown options → the tanstack sorting state each one applies. */
+/**
+ * Sort dropdown options → the tanstack sorting state each one applies.
+ *
+ * This is the single catalogue that both the dropdown and the clickable column
+ * headers resolve against. Every sortable column (stars, votes, name, and the
+ * hidden created_at) is represented in BOTH directions, so any header toggle
+ * lands on an entry the dropdown can display — keeping the two controls in sync
+ * instead of drifting apart (the drift is what previously corrupted the sort).
+ */
 const SORT_OPTIONS: { value: string; key: MessageKey; sorting: SortingState }[] = [
   { value: 'stars-desc', key: 'sort.starsDesc', sorting: [{ id: 'github_stars', desc: true }] },
   { value: 'stars-asc', key: 'sort.starsAsc', sorting: [{ id: 'github_stars', desc: false }] },
   { value: 'votes-desc', key: 'sort.mostUpvoted', sorting: [{ id: 'net_votes', desc: true }] },
+  { value: 'votes-asc', key: 'sort.mostDownvoted', sorting: [{ id: 'net_votes', desc: false }] },
   { value: 'newest', key: 'sort.newest', sorting: [{ id: 'created_at', desc: true }] },
   { value: 'name-asc', key: 'sort.nameAsc', sorting: [{ id: 'name', desc: false }] },
+  { value: 'name-desc', key: 'sort.nameDesc', sorting: [{ id: 'name', desc: true }] },
 ];
+
+/** Resolve the current tanstack sorting state back to a dropdown option value. */
+function sortingToValue(sorting: SortingState): string {
+  const s = sorting[0];
+  if (!s) return '';
+  return (
+    SORT_OPTIONS.find((o) => o.sorting[0]?.id === s.id && o.sorting[0]?.desc === s.desc)?.value ??
+    ''
+  );
+}
 
 // Short, colour-coded source chips for the platforms a project lives on.
 const PLATFORM_BADGE: Record<string, { label: string; cls: string }> = {
@@ -118,8 +138,11 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
   // state, and pager all reflect the tag-filtered set.
   const searchParams = useSearchParams();
   const activeTag = searchParams.get('tag');
+  // `sorting` is the single source of truth for ordering; the dropdown selection
+  // is derived from it (never stored separately), so header clicks and the
+  // dropdown can never disagree.
   const [sorting, setSorting] = useState<SortingState>([{ id: 'github_stars', desc: true }]);
-  const [sortValue, setSortValue] = useState('stars-desc');
+  const sortValue = sortingToValue(sorting);
   const [filter, setFilter] = useState('');
   const [category, setCategory] = useState('');
 
@@ -141,7 +164,6 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
   }, [projects, activeTag, query]);
 
   const onSortChange = (value: string) => {
-    setSortValue(value);
     const opt = SORT_OPTIONS.find((o) => o.value === value);
     if (opt) setSorting(opt.sorting);
   };
@@ -268,7 +290,8 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
         cell: (info) => (
           <div className="text-right font-medium tabular-nums">{fmtCount(info.getValue())}</div>
         ),
-        enableSorting: false,
+        sortDescFirst: true,
+        sortUndefined: 'last',
       }),
       ch.accessor('github_forks', {
         header: t('table.header.forks'),
@@ -329,6 +352,11 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
     state: { sorting, columnFilters, pagination },
     onSortingChange: setSorting,
     onPaginationChange: setPagination,
+    // Header clicks toggle a single column between asc/desc only — they never
+    // clear the sort or build a multi-column state, so the resulting `sorting`
+    // always resolves to one of SORT_OPTIONS and the dropdown stays in sync.
+    enableSortingRemoval: false,
+    enableMultiSort: false,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
