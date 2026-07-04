@@ -66,7 +66,7 @@ async function main(): Promise<void> {
   // --- After ---
   const [snapCountAfter] = await sql.unsafe(`select count(*)::int as n from raw.snapshot`);
   const [dbSizeAfter] = await sql`select pg_size_pretty(pg_database_size(current_database())) as s`;
-  const [snapSizeAfter] = await sql.unsafe(`select pg_size_pretty(pg_total_relation_size('raw.snapshot')) as s`;
+  const [snapSizeAfter] = await sql.unsafe(`select pg_size_pretty(pg_total_relation_size('raw.snapshot')) as s`);
 
   console.log(`\n  ───────────────────────────`);
   console.log(`  AFTER cleanup:`);
