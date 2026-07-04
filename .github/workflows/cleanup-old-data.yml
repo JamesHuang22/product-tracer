@@ -1,0 +1,63 @@
+name: Cleanup Old Data
+
+# One-shot cleanup + weekly retention policy: keep only the most recent N days
+# of raw.snapshot and app.project_metric rows, then VACUUM FULL to reclaim space.
+#
+# This fixes the Supabase Fair Use Policy violation (DB was 564 MB, 92% from
+# old raw.snapshot rows). After initial run, scheduled once weekly to prevent
+# re-accumulation.
+
+on:
+  schedule:
+    - cron: '0 3 * * 0' # Sunday 03:00 UTC
+  workflow_dispatch:
+    inputs:
+      retain_days:
+        description: 'Days of data to retain (default: 30)'
+        required: false
+        default: '30'
+        type: string
+
+concurrency:
+  group: cleanup-old-data
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      snapshot_deleted: ${{ steps.run.outputs.snapshot_deleted }}
+      snapshot_remaining: ${{ steps.run.outputs.snapshot_remaining }}
+      db_before: ${{ steps.run.outputs.db_before }}
+      db_after: ${{ steps.run.outputs.db_after }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run data cleanup
+        id: run
+        run: pnpm --filter @product-tracer/worker exec tsx src/scripts/cleanup-old-data.ts
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          RETAIN_DAYS: ${{ inputs.retain_days || '30' }}
+
+      - name: Show summary
+        if: always()
+        run: |
+          echo "## Cleanup Results" >> $GITHUB_STEP_SUMMARY
+          echo "- Snapshot deleted: ${{ steps.run.outputs.snapshot_deleted }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Snapshot remaining: ${{ steps.run.outputs.snapshot_remaining }}" >> $GITHUB_STEP_SUMMARY
+          echo "- DB before: ${{ steps.run.outputs.db_before }}" >> $GITHUB_STEP_SUMMARY
+          echo "- DB after: ${{ steps.run.outputs.db_after }}" >> $GITHUB_STEP_SUMMARY
