@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import { cookies } from 'next/headers';
+import { Analytics } from '@vercel/analytics/next';
 import './globals.css';
 import { SiteHeader } from '@/components/site-header';
 import { I18nProvider } from '@/lib/i18n-context';
@@ -57,6 +58,7 @@ export default async function RootLayout({
             {children}
           </BookmarksProvider>
         </I18nProvider>
+        <Analytics />
       </body>
     </html>
   );
