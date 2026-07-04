@@ -1138,3 +1138,56 @@
   **Files to touch:**
   - `apps/web/app/feature-request/page.tsx`
   - `apps/web/app/submit/page.tsx`
+
+## [2026-07-03] TASK-036: Clean up old raw.snapshot data to reduce DB size below Fair Use Policy limits
+- **Priority**: P0
+- **Status**: ready
+- **Locked by**:
+- **Locked at**:
+- **Acceptance**: DB size reduced from ~564 MB to under 300 MB by removing old raw.snapshot rows. Collector continues to work correctly with only recent snapshots.
+- **Spec**:
+  **Problem:** Supabase sent a Fair Use Policy notice — DB is at 564 MB, exceeding free plan limits (expected < 500 MB).
+  Root cause: raw.snapshot has 486,976 rows at 521 MB (92% of total DB). Every collector run appends a new snapshot — data from March 2026 is still present.
+
+  **Fix — Delete old snapshots, keep recent data:**
+
+  **Phase 1: Clean raw.snapshot**
+  Delete snapshots older than a threshold. How old is "old enough"?
+  - The UI only shows the latest snapshot per project
+  - Historical snapshots are only used for trends / time-series (app.project_metric holds the aggregated trends)
+  - Keep only the most recent N days of snapshots (e.g., 30 days)
+
+  CREATE OR REPLACE FUNCTION cleanup_old_snapshots(retain_days int DEFAULT 30)
+  RETURNS bigint AS $$
+  DECLARE
+    cutoff timestamptz;
+    deleted bigint;
+  BEGIN
+    cutoff := now() - (retain_days || ' days')::interval;
+    DELETE FROM raw.snapshot WHERE collected_at < cutoff;
+    GET DIAGNOSTICS deleted = ROW_COUNT;
+    RETURN deleted;
+  END;
+  $$ LANGUAGE plpgsql;
+
+  Run: SELECT cleanup_old_snapshots(30);
+
+  **Phase 2: Clean app.project_metric**
+  Same logic — old metrics for projects that haven't been collected recently.
+
+  **Phase 3: Delete zero-engagement projects (optional)**
+  Projects with no stars, no forks, no votes, no recent snapshots — probably noise from HN/PH that never went anywhere.
+
+  **Phase 4: Run VACUUM FULL to reclaim space**
+  After deletes, run VACUUM FULL to give space back to the OS:
+  VACUUM FULL raw.snapshot;
+  VACUUM FULL app.project_metric;
+  ANALYZE;
+
+  **Phase 5: Add retention policy as a scheduled cleanup**
+  Add a new cron: `cleanup-old-data.yml` running weekly to delete snapshots > 30 days old.
+
+  **Files to create/modify:**
+  - New: `apps/worker/src/scripts/cleanup-old-data.ts`
+  - New: `.github/workflows/cleanup-old-data.yml`
+  - Run the cleanup manually first via a workflow_dispatch
