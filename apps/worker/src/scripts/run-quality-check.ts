@@ -48,11 +48,17 @@ async function main(): Promise<void> {
   }
 
   // Pull all snapshots and identity links once, then group in memory — avoids
-  // an N+1 query storm across what can be thousands of projects.
+  // an N+1 query storm across what can be thousands of projects. Aggregated to
+  // one row per (project, platform): assessProject only takes the max
+  // engagement value per platform and the platform set, so per-snapshot rows
+  // add nothing — they were ~200k rows of egress per run and growing.
   const snapshotRows = await sql<({ project_id: string } & AssessSnapshot)[]>`
-    select project_id, platform, upvotes, comments, stars, forks
+    select project_id, platform,
+           max(upvotes) as upvotes, max(comments) as comments,
+           max(stars) as stars, max(forks) as forks
     from raw.snapshot
     where project_id is not null
+    group by project_id, platform
   `;
   const linkRows = await sql<({ project_id: string } & AssessIdentityLink)[]>`
     select project_id, platform from app.identity_link

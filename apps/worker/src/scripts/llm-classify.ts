@@ -198,11 +198,17 @@ async function main(): Promise<void> {
   } else {
     // Gray-zone mode needs each project's snapshots + links to recompute the
     // rule score. One query each, grouped in memory — avoids an N+1 storm.
+    // Aggregated to one row per (project, platform): assessProject only uses
+    // the max engagement value per platform, so per-snapshot rows were pure
+    // egress waste (~120k rows per run).
     const projectIds = projects.map((p) => p.id);
     const snapshotRows = await sql<({ project_id: string } & AssessSnapshot)[]>`
-      select project_id, platform, upvotes, comments, stars, forks
+      select project_id, platform,
+             max(upvotes) as upvotes, max(comments) as comments,
+             max(stars) as stars, max(forks) as forks
       from raw.snapshot
       where project_id = any(${projectIds})
+      group by project_id, platform
     `;
     const linkRows = await sql<({ project_id: string } & AssessIdentityLink)[]>`
       select project_id, platform from app.identity_link
