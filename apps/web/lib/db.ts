@@ -1,3 +1,4 @@
+import { unstable_cache } from 'next/cache';
 import { createSqlClient, type SqlClient } from '@product-tracer/db';
 
 // One Postgres connection per process; HMR-safe via globalThis.
@@ -50,7 +51,15 @@ export interface ProjectListItem {
   downvotes: number;
 }
 
-export async function getAllProjects(): Promise<ProjectListItem[]> {
+// Cache TTL for the heavy full-list queries (getAllProjects and friends).
+// These pull every project row on each call; before caching they were ~60% of
+// all Supabase egress. Data only changes when collectors run (every 2–8h), so
+// a 2h Vercel Data Cache TTL is invisible to users. Cached values round-trip
+// through JSON, so timestamptz columns arrive as ISO strings — which is what
+// ProjectListItem already declares.
+const LIST_CACHE_SECONDS = 7200;
+
+async function fetchAllProjects(): Promise<ProjectListItem[]> {
   return await sql<ProjectListItem[]>`
     select
       p.id,
@@ -58,7 +67,13 @@ export async function getAllProjects(): Promise<ProjectListItem[]> {
       p.name,
       p.one_liner,
       -- Defensive read via to_jsonb: resilient if the column is ever absent.
-      (to_jsonb(p) ->> 'ai_summary') as ai_summary,
+      -- Truncated to 200 chars: the full text only renders on the detail page,
+      -- and at ~350 bytes avg it dominated the list-payload egress.
+      case
+        when length(to_jsonb(p) ->> 'ai_summary') > 200
+          then left(to_jsonb(p) ->> 'ai_summary', 200) || '…'
+        else to_jsonb(p) ->> 'ai_summary'
+      end as ai_summary,
       p.category,
       p.llm_category,
       p.primary_url,
@@ -85,12 +100,16 @@ export async function getAllProjects(): Promise<ProjectListItem[]> {
   `;
 }
 
+export const getAllProjects = unstable_cache(fetchAllProjects, ['projects-all'], {
+  revalidate: LIST_CACHE_SECONDS,
+});
+
 /**
  * Projects in a single LLM category, in the same shape and order as
  * getAllProjects. Optional limit/offset for server-side pagination; omitted by
  * default since the /projects table paginates client-side.
  */
-export async function getProjectsByCategory(
+async function fetchProjectsByCategory(
   category: string,
   limit?: number,
   offset?: number,
@@ -102,7 +121,12 @@ export async function getProjectsByCategory(
       p.name,
       p.one_liner,
       -- Defensive read via to_jsonb: resilient if the column is ever absent.
-      (to_jsonb(p) ->> 'ai_summary') as ai_summary,
+      -- Truncated to 200 chars (see fetchAllProjects).
+      case
+        when length(to_jsonb(p) ->> 'ai_summary') > 200
+          then left(to_jsonb(p) ->> 'ai_summary', 200) || '…'
+        else to_jsonb(p) ->> 'ai_summary'
+      end as ai_summary,
       p.category,
       p.llm_category,
       p.primary_url,
@@ -129,6 +153,12 @@ export async function getProjectsByCategory(
     offset ${offset ?? 0}
   `;
 }
+
+export const getProjectsByCategory = unstable_cache(
+  fetchProjectsByCategory,
+  ['projects-by-category'],
+  { revalidate: LIST_CACHE_SECONDS },
+);
 
 export async function getTopProjects(limit: number): Promise<ProjectListItem[]> {
   const rows = await getAllProjects();
@@ -410,7 +440,7 @@ export async function getPlatformProjectCount(platform: LivePlatform): Promise<n
  * platform's primary engagement metric (GitHub stars / latest snapshot upvotes /
  * Product Hunt upvotes), then recency.
  */
-export async function getPlatformProjects(platform: string): Promise<ProjectListItem[]> {
+async function fetchPlatformProjects(platform: string): Promise<ProjectListItem[]> {
   return await sql<ProjectListItem[]>`
     select
       p.id,
@@ -418,7 +448,12 @@ export async function getPlatformProjects(platform: string): Promise<ProjectList
       p.name,
       p.one_liner,
       -- Defensive read via to_jsonb: resilient if the column is ever absent.
-      (to_jsonb(p) ->> 'ai_summary') as ai_summary,
+      -- Truncated to 200 chars (see fetchAllProjects).
+      case
+        when length(to_jsonb(p) ->> 'ai_summary') > 200
+          then left(to_jsonb(p) ->> 'ai_summary', 200) || '…'
+        else to_jsonb(p) ->> 'ai_summary'
+      end as ai_summary,
       p.category,
       p.llm_category,
       p.primary_url,
@@ -462,6 +497,12 @@ export async function getPlatformProjects(platform: string): Promise<ProjectList
     order by ord.sort_metric desc nulls last, p.created_at desc
   `;
 }
+
+export const getPlatformProjects = unstable_cache(
+  fetchPlatformProjects,
+  ['platform-projects'],
+  { revalidate: LIST_CACHE_SECONDS },
+);
 
 // ---------------------------------------------------------------------------
 // Project detail page (/projects/[slug])
