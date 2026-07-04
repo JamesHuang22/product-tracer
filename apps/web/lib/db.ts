@@ -425,6 +425,9 @@ export async function getPlatformProjects(platform: string): Promise<ProjectList
       gh.stars as github_stars,
       gh.forks as github_forks,
       p.created_at,
+      coalesce(p.tags, '{}') as tags,
+      coalesce((to_jsonb(p) ->> 'upvotes')::int, 0) as upvotes,
+      coalesce((to_jsonb(p) ->> 'downvotes')::int, 0) as downvotes,
       coalesce(
         (select array_agg(distinct il2.platform)
          from app.identity_link il2 where il2.project_id = p.id),

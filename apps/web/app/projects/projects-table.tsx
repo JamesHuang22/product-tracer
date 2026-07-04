@@ -152,7 +152,7 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
   // dropdown remains a tanstack column filter, so the two combine.
   const query = filter.trim().toLowerCase();
   const data = useMemo(() => {
-    let rows = activeTag ? projects.filter((p) => p.tags.includes(activeTag)) : projects;
+    let rows = activeTag ? projects.filter((p) => p.tags?.includes(activeTag)) : projects;
     if (query) {
       rows = rows.filter((p) =>
         [p.name, p.one_liner, p.ai_summary, ...(p.tags ?? [])]
@@ -262,7 +262,9 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
               <Link href={href as Route} className="block min-w-0 before:absolute before:inset-0">
                 {content}
               </Link>
-              {p.tags.length > 0 && <TagChips tags={p.tags} max={4} className="mt-1.5" />}
+              {p.tags && p.tags.length > 0 && (
+                <TagChips tags={p.tags} max={4} className="mt-1.5" />
+              )}
             </>
           );
         },
@@ -642,7 +644,7 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
                   );
                 })()}
               </div>
-              {p.tags.length > 0 && <TagChips tags={p.tags} max={5} className="mt-2" />}
+              {p.tags && p.tags.length > 0 && <TagChips tags={p.tags} max={5} className="mt-2" />}
               <div className="absolute right-3 top-3 flex items-center gap-2">
                 <input
                   type="checkbox"
