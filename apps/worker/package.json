@@ -16,6 +16,7 @@
     "youtube:clean": "tsx src/scripts/clean-irrelevant-youtube.ts",
     "summaries:generate": "tsx src/scripts/generate-summaries.ts",
     "tags:generate": "tsx src/scripts/generate-tags.ts",
+    "test": "tsx --test \"src/**/*.test.ts\"",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
